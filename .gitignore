@@ -1,0 +1,30 @@
+# Flutter / Dart
+src/**/.dart_tool/
+src/**/.flutter-plugins
+src/**/.flutter-plugins-dependencies
+src/**/build/
+src/**/.pub-cache/
+src/**/.pub/
+**/*.g.dart
+**/*.freezed.dart
+
+# Native build artifacts
+src/**/android/.gradle/
+src/**/android/local.properties
+src/**/ios/Pods/
+src/**/ios/.symlinks/
+src/**/windows/flutter/ephemeral/
+src/**/macos/Flutter/ephemeral/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Data / secrets
+tools/**/__pycache__/
+tools/**/*.pyc
+tools/**/venv/
+*.log
