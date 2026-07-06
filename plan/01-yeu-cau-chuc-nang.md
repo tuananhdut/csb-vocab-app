@@ -9,7 +9,7 @@ Mã `FR-x`, ưu tiên: **P0** (bắt buộc), **P1** (quan trọng), **P2** (nâ
 - Hiển thị hình ảnh **Cảnh sát biển Việt Nam**.
 - Hiệu ứng chuyển ảnh dạng **Slide / Carousel** (nhiều ảnh chuyển tự động).
 - Sau vài giây **tự động** chuyển vào giao diện chính.
-- ⚠️ Nguồn ảnh & số lượng ảnh: chờ chốt (Q&A C1).
+- ✅ Nguồn ảnh (đã chốt C1): đội phát triển **tự dựng 3–5 ảnh placeholder** phong cách Cảnh sát biển VN; thay bằng ảnh chính thức khi khách cung cấp.
 
 ---
 
@@ -28,10 +28,10 @@ Mã `FR-x`, ưu tiên: **P0** (bắt buộc), **P1** (quan trọng), **P2** (nâ
 - **Hình ảnh minh họa** (nếu có — không bắt buộc).
 - Nút **phát âm** (TTS) — P1.
 - Nút **đánh dấu đã học / thêm ôn tập** — liên kết FR-5.
-- Bố cục theo mẫu giao diện khách cung cấp. ⚠️ (cần mẫu giao diện — Q&A).
+- Bố cục tham khảo TFlat; tinh chỉnh theo mẫu giao diện khi khách cung cấp.
 
 ### FR-2.3 Phạm vi tra cứu
-- ⚠️ Tra trong phạm vi từ của PDF **hay** từ điển đầy đủ: chờ chốt (Q&A A4).
+- ✅ (đã chốt A4=a) Chỉ tra trong **phạm vi các từ thuộc PDF** (giáo trình). Giữ app gọn nhẹ, offline 100%. Có thể mở rộng từ điển đầy đủ ở phiên bản sau.
 
 ---
 
@@ -41,7 +41,7 @@ Mã `FR-x`, ưu tiên: **P0** (bắt buộc), **P1** (quan trọng), **P2** (nâ
 - Màn danh sách chương → chọn 1 chương → **chỉ hiển thị nội dung chương đó**.
 - Mỗi bài học: danh sách **từ + nghĩa**, bổ sung phiên âm / ví dụ / hình ảnh nếu dữ liệu hỗ trợ.
 - Có thể lướt qua từng từ trong chương (dạng danh sách hoặc thẻ).
-- ⚠️ Cách chia chương lấy từ PDF hay tự chia: chờ chốt (Q&A A3).
+- ✅ (đã chốt A3) Cách chia chương lấy từ **file PDF thứ 2** (định nghĩa danh mục chương/bài). ⏳ Cần khách gửi file này để dựng ánh xạ từ → chương.
 
 ---
 
@@ -49,7 +49,7 @@ Mã `FR-x`, ưu tiên: **P0** (bắt buộc), **P1** (quan trọng), **P2** (nâ
 
 - Dịch **Anh → Việt** và **Việt → Anh**.
 - Giao diện tương tự **Google Translate** ở mức cơ bản (ô nhập, chọn chiều dịch, nút đổi chiều, kết quả).
-- ⚠️ Mức độ dịch (tra từ/cụm từ offline **vs** dịch câu) — chờ chốt (Q&A B1). Mặc định: tra từ/cụm từ trong DB để giữ offline.
+- ✅ (đã chốt B1=a) Dịch **offline bằng tra từ/cụm từ trong DB** rồi ghép lại → giữ offline 100%, không cần internet. Tách `TranslateRepository` để dễ thay bằng API online sau nếu khách yêu cầu.
 
 ---
 
@@ -62,11 +62,11 @@ Mã `FR-x`, ưu tiên: **P0** (bắt buộc), **P1** (quan trọng), **P2** (nâ
 ### FR-5.2 Lập lịch ôn tập
 - Hệ thống tính thời điểm ôn lại cho từng từ.
 - Hàng đợi "**ôn hôm nay**" trên màn chính.
-- ⚠️ Cơ chế: SM-2 (lặp lại ngắt quãng) **vs** khoảng cố định — chờ chốt (Q&A D1). Mặc định: SM-2.
+- ✅ (đã chốt D1=a) Dùng thuật toán **SM-2** (lặp lại ngắt quãng), giãn khoảng ôn theo mức nhớ từng từ.
 
 ### FR-5.3 Thông báo nhắc học
 - Thông báo nhắc học/ôn lại (tham khảo TFlat).
-- ⚠️ Phạm vi thông báo trên Windows hạn chế — chờ chốt (Q&A D2).
+- ✅ (đã chốt D2) **Windows:** nhắc khi app đang mở (in-app + system notification). **iOS/Android:** local notification đầy đủ (nhắc cả khi app đóng). Nhắc nền khi đã tắt hẳn app trên Windows = ngoài phạm vi MVP.
 
 ---
 

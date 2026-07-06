@@ -4,13 +4,13 @@
 
 | Thành phần | Công nghệ | Ghi chú |
 |-----------|-----------|---------|
-| Framework | **Flutter** (stable mới nhất) | Một codebase Windows + iOS (+ macOS/Android) |
+| Framework | **Flutter** (stable mới nhất) | Một codebase — ưu tiên **Windows → Android → iOS** (đã chốt E3) |
 | Ngôn ngữ | **Dart 3+** | |
 | Local Database | **SQLite** — qua **Drift** *hoặc* **sqflite + sqflite_common_ffi** | ⚠️ Trên **Windows/desktop**, `sqflite` cần `sqflite_common_ffi` (hoặc dùng Drift hỗ trợ desktop sẵn). **Drift được khuyến nghị** vì hỗ trợ đa nền tảng gọn hơn |
 | State Management | **Riverpod** | Gọn, dễ test |
 | Điều hướng | **go_router** | Responsive, deep-link |
 | Phát âm | **flutter_tts** | TTS offline của OS |
-| Thông báo | **flutter_local_notifications** | Hỗ trợ iOS đầy đủ; Windows hạn chế (Q&A D2) |
+| Thông báo | **flutter_local_notifications** | iOS/Android đầy đủ; Windows chỉ khi app mở (đã chốt D2) |
 | Carousel splash | **carousel_slider** (hoặc PageView tự làm) | Slide ảnh Cảnh sát biển |
 | Cài đặt nhẹ | **shared_preferences** | Theme, giọng đọc... |
 | Đường dẫn file | **path_provider** | Vị trí lưu DB |
@@ -78,7 +78,8 @@ lib/
 
 assets/
 ├── db/vocab.db                   # DB tạo từ PDF (đóng gói sẵn)
-└── images/coast_guard/           # ảnh splash
+├── images/coast_guard/           # 3–5 ảnh splash (tự dựng — đã chốt C1)
+└── images/words/                 # ảnh minh họa trích từ PDF (đã chốt A5)
 
 tools/
 └── pdf_to_sqlite/                # script tạo dữ liệu (Python/Dart)
@@ -98,11 +99,11 @@ tools/
 - `user.db` tạo mới trong cùng thư mục dữ liệu app.
 
 ## 6. Chức năng dịch (FR-4) — lưu ý kiến trúc
-- Mặc định (offline): tra từ/cụm từ trong `vocab.db` rồi ghép → tách thành `TranslateRepository` để **dễ thay** bằng API online sau nếu khách chọn (Q&A B1).
+- ✅ (đã chốt B1=a) Offline: tra từ/cụm từ trong `vocab.db` rồi ghép → tách thành `TranslateRepository` để **dễ thay** bằng API online sau nếu khách yêu cầu.
 
 ## 7. Responsive / Adaptive UI
 - Windows/desktop: cửa sổ rộng → có thể master-detail (danh sách + chi tiết).
-- iOS: bố cục 1 cột, bottom navigation.
+- Android/iOS (mobile): bố cục 1 cột, bottom navigation.
 - Dùng `LayoutBuilder` + breakpoints.
 
 ## 8. Testing
@@ -111,5 +112,6 @@ tools/
 
 ## 9. Môi trường build
 - **Windows:** Visual Studio (Desktop C++ workload) + Flutter desktop enabled.
-- **iOS/macOS:** bắt buộc **Mac** + Xcode + Apple Developer (Q&A E1).
+- **Android:** Android SDK (qua Android Studio) — build APK/AAB.
+- **iOS:** bắt buộc **Mac** + Xcode để build & chạy trên iPhone (chế độ Developer — chưa cần tài khoản Apple Developer trả phí, đã chốt E1).
 - ⚠️ Dự án dùng Flutter stable — đọc tài liệu Flutter chính thức trước khi dùng API mới.

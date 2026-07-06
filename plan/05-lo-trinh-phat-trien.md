@@ -1,8 +1,8 @@
 # 05 — Lộ Trình Phát Triển (Roadmap)
 
-**Ưu tiên: chạy ổn định trên Windows trước → mở rộng iOS sau.** Mỗi giai đoạn cho ra một bản chạy được.
+**Ưu tiên: Windows (chính) → Android → iOS.** Mỗi giai đoạn cho ra một bản chạy được.
 
-> ⚠️ Trước khi bắt đầu Giai đoạn 1 cần trả lời các câu hỏi chặn ở [06-cau-hoi-can-chot.md](./06-cau-hoi-can-chot.md) — nhất là **file PDF (A1)**, **phạm vi tra cứu (A4)**, **mức độ dịch (B1)**, **máy Mac cho iOS (E1)**.
+> ✅ Các câu hỏi chặn ở [06-cau-hoi-can-chot.md](./06-cau-hoi-can-chot.md) **đã chốt**. Chỉ còn chờ khách gửi **2 file PDF** (giáo trình + định nghĩa chương) để bắt đầu Giai đoạn 1, và xác nhận **máy Mac** cho iOS (Giai đoạn 4).
 
 ---
 
@@ -35,16 +35,16 @@
 ## 🥈 Giai đoạn 2 — Học theo chương + Ôn tập (P0)
 - [ ] **FR-3 Học theo chương**: danh sách chương → chọn chương → danh sách từ của chương.
 - [ ] **FR-5 Ôn tập**: đánh dấu đã học, tạo `user.db`.
-- [ ] Cài `srs_scheduler.dart` (SM-2 hoặc khoảng cố định — theo Q&A D1) + unit test.
+- [ ] Cài `srs_scheduler.dart` (**SM-2** — đã chốt D1) + unit test.
 - [ ] Hàng đợi "ôn hôm nay" trên màn chính.
-- [ ] **FR-5.3 Thông báo** nhắc học (theo phạm vi Q&A D2).
+- [ ] **FR-5.3 Thông báo** nhắc học (Windows: khi app mở; Android/iOS: đầy đủ — đã chốt D2).
 
 **Đầu ra:** vòng lặp học hoàn chỉnh (tra → học theo chương → đánh dấu → ôn lại).
 
 ---
 
 ## 🥉 Giai đoạn 3 — Dịch + Phát âm + Cài đặt (P1)
-- [ ] **FR-4 Dịch** Anh↔Việt (giao diện kiểu Google Translate; offline tra từ/cụm — theo Q&A B1).
+- [ ] **FR-4 Dịch** Anh↔Việt (giao diện kiểu Google Translate; offline tra từ/cụm — đã chốt B1=a).
 - [ ] **FR-6 Phát âm** TTS (`flutter_tts`).
 - [ ] **FR-7 Cài đặt**: sáng/tối, giọng đọc, số từ mới/ngày, quản lý dữ liệu.
 - [ ] Tinh chỉnh responsive cho cửa sổ Windows rộng.
@@ -53,20 +53,32 @@
 
 ---
 
-## 📱 Giai đoạn 4 — Mở rộng iOS
-> Chỉ làm được nếu có **máy Mac + Apple Developer** (Q&A E1).
+## 📱 Giai đoạn 4 — Mở rộng Android (ưu tiên trước iOS)
+- [ ] Cài Android SDK (qua Android Studio), bật Android trong Flutter.
+- [ ] Build & chạy trên máy ảo Android / điện thoại thật.
+- [ ] Điều chỉnh UI cho điện thoại (bottom nav, 1 cột).
+- [ ] Kiểm tra TTS, thông báo (local notification đầy đủ), SQLite trên Android.
+- [ ] Kiểm thử offline trên Android.
+- [ ] Đóng gói APK/AAB.
+
+**Đầu ra:** app chạy trên điện thoại Android.
+
+---
+
+## 🍏 Giai đoạn 5 — Mở rộng iOS
+> Chỉ làm được nếu có **máy Mac + Xcode** (Q&A E1). Chỉ cần **chạy trên iPhone** ở chế độ Developer — chưa cần tài khoản Apple Developer trả phí.
 - [ ] Build & chạy trên iOS Simulator / iPhone thật.
 - [ ] Kiểm tra TTS, thông báo, SQLite trên iOS.
-- [ ] Điều chỉnh UI cho màn hình điện thoại (bottom nav, 1 cột).
+- [ ] Tinh chỉnh UI iOS (bottom nav, 1 cột).
 - [ ] Kiểm thử offline trên iOS.
 
 **Đầu ra:** app chạy trên iPhone.
 
 ---
 
-## 📄 Giai đoạn 5 — Báo cáo & Bàn giao
+## 📄 Giai đoạn 6 — Báo cáo & Bàn giao
 - [ ] Hoàn thiện icon, splash, tên app.
-- [ ] Đóng gói Windows (MSIX/bộ cài — Q&A E2).
+- [ ] Đóng gói Windows: **bộ cài MSIX** + **bản portable** (thư mục chạy trực tiếp) — đã chốt E2.
 - [ ] Viết **Báo cáo Microsoft Word** gồm:
   - Công nghệ sử dụng.
   - Kiến trúc ứng dụng.
@@ -79,13 +91,13 @@
 ---
 
 ## 📌 Việc rủi ro nhất — làm/kiểm tra sớm
-1. **Nhận và phân tích file PDF** (Giai đoạn 1) — quyết định toàn bộ dữ liệu.
-2. **Chốt mức độ dịch offline** (Q&A B1) — ảnh hưởng độ khó FR-4.
-3. **Xác nhận khả năng làm iOS** (Q&A E1).
+1. **Nhận và phân tích 2 file PDF** (giáo trình + định nghĩa chương) — quyết định toàn bộ dữ liệu. ⏳ Đang chờ khách gửi.
+2. **Xác nhận có máy Mac** cho iOS (Q&A E1) — quyết định thời điểm Giai đoạn 5.
+   *(Mức độ dịch offline đã chốt B1=a; cơ chế ôn tập đã chốt D1=SM-2.)*
 
 ---
 
 ## 👉 Việc tiếp theo ngay bây giờ
-1. Bạn/khách trả lời [06-cau-hoi-can-chot.md](./06-cau-hoi-can-chot.md) (ưu tiên các câu chặn).
-2. Gửi **file PDF** để tôi phân tích cấu trúc dữ liệu.
-3. Sau đó tôi cập nhật plan (nếu cần) và khởi tạo project Flutter chạy trên Windows (Giai đoạn 0).
+1. ✅ Câu hỏi cần chốt đã trả lời xong ([06](./06-cau-hoi-can-chot.md)).
+2. **Khởi tạo project Flutter chạy trên Windows (Giai đoạn 0)** — có thể làm ngay, không cần chờ PDF (dùng dữ liệu mẫu tạm để dựng giao diện).
+3. Song song: khách gửi **2 file PDF** để mình viết script parse → sinh `vocab.db` thật (Giai đoạn 1).
