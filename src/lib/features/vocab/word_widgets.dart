@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/vocab_providers.dart';
 import '../../domain/entities/vocab.dart';
+import '../review/review_providers.dart';
 
 /// Dòng hiển thị 1 từ trong danh sách (tra cứu / bài học).
 class WordTile extends StatelessWidget {
@@ -65,6 +66,7 @@ class WordDetailSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final examples = ref.watch(wordExamplesProvider(word.id));
+    final learned = ref.watch(learnedStatusProvider(word.id));
 
     return DraggableScrollableSheet(
       expand: false,
@@ -74,14 +76,47 @@ class WordDetailSheet extends ConsumerWidget {
         controller: controller,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
-          Text(word.word,
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.bold)),
-          if (word.phonetic.isNotEmpty)
-            Text(word.phonetic,
-                style: TextStyle(color: scheme.primary, fontSize: 16)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(word.word,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    if (word.phonetic.isNotEmpty)
+                      Text(word.phonetic,
+                          style:
+                              TextStyle(color: scheme.primary, fontSize: 16)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              learned.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                error: (_, _) => const SizedBox.shrink(),
+                data: (isLearned) => FilledButton.tonalIcon(
+                  onPressed:
+                      isLearned ? null : () => markWordLearned(ref, word.id),
+                  icon: Icon(isLearned
+                      ? Icons.check_circle
+                      : Icons.bookmark_add_outlined),
+                  label: Text(isLearned ? 'Đã học' : 'Đánh dấu đã học'),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           if (word.partOfSpeech.isNotEmpty)
             Chip(

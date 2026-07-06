@@ -43,6 +43,13 @@ class VocabRepository {
     return rows.map(_wordFromRow).toList();
   }
 
+  /// Tra 1 từ theo id (dùng khi ghép dữ liệu ôn tập từ `user.db`).
+  VocabWord? wordById(int id) {
+    final rows = _db.select('$_selectWord WHERE w.id = ?', [id]);
+    if (rows.isEmpty) return null;
+    return _wordFromRow(rows.first);
+  }
+
   List<Chapter> chapters() {
     final rows = _db.select('''
       SELECT c.id, c.chapter_no, c.title,
