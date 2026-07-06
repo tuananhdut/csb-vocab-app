@@ -44,6 +44,7 @@ dependencies:
   flutter_tts: ^4.2.5
   flutter_local_notifications: ^22.0.1
   carousel_slider: ^5.1.2
+  sqlite3: ^3.3.4
 
 dev_dependencies:
   flutter_test:

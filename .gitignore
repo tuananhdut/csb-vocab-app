@@ -26,5 +26,5 @@ Thumbs.db
 # Data / secrets
 tools/**/__pycache__/
 tools/**/*.pyc
-tools/**/venv/
+tools/**/.venv/
 *.log
