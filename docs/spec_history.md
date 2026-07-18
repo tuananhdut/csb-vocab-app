@@ -4,6 +4,119 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-009] 2026-07-18 — Thêm trạng thái "chưa tìm kiếm" cho màn Tra cứu (slide ảnh CSB)
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Bổ sung 1 trạng thái nữa cho màn Tra cứu (SCR-02, mockup) — khi vừa vào màn,
+chưa gõ gì, hiện slide ảnh Cảnh sát biển Việt Nam tự động lướt qua lại
+(autoplay carousel), có dots chỉ báo cùng ngôn ngữ thị giác với màn Splash
+(01). Trước đây trạng thái rỗng chỉ có gợi ý dạng chữ đơn giản (`_Hint`,
+theo mô tả trong `02_Search.md` mục code thật) — mockup nay minh hoạ thêm
+phương án trực quan hơn.
+
+Nguồn ảnh: 3 ảnh do user cung cấp từ
+`C:\Users\anhnt\Desktop\csb\ẢNH LÀM PHẦN MỀM\slide\` — 2 ảnh diễu binh đội
+danh dự Cảnh sát biển và 1 ảnh trụ sở Bộ Tư lệnh Cảnh sát biển Việt Nam.
+Copy vào `docs/artifact-design/assets/images/` (đặt tên lại
+`csb-slide-01/02/03.jpg`, kể cả file gốc `.jfif` cũng đổi đuôi `.jpg` vì
+cùng là dữ liệu JPEG) để mockup tự chứa, không phụ thuộc đường dẫn ngoài
+repo.
+
+Tạo màn mới `screen-02c-tra-cuu-trong.html`, chèn vào **trước** 02 trong
+luồng điều hướng (01 Splash → 02c chưa tìm kiếm → 02 có kết quả → 02b
+online). CSS carousel (`.search-empty`, `.slide`, `.dots` dùng lại) thêm vào
+`styles.css`, có đoạn `<script>` nhỏ chỉ để minh hoạ hiệu ứng autoplay trong
+mockup tĩnh — không phải code thật, không đại diện cho cách Flutter sẽ cài
+đặt animation này.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/artifact-design/screens/screen-02c-tra-cuu-trong.html` | **Mới** — trạng thái chưa tìm kiếm, slide ảnh CSB autoplay |
+| `docs/artifact-design/screens/screen-02-tra-cuu.html` | Sửa link điều hướng, cập nhật mô tả nhắc tới 02c |
+| `docs/artifact-design/screens/screen-01-splash.html` | Sửa link cuối trang trỏ sang 02c thay vì 02 |
+| `docs/artifact-design/index.html` | Thêm thẻ 02c |
+| `docs/artifact-design/styles.css` | Thêm `.search-empty`, `.slide`, `.slide-caption`, dùng lại `.dots` |
+| `docs/artifact-design/assets/images/csb-slide-01/02/03.jpg` | **Mới** — 3 ảnh CSB do user cung cấp |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới. Lưu ý: ảnh dùng ở đây (diễu binh đội danh dự,
+trụ sở Bộ Tư lệnh) khác nội dung với `assets/csb-logo.png` đang dùng cho
+theme màu app — chưa xác nhận ảnh này có được dùng chính thức trong app thật
+(bản quyền/nguồn ảnh) hay chỉ minh hoạ ý tưởng bố cục cho mockup.
+
+---
+
+## [IMPL-008] 2026-07-18 — Cập nhật mockup mobile (docs/artifact-design/) theo định hướng mới
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Lan tỏa định hướng mới ([IMPL-005]/[IMPL-006]) vào mockup HTML tĩnh mobile
+(`docs/artifact-design/`) — Windows (`docs/artifact-design-windows/`) chưa
+làm, để ở bước riêng theo yêu cầu.
+
+1. **Trạng thái Offline/Online ở màn Tra cứu** — thêm chỉ báo mạng
+   (`.net-badge`) trên appbar của `screen-02-tra-cuu.html` (Offline).
+   Tạo mới `screen-02b-tra-cuu-online.html`: badge Online, banner giải
+   thích, và 2 kết quả mẫu gắn nhãn nguồn "Online" (`.source-tag`) cho từ
+   không có trong CSDL local.
+2. **Section → Chapter dạng bài báo** — thay hoàn toàn luồng "danh sách
+   chương → danh sách từ A-Z" cũ bằng 3 màn mới: `screen-03-hoc-danh-sach-
+   section.html` (danh sách Section, tái dùng `.chapter-list`), `screen-03b-
+   hoc-danh-sach-chapter.html` (danh sách Chapter/bài học trong 1 Section,
+   layout mới `.lesson-list`/`.lesson-row`), `screen-03c-hoc-noi-dung-
+   bai.html` (bài đọc dạng article — `.article-*`, từ vựng highlight lồng
+   trong đoạn văn bằng `.vocab-hl`, bấm vào mở chung `WordDetailSheet` với
+   màn 04). **Xoá** 2 file cũ `screen-03-hoc-danh-sach-chuong.html` và
+   `screen-03b-danh-sach-tu-a-z.html` (đã hỏi ý kiến — không giữ song song
+   để tránh 2 mô hình mâu thuẫn cùng tồn tại trong mockup).
+3. **Duyệt theo bộ từ điển mặc định chuyển hẳn sang tab "Từ điển của tôi"**
+   (quyết định của user) — tab "Học" từ nay chỉ còn Section/Chapter dạng bài
+   báo, không có đường vào khác để browse từ theo bộ mặc định. Cập nhật
+   `screen-07-tu-dien-cua-toi.html`: bỏ nhắc cứng "6 chương", đổi tên thẻ
+   "Giáo trình (6 chương)" → "Giáo trình (mặc định)", làm rõ quan hệ N-N.
+4. **`index.html`** — cập nhật thẻ 02/03/07, thêm thẻ 02b/03c, thêm đoạn
+   banner "Định hướng mới — chưa code" vào masthead.
+5. **`styles.css`** — thêm class mới: `.net-badge`, `.net-note`,
+   `.source-tag` (trạng thái mạng); `.lesson-list`/`.lesson-row` (danh sách
+   Chapter); `.article-wrap`/`.article-title`/`.article-body`/`.vocab-hl`
+   (bài đọc dạng article). Không sửa class cũ đang dùng ở màn khác.
+
+Toàn bộ màn mới/sửa đều ghi rõ banner "⚠️ Định hướng mới — chưa code" trong
+`frame-desc`, trỏ về `docs/csb-vocab-analysis/00_Overview.md` và
+`docs/spec_history.md` — nhất quán với cách đã làm ở [IMPL-006] cho tài liệu
+phân tích.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/artifact-design/screens/screen-02-tra-cuu.html` | Thêm badge Offline, sửa link điều hướng cuối trang |
+| `docs/artifact-design/screens/screen-02b-tra-cuu-online.html` | **Mới** — trạng thái Online |
+| `docs/artifact-design/screens/screen-03-hoc-danh-sach-section.html` | **Mới** — thay `screen-03-hoc-danh-sach-chuong.html` (đã xoá) |
+| `docs/artifact-design/screens/screen-03b-hoc-danh-sach-chapter.html` | **Mới** — thay `screen-03b-danh-sach-tu-a-z.html` (đã xoá) |
+| `docs/artifact-design/screens/screen-03c-hoc-noi-dung-bai.html` | **Mới** — bài đọc dạng article |
+| `docs/artifact-design/screens/screen-04-chi-tiet-tu.html` | Sửa link điều hướng trỏ về 03c thay vì 03b cũ |
+| `docs/artifact-design/screens/screen-07-tu-dien-cua-toi.html` | Bỏ nhắc "6 chương" cứng, đổi tên thẻ bộ mặc định |
+| `docs/artifact-design/index.html` | Cập nhật/thêm thẻ màn hình, thêm banner định hướng mới |
+| `docs/artifact-design/styles.css` | Thêm class mới cho badge mạng, danh sách bài học, bài đọc article |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — mockup minh hoạ trực quan cho Q-CSB-04..07 đã
+ghi ở [IMPL-005], chưa tự ý chốt các điểm đó (ví dụ: API cụ thể, có lưu từ
+tra online hay không, cách trích xuất `.docx`). `docs/artifact-design-
+windows/` (bản Windows) **chưa cập nhật** — làm ở bước sau theo yêu cầu.
+
+---
+
 ## [IMPL-007] 2026-07-18 — Chốt dùng Drift thay cho sqlite3 raw cho schema mới
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude

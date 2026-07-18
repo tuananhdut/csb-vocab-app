@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>03 — Học — Theo chương · CSB Vocab Mockup</title>
+<title>03 — Học — Danh sách Section · CSB Vocab Mockup</title>
 <link rel="stylesheet" href="../styles.css">
 <style>
   body { padding: 40px 24px; }
@@ -13,7 +13,6 @@
   .screen-stage { display: flex; justify-content: center; }
   .screen-nav { display: flex; justify-content: space-between; max-width: 300px; margin: 24px auto 0; font-size: 13px; }
   .screen-nav a { color: var(--navy-700); text-decoration: none; font-weight: 700; }
-  :root[data-theme="dark"] .screen-nav a, body { }
   @media (prefers-color-scheme: dark) { .screen-nav a { color: var(--accent); } }
   :root[data-theme="dark"] .screen-nav a { color: var(--accent); }
   .screen-nav span.disabled { color: var(--text-soft); opacity: 0.4; }
@@ -22,8 +21,8 @@
 <body>
   <div class="screen-page-head">
     <a class="back-link" href="../index.html">&larr; Tất cả màn hình</a>
-    <div class="frame-label"><span class="frame-no">03</span><span class="frame-name">Học — Danh sách chương</span></div>
-    <p class="frame-desc" style="margin-top:6px;">Danh sách 6 chương bám giáo trình gốc, thanh tiến độ theo số từ đã học. Bấm vào 1 chương mở ra danh sách từ của chương đó, sắp xếp theo thứ tự A-Z (xem 03b).</p>
+    <div class="frame-label"><span class="frame-no">03</span><span class="frame-name">Học — Danh sách Section</span></div>
+    <p class="frame-desc" style="margin-top:6px;">Danh sách Section theo chủ đề lớn của giáo trình. Mỗi Section chứa nhiều Chapter (bài học dạng bài báo, xem 03b/03c) — khác với trước đây khi "chương" là danh sách từ trần. Duyệt từ vựng theo bộ (Giáo trình = bộ mặc định) nay nằm ở tab "Từ điển của tôi" (07), không còn ở đây. ⚠️ Định hướng mới — chưa code, xem <code>docs/csb-vocab-analysis/03_Lessons-by-chapter.md</code>.</p>
   </div>
   <div class="screen-stage">
     <div class="phone"><div class="notch"></div>
@@ -38,8 +37,8 @@
               <div class="chap-no">01</div>
               <div class="chap-body">
                 <div class="name">Quân sự chung</div>
-                <div class="meta">742 từ · 168 đã học</div>
-                <div class="chap-progress"><i style="width:23%"></i></div>
+                <div class="meta">8 bài học · 3 đã đọc</div>
+                <div class="chap-progress"><i style="width:38%"></i></div>
               </div>
               <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </div>
@@ -47,7 +46,7 @@
               <div class="chap-no">02</div>
               <div class="chap-body">
                 <div class="name">Hàng hải</div>
-                <div class="meta">495 từ · 495 đã học</div>
+                <div class="meta">6 bài học · 6 đã đọc</div>
                 <div class="chap-progress"><i style="width:100%;background:var(--brass)"></i></div>
               </div>
               <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -56,8 +55,8 @@
               <div class="chap-no">03</div>
               <div class="chap-body">
                 <div class="name">Thông tin ra đa</div>
-                <div class="meta">436 từ · 52 đã học</div>
-                <div class="chap-progress"><i style="width:12%"></i></div>
+                <div class="meta">5 bài học · 1 đã đọc</div>
+                <div class="chap-progress"><i style="width:20%"></i></div>
               </div>
               <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </div>
@@ -65,7 +64,7 @@
               <div class="chap-no">04</div>
               <div class="chap-body">
                 <div class="name">Vũ khí</div>
-                <div class="meta">447 từ · 0 đã học</div>
+                <div class="meta">5 bài học · 0 đã đọc</div>
                 <div class="chap-progress"><i style="width:0%"></i></div>
               </div>
               <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -74,7 +73,7 @@
               <div class="chap-no">05</div>
               <div class="chap-body">
                 <div class="name">Cơ điện</div>
-                <div class="meta">216 từ · 0 đã học</div>
+                <div class="meta">3 bài học · 0 đã đọc</div>
                 <div class="chap-progress"><i style="width:0%"></i></div>
               </div>
               <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
@@ -83,8 +82,8 @@
               <div class="chap-no">06</div>
               <div class="chap-body">
                 <div class="name">Cảnh sát biển</div>
-                <div class="meta">120 từ · 34 đã học</div>
-                <div class="chap-progress"><i style="width:28%"></i></div>
+                <div class="meta">4 bài học · 1 đã đọc</div>
+                <div class="chap-progress"><i style="width:25%"></i></div>
               </div>
               <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
             </div>
@@ -101,8 +100,8 @@
     </div>
   </div>
   <div class="screen-nav">
-    <a href="screen-02-tra-cuu.html">&larr; 02 Tra cứu</a>
-    <a href="screen-03b-danh-sach-tu-a-z.html">03b Học — Danh sách từ (A-Z) &rarr;</a>
+    <a href="screen-02b-tra-cuu-online.html">&larr; 02b Tra cứu — trạng thái Online</a>
+    <a href="screen-03b-hoc-danh-sach-chapter.html">03b Học — Danh sách Chapter &rarr;</a>
   </div>
 </body>
 </html>

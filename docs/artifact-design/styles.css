@@ -219,6 +219,45 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* ---- Chỉ báo trạng thái mạng (Online/Offline) ---- */
+  .net-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 9px 3px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .net-badge svg { width: 11px; height: 11px; flex-shrink: 0; }
+  .net-badge.online { background: rgba(47,143,114,0.18); color: #7fd9bb; }
+  .net-badge.offline { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.65); }
+  .net-note {
+    margin: 0 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-soft);
+    line-height: 1.4;
+  }
+  .net-note svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--accent); }
+  .word-row.online-result { position: relative; }
+  .word-row .source-tag {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(47,143,114,0.14);
+    color: var(--signal-green);
+    white-space: nowrap;
+  }
+  :root[data-theme="dark"] .word-row .source-tag { background: rgba(47,143,114,0.22); color: #7fd9bb; }
+  @media (prefers-color-scheme: dark) { .word-row .source-tag { background: rgba(47,143,114,0.22); color: #7fd9bb; } }
+
   .tabbar {
     display: flex;
     border-top: 1px solid var(--line);
@@ -313,6 +352,53 @@
   :root[data-theme="dark"] .search-box { background: rgba(255,255,255,0.06); color: var(--text-soft); }
   @media (prefers-color-scheme: dark) { .search-box { background: rgba(255,255,255,0.06); color: var(--text-soft); } }
 
+  /* ---- 2a. Tra cứu — trạng thái chưa gõ gì: slide ảnh CSB tự lướt ---- */
+  .search-empty {
+    height: calc(100% - 58px);
+    position: relative;
+    overflow: hidden;
+  }
+  .search-empty .slide {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+  }
+  .search-empty .slide.on { opacity: 1; }
+  .search-empty .slide::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(7,26,51,0.15) 0%, rgba(7,26,51,0.55) 65%, rgba(7,26,51,0.88) 100%);
+  }
+  .search-empty .slide-caption {
+    position: absolute; left: 20px; right: 20px; bottom: 46px;
+    z-index: 2;
+    color: #fff;
+  }
+  .search-empty .slide-caption .eyebrow-sm {
+    font-family: 'Consolas', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brass);
+  }
+  .search-empty .slide-caption .headline {
+    font-family: 'Georgia', serif;
+    font-weight: 700;
+    font-size: 17px;
+    line-height: 1.35;
+    margin-top: 6px;
+    text-wrap: balance;
+  }
+  .search-empty .slide-caption .hint {
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 10px;
+  }
+  .search-empty .dots { display: flex; gap: 6px; position: absolute; left: 20px; bottom: 22px; z-index: 2; }
+  .search-empty .dots i { width: 6px; height: 6px; border-radius: 999px; background: rgba(255,255,255,0.35); }
+  .search-empty .dots i.on { background: var(--brass); width: 18px; border-radius: 4px; }
+
   .word-list { padding: 0 16px; overflow-y: auto; height: calc(100% - 66px); }
   .word-row {
     padding: 13px 2px;
@@ -347,7 +433,7 @@
   :root[data-theme="dark"] .pos-tag { color: var(--accent); }
   @media (prefers-color-scheme: dark) { .pos-tag { color: var(--accent); } }
 
-  /* ---- 3. Lessons (chapters) ---- */
+  /* ---- 3. Học — Section (nhóm chủ đề, chứa nhiều Chapter) ---- */
   .chapter-list { padding: 14px 16px; overflow-y: auto; height: 100%; }
   .chapter-row {
     display: flex;
@@ -375,6 +461,59 @@
   }
   .chap-progress i { display: block; height: 100%; background: var(--signal-green); }
   .chevron { color: var(--text-soft); flex-shrink: 0; }
+
+  /* ---- 3b. Học — danh sách Chapter (bài học) trong 1 Section ---- */
+  .lesson-list { padding: 14px 16px; overflow-y: auto; height: 100%; }
+  .lesson-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lesson-no {
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    color: var(--text-soft);
+    font-family: 'Consolas', monospace;
+    font-weight: 700;
+    font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .lesson-row.done .lesson-no { background: var(--signal-green); border-color: var(--signal-green); color: #fff; }
+  .lesson-body { flex: 1; min-width: 0; }
+  .lesson-body .name { font-family: 'Georgia', serif; font-weight: 700; font-size: 15px; color: var(--text); }
+  .lesson-body .excerpt { font-size: 12px; color: var(--text-soft); margin-top: 3px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .lesson-body .meta { display: flex; gap: 10px; margin-top: 6px; font-size: 10.5px; color: var(--text-soft); }
+  .lesson-body .meta span { display: flex; align-items: center; gap: 3px; }
+
+  /* ---- 3c. Học — nội dung bài (Chapter dạng bài báo) ---- */
+  .article-wrap { padding: 22px 20px 40px; overflow-y: auto; height: 100%; }
+  .article-kicker { font-family: 'Consolas', monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  .article-title { font-family: 'Georgia', serif; font-weight: 700; font-size: 21px; line-height: 1.3; margin: 6px 0 10px; color: var(--text); }
+  .article-meta { display: flex; gap: 12px; font-size: 11px; color: var(--text-soft); margin-bottom: 16px; }
+  .article-meta span { display: flex; align-items: center; gap: 4px; }
+  .article-body { font-size: 14.5px; line-height: 1.85; color: var(--text); }
+  .article-body p { margin: 0 0 14px; }
+  .vocab-hl {
+    background: rgba(201,154,62,0.16);
+    border-bottom: 1.5px solid var(--brass);
+    padding: 0 1px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  :root[data-theme="dark"] .vocab-hl { background: rgba(217,174,92,0.16); }
+  @media (prefers-color-scheme: dark) { .vocab-hl { background: rgba(217,174,92,0.16); } }
+  .vocab-hl.learned { border-bottom-color: var(--signal-green); }
+  .article-vocab-panel {
+    margin-top: 22px;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+  .article-vocab-panel .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-soft); font-weight: 700; margin-bottom: 8px; }
 
 
   /* ---- 4. Word detail sheet ---- */
