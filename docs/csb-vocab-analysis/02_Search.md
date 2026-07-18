@@ -52,30 +52,39 @@ quả.
 ## Chế độ Online — định hướng mới [CHƯA CODE]
 
 > Nguồn: `00_Overview.md` mục "Mô hình dữ liệu — định hướng mới",
-> `docs/spec_history.md` [IMPL-005] (Q-CSB-04..06).
+> `docs/spec_history.md` [IMPL-005], **quyết định chốt ở [IMPL-013]**
+> (Q-CSB-04/05/06).
 
-- **Kích hoạt:** màn tự phát hiện có kết nối mạng hay không (cơ chế cụ thể
-  chưa chốt — Q-CSB-06) và chuyển trạng thái Offline ⇄ Online tương ứng. Cần
-  hiển thị rõ cho người dùng đang ở trạng thái nào (ví dụ badge/icon trên
-  AppBar) — **chưa thiết kế UI cụ thể**.
+- **Kích hoạt:** dùng gói **`connectivity_plus`** (đã chốt Q-CSB-06) để phát
+  hiện có kết nối mạng hay không, chuyển trạng thái Offline ⇄ Online tương
+  ứng. Cần hiển thị rõ cho người dùng đang ở trạng thái nào (badge/icon trên
+  AppBar, xem `.net-badge` trong mockup `screen-02.html`/`screen-02b.html`)
+  — UI cụ thể tham khảo mockup, chưa code.
 - **Hành vi tra cứu khi Online:** vẫn chạy `VocabRepository.search(query)`
-  trên `vocab.db` như bình thường trước; nếu không có kết quả (hoặc kết quả
-  nghèo — tiêu chí "nghèo" chưa chốt), gọi thêm **API từ điển ngoài** để bổ
-  sung. Nhà cung cấp API cụ thể **chưa chốt** (Q-CSB-04) — ảnh hưởng trực
-  tiếp tới field trả về (có phiên âm/ví dụ/loại từ đầy đủ như `vocab.db`
-  không) nên chưa thể mô tả chi tiết `WordTile`/`WordDetailSheet` sẽ hiển
-  thị thêm gì cho kết quả loại này.
-- **Từ mới tra được qua API ngoài:** có lưu lại vào local để dùng khi
-  offline sau này không, và nếu lưu thì gắn vào bộ từ điển nào — **chưa
-  chốt** (Q-CSB-05). Việc này phụ thuộc mô hình bộ từ điển N-N mô tả ở
-  `00_Overview.md`.
-- **Lỗi mạng chập chờn** (có kết nối nhưng API không phản hồi/timeout): cách
-  xử lý (fallback về offline im lặng, hay báo lỗi rõ cho user) **chưa chốt**
-  (Q-CSB-06).
-- **Ảnh hưởng tới code hiện tại:** cần thêm 1 tầng gọi API (data source mới,
-  ví dụ `DictionaryApiRepository`) song song với `VocabRepository`, và
-  `searchProvider` cần biết trạng thái mạng để quyết định có gọi thêm tầng
-  này không — hiện `searchProvider`/`VocabRepository` chỉ biết đọc
+  trên `vocab.db` như bình thường trước; nếu không có kết quả, gọi thêm
+  **API từ điển ngoài** để bổ sung. Đã chốt (Q-CSB-04): **Free Dictionary
+  API** (`https://api.dictionaryapi.dev`, miễn phí, không cần API key) lấy
+  định nghĩa/phiên âm/ví dụ **tiếng Anh**, sau đó gọi thêm
+  **LibreTranslate** (self-host hoặc instance công khai) để dịch phần nghĩa
+  sang tiếng Việt trước khi hiển thị — khớp với hành vi song ngữ hiện tại
+  của `WordTile`/`WordDetailSheet`. Rủi ro: instance LibreTranslate công
+  khai có thể không ổn định/giới hạn rate — cân nhắc self-host khi lên
+  production.
+- **Từ mới tra được qua API ngoài:** đã chốt (Q-CSB-05) **không tự động lưu
+  lại local**. Chỉ ghi vào `user.db` khi user **chủ động bấm "Thêm vào bộ"**
+  trong `WordDetailSheet` (theo mockup `screen-04b-them-vao-bo-tu-dien.html`)
+  — lúc đó mới chọn/tạo bộ từ điển cá nhân để gắn từ vào. Không có khái
+  niệm "cache tự động kết quả online" — đơn giản hoá luồng ghi dữ liệu, xem
+  schema cụ thể ở `91_DB-design-new-model.md`.
+- **Lỗi mạng chập chờn** (có kết nối nhưng API không phản hồi/timeout): đã
+  chốt (Q-CSB-06) **fallback êm về kết quả offline** (chỉ `vocab.db`),
+  không chặn UI bằng lỗi đỏ; có thể hiện thông báo nhẹ (ví dụ snackbar) báo
+  không lấy được kết quả bổ sung.
+- **Ảnh hưởng tới code hiện tại:** cần thêm 1 tầng gọi API mới (ví dụ
+  `DictionaryApiRepository` gọi Free Dictionary API + `TranslationService`
+  gọi LibreTranslate) song song với `VocabRepository`, và `searchProvider`
+  cần biết trạng thái mạng (qua `connectivity_plus`) để quyết định có gọi
+  thêm tầng này không — hiện `searchProvider`/`VocabRepository` chỉ biết đọc
   `vocab.db`, không có khái niệm mạng.
 
 ## Giả định / hạn chế

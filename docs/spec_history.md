@@ -4,6 +4,143 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-014] 2026-07-18 — Bỏ ranh giới vocab.db/user.db, gộp 1 DB, thêm bộ "Chưa phân loại"
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Đổi hướng thiết kế DB mới ([IMPL-013]/`91_DB-design-new-model.md`) theo 3
+yêu cầu:
+
+1. **Bỏ ranh giới `vocab.db` (read-only) / `user.db` (read-write)** — không
+   còn giữ nguyên 2 file SQLite tách biệt như dự tính ban đầu ở [IMPL-005].
+   Thiết kế lại thành **1 database duy nhất**: 1 bảng `words` hợp nhất
+   chứa mọi từ bất kể nguồn gốc (giáo trình gốc `source='seed'`, tự nhập
+   tay `source='manual'`, tra online rồi lưu `source='online_lookup'`).
+   Loại bỏ hoàn toàn vấn đề "N-N xuyên 2 file SQLite" (`ATTACH DATABASE`)
+   từng nêu ở thiết kế trước. Phân biệt mặc định/cá nhân nay chỉ còn ở tầng
+   bộ từ điển (`dictionaries.is_default`), không phải ở tầng file DB.
+2. **Từ không thuộc bộ nào → gom vào 1 bộ đặc biệt "Chưa phân loại"** — bổ
+   sung ràng buộc nghiệp vụ: mọi từ luôn phải có ít nhất 1 dòng trong
+   `word_dictionaries`. Nếu thêm từ (tự nhập, hoặc lưu từ tra online) mà
+   không chỉ định bộ cụ thể, tự động gán vào bộ "Chưa phân loại"
+   (`is_deletable=0`, không thể xoá) — tránh dữ liệu "mồ côi" không thuộc
+   bộ nào, khó hiển thị ở màn "Từ điển của tôi".
+3. **Search vẫn ra kết quả bình thường dù từ thuộc bộ nào** — xác nhận rõ:
+   `search(query)` không lọc theo bộ từ điển, luôn quét toàn bộ bảng
+   `words` — giữ đúng hành vi FR-2 hiện tại (tìm mọi từ có trong hệ thống,
+   không phân biệt nguồn/bộ).
+
+Viết lại toàn bộ `91_DB-design-new-model.md` theo hướng mới (thay bản
+[IMPL-013] cũ vốn vẫn giữ 2 file `vocab.db`/`user.db` song song).
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/91_DB-design-new-model.md` | Viết lại hoàn toàn: 1 bảng `words` hợp nhất (bỏ `custom_words` riêng), bảng `dictionaries` thêm cột `is_deletable` + dòng "Chưa phân loại" cố định, ràng buộc "mọi từ luôn có ≥1 bộ", xác nhận search không lọc theo bộ, cập nhật migration/Repository tương ứng |
+| `docs/csb-vocab-analysis/00_Overview.md` | Cập nhật mục Kiến trúc kỹ thuật — ghi rõ không còn giữ 2 file `vocab.db`/`user.db` như dự tính ban đầu, trỏ sang `91_DB-design-new-model.md` |
+
+### Điểm chờ xác nhận còn mở
+
+Kế thừa các câu hỏi ở `91_DB-design-new-model.md` mục "Câu hỏi còn mở":
+Q-CSB-02 (xác nhận lại "Từ điển của tôi"), UX xoá từ khỏi bộ cá nhân (xoá
+hẳn hay chuyển về "Chưa phân loại"), và cơ chế cập nhật seed data giáo
+trình gốc sau khi gộp 1 DB duy nhất (không còn cơ chế copy asset riêng như
+`vocab.db` cũ).
+
+---
+
+## [IMPL-013] 2026-07-18 — Chốt Q-CSB-04/05/06, dời Q-CSB-07, thêm thiết kế DB mô hình mới
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Trả lời trực tiếp 4 câu hỏi mở đã ghi ở [IMPL-005]/[IMPL-011]:
+
+1. **Q-CSB-04 (nhà cung cấp dictionary API)** — chốt **Free Dictionary API**
+   (`https://api.dictionaryapi.dev`, miễn phí, không cần API key) cho định
+   nghĩa/phiên âm/ví dụ tiếng Anh. Vì API này chỉ trả tiếng Anh (không có
+   nghĩa tiếng Việt, khác hành vi song ngữ hiện tại của `vocab.db`), ghép
+   thêm **LibreTranslate** để dịch nghĩa sang tiếng Việt trước khi hiển thị.
+2. **Q-CSB-06 (cơ chế phát hiện mạng)** — đồng ý dùng **`connectivity_plus`**
+   như đã đề xuất; lỗi mạng chập chờn (có kết nối nhưng API không phản hồi/
+   timeout) → **fallback êm về kết quả offline**, không chặn UI bằng lỗi đỏ.
+3. **Q-CSB-05 (từ tra online có lưu lại không)** — chốt **không tự động lưu
+   lại local**. Chỉ ghi vào `user.db` khi user **chủ động bấm "Thêm vào bộ"**
+   (gắn vào 1 bộ từ điển cá nhân do user chọn/tạo) — đơn giản hoá luồng ghi
+   dữ liệu, không có khái niệm "cache tự động".
+4. **Q-CSB-07 (quy trình `.docx` → dữ liệu Section/Chapter)** — chốt
+   **thực hiện ở một bước phân tích/implement riêng**, tách khỏi việc thiết
+   kế schema DB. Nghĩa là schema `sections`/`chapters`/`chapter_words` có
+   thể thiết kế và tạo bảng trước, nhưng UI đọc bài thật (`screen-03c`) vẫn
+   phải chờ bước `.docx` riêng đó xong mới có dữ liệu để code.
+
+Dựa trên các quyết định trên, viết tài liệu thiết kế DB mới
+(`91_DB-design-new-model.md`) mô tả đầy đủ schema cho mô hình N-N bộ từ
+điển (mặc định + cá nhân), Section/Chapter, và luồng ghi dữ liệu tra cứu
+Online — theo Drift (đã chốt D3, [IMPL-007]). Đây **không phải bản thiết
+kế DB tương đương file cũ đã xoá ở [IMPL-003]** (vốn mô tả schema hiện tại
+đang chạy thật, mô hình cũ) — đây là thiết kế cho **định hướng mới chưa
+code**, làm nền cho việc implement Section/Chapter và bộ từ điển cá nhân
+sau này. Trả lời gián tiếp Q-CSB-02 (không tự chốt, nhưng thiết kế bảng đã
+giả định "có triển khai" bộ từ điển cá nhân để có cơ sở thiết kế — vẫn cần
+xác nhận lại 1 lần trước khi code UI 7 màn `screen-07*`).
+
+### Tài liệu tạo mới / cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/91_DB-design-new-model.md` | **Mới** — thiết kế DB mô hình mới: bảng `dictionaries`/`word_dictionaries` (N-N, thay `chapters` cũ), `sections`/`chapters` (định nghĩa lại)/`chapter_words`, `personal_dictionaries`/`personal_dictionary_words`/`custom_words` (bộ từ điển cá nhân), ghi chú ràng buộc N-N xuyên 2 file DB, migration tóm tắt |
+| `docs/csb-vocab-analysis/00_Overview.md` | Cập nhật mục "Trạng thái tra cứu Online/Offline" (API + lưu dữ liệu + xử lý lỗi mạng theo quyết định mới), mục Section/Chapter (ghi chú Q-CSB-07 dời bước riêng), thêm D4 vào bảng "Quyết định đã chốt", cập nhật mục "Câu hỏi mở" |
+| `docs/csb-vocab-analysis/02_Search.md` | Viết lại mục "Chế độ Online" theo quyết định Free Dictionary API + LibreTranslate + `connectivity_plus` + không tự cache |
+| `docs/csb-vocab-analysis/tasks/01-splash-photos-search-empty/01-analysis.md` | Cập nhật bảng câu hỏi mở: tách "Đã chốt" riêng, trỏ tới `91_DB-design-new-model.md` |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| Q-CSB-02 | Mockup "Từ điển của tôi" (7 màn `screen-07*`) — schema đã thiết kế giả định có triển khai, nhưng chưa tự chốt chính thức; cần xác nhận lại trước khi code UI |
+| — | Xoá 1 từ khỏi bộ cá nhân có xoá luôn `custom_words` (nếu từ nguồn online không còn nằm trong bộ nào khác) hay giữ lại? Xem `91_DB-design-new-model.md` mục câu hỏi còn mở |
+| — | Instance LibreTranslate cụ thể dùng public hay self-host — chưa chọn, ảnh hưởng độ ổn định/rate limit khi implement thật |
+
+---
+
+## [IMPL-012] 2026-07-18 — Tạo thư mục task riêng cho quy trình task-analysis/task-plan
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Chuyển từ đặt file phân tích/kế hoạch task rời rạc kiểu `9x_*.md` phẳng
+trong `docs/csb-vocab-analysis/` sang cấu trúc thư mục riêng theo task:
+`docs/csb-vocab-analysis/tasks/<số>-<slug>/`, mỗi task có `01-analysis.md`
+(task-analysis) và `02-plan.md` (task-plan), đánh số tiếp nếu có thêm bước
+(brainstorm, v.v.). Giữ nguyên `docs/csb-vocab-analysis/00-07, 90` (tài
+liệu phân tích màn hình cố định, không theo task).
+
+Task đầu tiên áp dụng cấu trúc mới: `tasks/01-splash-photos-search-empty/`
+— gộp phân tích tác động mốc mockup 01 (đối ứng Win/Mobile) và kế hoạch
+implement phần đã chốt hẹp (ảnh thật Splash + trạng thái rỗng Tra cứu).
+
+### Tài liệu tạo mới / xoá
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/tasks/01-splash-photos-search-empty/01-analysis.md` | **Mới** — task-analysis (nội dung tương đương entry [IMPL-011] cũ, vốn không được ghi xuống đĩa thành công — viết lại lần này) |
+| `docs/csb-vocab-analysis/tasks/01-splash-photos-search-empty/02-plan.md` | **Mới** — task-plan (chuyển từ `92_Plan-01-splash-photos-and-search-empty-state.md` đã xoá) |
+| `docs/csb-vocab-analysis/92_Plan-01-splash-photos-and-search-empty-state.md` | **Xoá** — chuyển vào thư mục task ở trên |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới. Các câu hỏi mở của task 01 (bản quyền ảnh
+CSB, Q-CSB-04..07) không đổi — xem `01-analysis.md`/`02-plan.md` trong thư
+mục task mới.
+
+---
+
 ## [IMPL-010] 2026-07-18 — Cập nhật mockup Windows (docs/artifact-design-windows/) theo định hướng mới
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude

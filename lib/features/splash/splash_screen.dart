@@ -9,8 +9,8 @@ import '../../core/theme/app_theme.dart';
 
 /// FR-1 — Splash screen chủ đề Cảnh sát biển Việt Nam.
 ///
-/// Hiện tại dùng 3–5 slide placeholder tự dựng (đã chốt C1); sẽ thay bằng
-/// bộ ảnh chính thức khi khách cung cấp. Sau [AppConstants.splashDuration]
+/// Dùng ảnh thật Cảnh sát biển ở `assets/images/coast_guard/` (xem
+/// `docs/spec_history.md` [IMPL-009]). Sau [AppConstants.splashDuration]
 /// tự chuyển vào màn chính.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,11 +22,25 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   Timer? _timer;
 
-  /// Slide placeholder — thay bằng ảnh thật ở assets/images/coast_guard/.
-  static const _slides = <(_SlideStyle, String, String)>[
-    (_SlideStyle.navy, 'Cảnh Sát Biển\nViệt Nam', 'Vì chủ quyền biển đảo'),
-    (_SlideStyle.sea, 'Học Từ Vựng', 'Tiếng Anh — offline'),
-    (_SlideStyle.gold, 'Tra cứu · Học · Ôn tập', 'Mọi lúc, không cần mạng'),
+  static const _slides = <(_SlideStyle, String, String, String)>[
+    (
+      _SlideStyle.navy,
+      'assets/images/coast_guard/csb-slide-01.jpg',
+      'Cảnh Sát Biển\nViệt Nam',
+      'Vì chủ quyền biển đảo',
+    ),
+    (
+      _SlideStyle.sea,
+      'assets/images/coast_guard/csb-slide-02.jpg',
+      'Học Từ Vựng',
+      'Tiếng Anh — offline',
+    ),
+    (
+      _SlideStyle.gold,
+      'assets/images/coast_guard/csb-slide-03.jpg',
+      'Tra cứu · Học · Ôn tập',
+      'Mọi lúc, không cần mạng',
+    ),
   ];
 
   @override
@@ -75,44 +89,68 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 
-  Widget _buildSlide((_SlideStyle, String, String) slide) {
-    final (style, title, subtitle) = slide;
+  Widget _buildSlide((_SlideStyle, String, String, String) slide) {
+    final (style, imagePath, title, subtitle) = slide;
     final colors = switch (style) {
       _SlideStyle.navy => [AppColors.navy, AppColors.navyDark],
       _SlideStyle.sea => [AppColors.seaBlue, AppColors.navy],
       _SlideStyle.gold => [AppColors.navy, AppColors.gold],
     };
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.anchor, size: 96, color: Colors.white),
-          const SizedBox(height: 24),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          imagePath,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: colors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Center(
+              child: Icon(Icons.anchor, size: 96, color: Colors.white),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            subtitle,
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colors.last.withValues(alpha: 0.75), Colors.transparent],
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+            ),
           ),
-        ],
-      ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 96, left: 24, right: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

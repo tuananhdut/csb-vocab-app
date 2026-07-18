@@ -1,6 +1,8 @@
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../vocab/word_widgets.dart';
 
@@ -52,7 +54,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ),
         Expanded(
           child: _query.trim().isEmpty
-              ? const _Hint()
+              ? const _SearchEmptyCarousel()
               : results.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
@@ -78,24 +80,77 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-class _Hint extends StatelessWidget {
-  const _Hint();
+/// Trạng thái "chưa tìm kiếm" — slide ảnh Cảnh sát biển tự động lướt qua
+/// lại, thay cho gợi ý chữ đơn giản trước đây (xem mockup `screen-02c-
+/// tra-cuu-trong.html`, `docs/spec_history.md` [IMPL-009]).
+class _SearchEmptyCarousel extends StatelessWidget {
+  const _SearchEmptyCarousel();
+
+  static const _images = [
+    'assets/images/coast_guard/csb-slide-01.jpg',
+    'assets/images/coast_guard/csb-slide-02.jpg',
+    'assets/images/coast_guard/csb-slide-03.jpg',
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop =
+        MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
     final scheme = Theme.of(context).colorScheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.travel_explore, size: 64, color: scheme.primary),
-          const SizedBox(height: 12),
-          const Text('Tra cứu từ vựng chuyên ngành'),
-          const SizedBox(height: 4),
-          Text('Gõ từ tiếng Anh hoặc tiếng Việt để tìm',
-              style: TextStyle(color: scheme.outline)),
-        ],
-      ),
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Tra cứu từ vựng chuyên ngành',
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(color: scheme.primary),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Gõ từ tiếng Anh hoặc tiếng Việt để tìm',
+            style: TextStyle(color: scheme.outline),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: isDesktop ? 48 : 16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: CarouselSlider(
+              options: CarouselOptions(
+                height: isDesktop ? 320 : 220,
+                viewportFraction: 1,
+                autoPlay: true,
+                autoPlayInterval: const Duration(seconds: 4),
+                autoPlayAnimationDuration: const Duration(milliseconds: 600),
+              ),
+              items: _images
+                  .map(
+                    (path) => Image.asset(
+                      path,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          ColoredBox(
+                        color: scheme.surfaceContainerHighest,
+                        child: Icon(Icons.image_not_supported_outlined,
+                            color: scheme.outline),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
