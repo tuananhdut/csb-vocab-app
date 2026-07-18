@@ -4,6 +4,149 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-007] 2026-07-18 — Chốt dùng Drift thay cho sqlite3 raw cho schema mới
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Trao đổi về việc truy vấn SQLite sẽ phức tạp hơn khi thêm bộ từ điển N-N,
+Section/Chapter, và các truy vấn ôn tập mở rộng trong tương lai — có nên gọi
+`sqlite3` trực tiếp hay qua một lớp nữa, và có cần ORM không.
+
+**Đã chốt:** chuyển sang **Drift** (type-safe query builder + code gen cho
+SQLite trên Flutter, dùng `build_runner`) thay cho gọi `sqlite3` package
+trực tiếp như hiện tại (`lib/data/local/vocab_database.dart`,
+`user_database.dart`). Áp dụng **ngay từ bước thiết kế schema mới** (bảng
+N-N `word_dictionaries`, Section/Chapter), không chờ đổi sau — chấp nhận chi
+phí viết lại data layer hiện tại một lần thay vì đổi 2 lần (raw → raw mới →
+Drift). Việc dùng Repository pattern làm lớp trung gian (đã có sẵn qua
+`VocabRepository`) vẫn giữ nguyên — Drift không thay thế Repository, mà thay
+thế cách Repository nói chuyện với SQLite bên trong.
+
+Lý do chính: schema dự kiến đổi nhiều lần trong thời gian ngắn (N-N bộ từ
+điển, Section/Chapter dạng bài báo, có thể thêm bảng ôn tập mở rộng sau) —
+Drift cho type-safe query + migration kiểm tra được lúc compile, giảm rủi ro
+lỗi runtime khi cột/bảng đổi so với viết SQL string tay.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/00_Overview.md` | Thêm ghi chú Drift vào mục Dữ liệu (Kiến trúc kỹ thuật); thêm dòng D3 vào bảng "Quyết định đã chốt" |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới. Việc thiết kế schema Drift cụ thể (bảng, cột,
+migration) sẽ làm ở bước implement sau, sau khi Q-CSB-04..07 ([IMPL-005])
+được trả lời.
+
+---
+
+## [IMPL-006] 2026-07-18 — Lan tỏa định hướng mới vào 02_Search.md, 03_Lessons-by-chapter.md, bảng truy vết
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Tiếp nối [IMPL-005] (chốt định hướng mới ở `00_Overview.md`), cập nhật các
+tài liệu phân tích màn hình còn lại theo cùng định hướng — tra cứu 2 trạng
+thái Offline/Online, bộ từ điển N-N (mặc định + cá nhân), Section chứa nhiều
+Chapter hiển thị dạng bài báo. Nguyên tắc áp dụng: **giữ nguyên nội dung mô
+tả code thật hiện có**, chỉ gắn nhãn `[ĐÃ CODE]` rõ ràng, và thêm phần mới
+riêng biệt mô tả định hướng `[CHƯA CODE]` — không xoá hay viết đè thông tin
+về hành vi thật đang chạy.
+
+1. **`02_Search.md`** — tách "Hành vi"/"Truy vấn dữ liệu"/"Phụ thuộc" hiện
+   có thành "...— Chế độ Offline [ĐÃ CODE]"; thêm mục mới "Chế độ Online —
+   định hướng mới [CHƯA CODE]" mô tả cơ chế phát hiện mạng, hành vi gọi
+   thêm API ngoài, câu hỏi về lưu từ mới tra được, và ảnh hưởng tới
+   `searchProvider`/`VocabRepository`.
+2. **`03_Lessons-by-chapter.md`** — đây là thay đổi mô hình lớn nhất: khái
+   niệm "chương" (nhóm từ, 1-N) sẽ trở thành "bộ từ điển mặc định"; "Chapter"
+   được định nghĩa lại thành 1 bài học dạng bài báo, nằm trong "Section" (cấp
+   mới). Thêm mục "Mô hình mới: Section / Chapter dạng bài báo [CHƯA CODE]"
+   với bảng đối chiếu ý nghĩa cũ/mới, hành vi điều hướng dự kiến (tối thiểu
+   3 cấp: Section → Chapter → nội dung bài), và ảnh hưởng tầng dữ liệu
+   (`chapter_words`, quy trình từ `.docx`). Ghi rõ đây **không phải chỉnh
+   sửa nhỏ** — màn hình sẽ cần viết lại gần như hoàn toàn khi mô hình mới
+   được code.
+3. **`90_Traceability-matrix.md`** — thêm banner nói rõ bảng phản ánh code
+   thật (mô hình cũ); thêm 2 dòng vào bảng "Truy vết mockup ↔ code" cho 2
+   khoảng cách mới (tra cứu online, Section/Chapter dạng bài báo).
+4. **`README.md`** — nâng phiên bản lên 1.2, thêm banner định hướng mới ở
+   đầu trỏ tới `00_Overview.md`, cập nhật dòng lịch sử.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/02_Search.md` | Gắn nhãn `[ĐÃ CODE]` cho hành vi hiện tại; thêm mục "Chế độ Online — định hướng mới [CHƯA CODE]" |
+| `docs/csb-vocab-analysis/03_Lessons-by-chapter.md` | Gắn nhãn `[ĐÃ CODE]` cho mô hình cũ; thêm mục "Mô hình mới: Section / Chapter dạng bài báo [CHƯA CODE]" |
+| `docs/csb-vocab-analysis/90_Traceability-matrix.md` | Thêm banner cảnh báo phạm vi; thêm 2 dòng khoảng cách mockup↔code mới |
+| `docs/csb-vocab-analysis/README.md` | Nâng phiên bản 1.2, thêm banner định hướng mới, cập nhật lịch sử |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mở mới — vẫn dùng Q-CSB-04..07 đã ghi ở [IMPL-005].
+Xem thêm ghi chú trong `03_Lessons-by-chapter.md` mục "Hành vi dự kiến": vị
+trí chính xác của "duyệt theo bộ từ điển mặc định" trong điều hướng chính
+(tab nào) chưa chốt, cần rà soát cùng `07_Home-shell.md` và mockup "Từ điển
+của tôi" khi bước sang cập nhật `docs/artifact-design/`.
+
+---
+
+## [IMPL-005] 2026-07-18 — Định hướng mới: tra cứu online/offline, bộ từ điển N-N, Section/Chapter dạng bài báo
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+User đưa ra định hướng mở rộng đáng kể so với code thật hiện tại (chưa
+triển khai, mới cập nhật tài liệu phân tích):
+
+1. **Tra cứu 2 trạng thái** — Offline: chỉ `vocab.db` local (giữ nguyên hành
+   vi hiện tại). Online: `vocab.db` local **+** gọi thêm API từ điển ngoài
+   cho từ không có sẵn. Ràng buộc "Offline hoàn toàn" đổi thành
+   "Offline-first, online tùy chọn" — toàn bộ tính năng cốt lõi vẫn phải
+   chạy được không cần mạng.
+2. **Bộ từ điển (dictionary), quan hệ N-N với từ** — khái niệm "chương" hiện
+   tại (bảng `chapters`, 6 chương cố định, quan hệ 1-N với từ qua
+   `chapter_id`) được diễn giải lại thành **1 bộ từ điển mặc định**. Một từ
+   có thể thuộc **nhiều** bộ từ điển cùng lúc (cần bảng trung gian N-N thay
+   cột `chapter_id` đơn). 2 loại: mặc định (đóng gói sẵn, read-only) và cá
+   nhân (user tự tạo **nhiều** bộ, tự thêm/bỏ từ — giống playlist, xác nhận
+   lại hướng đã có ở mockup cũ Q-CSB-02).
+3. **Section → Chapter, Chapter là bài học dạng bài báo** — Section là cấp
+   mới, đứng trên Chapter (1 Section nhiều Chapter). Chapter được định nghĩa
+   lại: không còn là nhóm từ vựng (vai trò đó nay thuộc "bộ từ điển mặc
+   định" ở mục 2) mà là **1 bài học hiển thị dạng bài báo/bài đọc chuyên
+   ngành**, từ vựng lồng trong nội dung bài thay vì liệt kê trần. Nguồn nội
+   dung hiện là file Word (`.docx`).
+
+Đây là **thay đổi mô hình dữ liệu + kiến trúc lớn**, ảnh hưởng dây chuyền
+tới `vocab.db` schema, `VocabRepository`, các provider, và toàn bộ UI của
+SCR-02 (Tra cứu) và SCR-03 (Học theo chương). Bước này **chỉ cập nhật
+`00_Overview.md`** để chốt khung khái niệm chung; các file `01`–`07` và
+`docs/artifact-design/` sẽ cập nhật ở bước kế tiếp theo yêu cầu của user.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/00_Overview.md` | Thêm banner định hướng mới ở đầu file; thêm mục "Mô hình dữ liệu — định hướng mới" (trạng thái online/offline, bộ từ điển N-N, Section/Chapter); cập nhật Ràng buộc, Glossary, Câu hỏi mở |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| Q-CSB-04 | API từ điển ngoài dùng khi online là nhà cung cấp nào cụ thể (Oxford, Free Dictionary API, Google...)? Ảnh hưởng chi phí, giới hạn rate, và cách xử lý lỗi mạng chập chờn. |
+| Q-CSB-05 | Từ tra được qua API ngoài khi online có được lưu lại vào DB local để dùng khi offline không? Nếu có, lưu vào bộ từ điển nào (mặc định hay tự tạo 1 bộ "đã tra online" riêng)? |
+| Q-CSB-06 | Cơ chế phát hiện trạng thái online/offline dùng gói nào (`connectivity_plus`?) và có xử lý trường hợp "có kết nối mạng nhưng API đích không phản hồi" (khác với offline hẳn) không? |
+| Q-CSB-07 | Quy trình chuyển nội dung bài học từ file Word (`.docx`) sang dữ liệu có cấu trúc (Section → Chapter → nội dung bài + từ vựng liên kết) sẽ làm thủ công, bán tự động (script + soát lại), hay tự động hoàn toàn? Ảnh hưởng trực tiếp tới việc có tách bảng `chapter_words` riêng hay suy ra từ nội dung bài lúc hiển thị. |
+
+---
+
 ## [IMPL-004] 2026-07-18 — Tách tài liệu nguồn (docx/pdf) ra khỏi assets/
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude
