@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../data/repositories/vocab_providers.dart';
+import '../../domain/entities/vocab.dart';
 import '../vocab/word_widgets.dart';
 
 /// FR-2 — Tra cứu từ vựng (offline, 2 chiều Anh↔Việt trong phạm vi giáo trình).
@@ -17,6 +18,7 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   String _query = '';
+  VocabWord? _selected;
 
   @override
   void dispose() {
@@ -24,32 +26,44 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     super.dispose();
   }
 
+  void _setQuery(String value) {
+    setState(() {
+      _query = value;
+      if (value.trim().isEmpty) _selected = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final results = ref.watch(searchProvider(_query));
+    final isDesktop =
+        MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: TextField(
             controller: _controller,
             autofocus: true,
             textInputAction: TextInputAction.search,
+            style: const TextStyle(fontSize: 13.5),
             decoration: InputDecoration(
               hintText: 'Nhập từ tiếng Anh hoặc tiếng Việt…',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search, size: 18),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
                       icon: const Icon(Icons.clear),
                       onPressed: () {
                         _controller.clear();
-                        setState(() => _query = '');
+                        _setQuery('');
                       },
                     ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             ),
-            onChanged: (v) => setState(() => _query = v),
+            onChanged: _setQuery,
           ),
         ),
         Expanded(
@@ -66,16 +80,80 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             style: Theme.of(context).textTheme.bodyLarge),
                       );
                     }
-                    return ListView.separated(
-                      itemCount: words.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (_, i) =>
-                          WordTile(word: words[i], showChapter: true),
-                    );
+                    return isDesktop
+                        ? _buildTwoPane(words)
+                        : _buildSingleColumn(words);
                   },
                 ),
         ),
       ],
+    );
+  }
+
+  /// Mobile: danh sách kết quả, bấm 1 dòng mở `WordDetailSheet` bottom sheet.
+  Widget _buildSingleColumn(List<VocabWord> words) {
+    return ListView.separated(
+      itemCount: words.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (_, i) => WordTile(word: words[i], showChapter: true),
+    );
+  }
+
+  /// Windows: bố cục 2 cột — danh sách bên trái (`pane-list`), chi tiết từ
+  /// đang chọn hiển thị inline bên phải (`pane-detail`), khớp mockup
+  /// `docs/artifact-design-windows/screens/screen-02-tra-cuu.html`.
+  Widget _buildTwoPane(List<VocabWord> words) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 340,
+          child: ListView.separated(
+            itemCount: words.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (_, i) {
+              final word = words[i];
+              return WordTile(
+                word: word,
+                showChapter: true,
+                selected: _selected?.id == word.id,
+                onTap: () => setState(() => _selected = word),
+              );
+            },
+          ),
+        ),
+        const VerticalDivider(width: 1),
+        Expanded(
+          child: _selected == null
+              ? const _PaneDetailEmpty()
+              : WordDetailContent(
+                  key: ValueKey(_selected!.id),
+                  word: _selected!,
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Trạng thái chưa chọn từ nào ở pane chi tiết (desktop) — khớp
+/// `.pane-detail-empty` trong mockup Windows.
+class _PaneDetailEmpty extends StatelessWidget {
+  const _PaneDetailEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.menu_book_outlined,
+              size: 36, color: scheme.outline.withValues(alpha: 0.6)),
+          const SizedBox(height: 10),
+          Text('Chọn 1 từ để xem chi tiết',
+              style: TextStyle(color: scheme.outline, fontSize: 13.5)),
+        ],
+      ),
     );
   }
 }
@@ -105,10 +183,11 @@ class _SearchEmptyCarousel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Text(
             'Tra cứu từ vựng chuyên ngành',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(color: scheme.primary),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: scheme.primary,
+            ),
           ),
         ),
         const SizedBox(height: 4),

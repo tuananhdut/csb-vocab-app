@@ -62,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.navyDark,
+      backgroundColor: AppColors.brandDeep,
       body: Stack(
         children: [
           CarouselSlider(
@@ -92,9 +92,9 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget _buildSlide((_SlideStyle, String, String, String) slide) {
     final (style, imagePath, title, subtitle) = slide;
     final colors = switch (style) {
-      _SlideStyle.navy => [AppColors.navy, AppColors.navyDark],
-      _SlideStyle.sea => [AppColors.seaBlue, AppColors.navy],
-      _SlideStyle.gold => [AppColors.navy, AppColors.gold],
+      _SlideStyle.navy => [AppColors.brand, AppColors.brandDeep],
+      _SlideStyle.sea => [AppColors.seaBlue, AppColors.brand],
+      _SlideStyle.gold => [AppColors.brand, AppColors.snap],
     };
     return Stack(
       fit: StackFit.expand,
