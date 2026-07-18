@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSB Vocab — Mockup giao diện</title>
+<meta name="description" content="Bộ mockup giao diện app học từ vựng chuyên ngành Cảnh sát biển Việt Nam">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .index-grid {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .index-card {
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 18px;
+    text-decoration: none;
+    color: inherit;
+    background: var(--surface);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .index-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .index-card-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .index-card-desc { font-size: 12.5px; color: var(--text-soft); line-height: 1.5; margin: 0; }
+</style>
+</head>
+<body>
+<div class="masthead">
+  <div class="eyebrow">CSB VOCAB · Mockup giao diện · v0.1</div>
+  <h1 class="title">Học từ vựng chuyên ngành<br>Cảnh sát biển Việt Nam</h1>
+  <p>Bottom nav còn 5 tab: Tra cứu, Học, Dịch, <strong>Từ điển của tôi</strong>, Cài đặt — "Ôn tập" không còn là tab riêng mà đã gộp vào Từ điển của tôi, nơi 6 chương giáo trình đứng như 1 "bộ mặc định" cùng hàng với các bộ cá nhân do người dùng tự tạo (gom từ có sẵn hoặc tự nhập tay). Bấm "Ôn tập ngay" trên bất kỳ bộ nào mở một phiên duy nhất trộn ngẫu nhiên 3 dạng câu cho từng từ đến hạn — lật thẻ, gõ chữ, trắc nghiệm — thay vì phải chọn kiểu ôn trước. Mỗi bộ vẫn giữ danh sách "đã học" tách biệt. Ngôn ngữ thị giác lấy cảm hứng từ hải đồ và sổ tay nghiệp vụ — navy hải quân, ánh đồng phù hiệu, lưới toạ độ; mỗi bộ cá nhân có 1 màu định danh riêng (dải màu bên trái thẻ) để phân biệt nhanh.</p>
+  <div class="legend">
+    <span><i class="swatch" style="background:#0A2340"></i>Navy — nền/điều hướng</span>
+    <span><i class="swatch" style="background:#C99A3E"></i>Brass — điểm nhấn, huy hiệu</span>
+    <span><i class="swatch" style="background:#2F8F72"></i>Signal green — đã học/dễ</span>
+    <span><i class="swatch" style="background:#B5472B"></i>Signal red — quên/đến hạn</span>
+    <span><i class="swatch" style="background:#F4F7FA;border:1px solid #ccc"></i>Steel — nền phụ</span>
+  </div>
+</div>
+
+<div class="index-grid">
+    <a class="index-card" href="screens/screen-01-splash.html">
+      <div class="index-card-head">
+        <span class="frame-no">01</span>
+        <span class="frame-name">Splash</span>
+      </div>
+      <p class="index-card-desc">Carousel 3 lượt giới thiệu, tự chuyển vào màn chính sau 5s. Gradient navy → ánh đồng, huy hiệu la bàn thay logo tạm.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-02-tra-cuu.html">
+      <div class="index-card-head">
+        <span class="frame-no">02</span>
+        <span class="frame-name">Tra cứu</span>
+      </div>
+      <p class="index-card-desc">Tra hai chiều Anh ⇄ Việt, offline, giới hạn trong phạm vi giáo trình. Mỗi dòng hiện IPA và chương gốc.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-03-hoc-danh-sach-chuong.html">
+      <div class="index-card-head">
+        <span class="frame-no">03</span>
+        <span class="frame-name">Học — Danh sách chương</span>
+      </div>
+      <p class="index-card-desc">Danh sách 6 chương bám giáo trình gốc, thanh tiến độ theo số từ đã học. Bấm vào 1 chương mở ra danh sách từ của chương đó, sắp xếp theo thứ tự A-Z (xem 03b).</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-03b-danh-sach-tu-a-z.html">
+      <div class="index-card-head">
+        <span class="frame-no">03b</span>
+        <span class="frame-name">Học — Danh sách từ (A-Z)</span>
+      </div>
+      <p class="index-card-desc">Bấm vào 1 chương ở màn 03 mở ra danh sách này — toàn bộ từ của chương đó, sắp xếp theo thứ tự bảng chữ cái, giống layout danh sách ở màn Tra cứu (dùng chung <code>.word-row</code>).</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-04-chi-tiet-tu.html">
+      <div class="index-card-head">
+        <span class="frame-no">04</span>
+        <span class="frame-name">Chi tiết từ</span>
+      </div>
+      <p class="index-card-desc">Bottom sheet kéo lên từ danh sách. Ví dụ song ngữ, nút đánh dấu đã học đẩy từ vào hàng đợi ôn tập.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-04b-them-vao-bo-tu-dien.html">
+      <div class="index-card-head">
+        <span class="frame-no">04b</span>
+        <span class="frame-name">Thêm vào bộ từ điển</span>
+      </div>
+      <p class="index-card-desc">Bấm "Thêm vào bộ" ở màn Chi tiết từ (04) mở modal này — chọn 1 hoặc nhiều bộ đã có (checkbox, không cần rời màn), hoặc tạo bộ mới ngay tại chỗ. Từ vẫn giữ liên kết gốc với chương giáo trình.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-06-dich-nhanh.html">
+      <div class="index-card-head">
+        <span class="frame-no">06</span>
+        <span class="frame-name">Dịch nhanh</span>
+      </div>
+      <p class="index-card-desc">Dịch offline bằng cách tra ghép từ/cụm trong CSDL — không phải máy dịch câu, nên hiển thị rõ các từ đã nhận diện được.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-07-tu-dien-cua-toi.html">
+      <div class="index-card-head">
+        <span class="frame-no">07</span>
+        <span class="frame-name">Từ điển của tôi</span>
+      </div>
+      <p class="index-card-desc">Trung tâm ôn tập duy nhất của app — "Ôn tập" không còn là tab riêng. 6 chương giáo trình là 1 bộ mặc định (viền nét đứt) đứng cùng hàng với các bộ cá nhân. Mỗi thẻ có nút "Ôn tập ngay" mở phiên trộn 3 dạng câu.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-07b-tu-them-tu-moi.html">
+      <div class="index-card-head">
+        <span class="frame-no">07b</span>
+        <span class="frame-name">Tự thêm từ mới</span>
+      </div>
+      <p class="index-card-desc">Từ không có trong giáo trình — nhập tay đầy đủ, gán thẳng vào 1 bộ từ điển cá nhân. Chỉ 2 trường bắt buộc (từ + nghĩa); phiên âm/loại từ để tuỳ chọn vì người dùng không phải chuyên gia ngôn ngữ.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-07c-chi-tiet-bo-da-hoc.html">
+      <div class="index-card-head">
+        <span class="frame-no">07c</span>
+        <span class="frame-name">Chi tiết bộ — Đã học</span>
+      </div>
+      <p class="index-card-desc">Mỗi bộ có danh sách "đã học" riêng (không gộp chung giữa các bộ) — tab phụ "Tất cả / Đã học" trong cùng 1 bộ, kèm hạn ôn tiếp theo cho từng từ.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-07d-phien-on-tap-cau-lat-the.html">
+      <div class="index-card-head">
+        <span class="frame-no">07d</span>
+        <span class="frame-name">Phiên ôn tập — câu Lật thẻ</span>
+      </div>
+      <p class="index-card-desc">Bấm "Ôn tập ngay" ở bất kỳ bộ nào (07) mở phiên này. Hệ thống trộn ngẫu nhiên 3 dạng câu cho từng từ đến hạn — cùng 1 từ có thể ra dạng khác nhau ở lượt ôn sau. Đây là dạng 1/3: lật thẻ tự chấm.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-07e-phien-on-tap-cau-go-chu.html">
+      <div class="index-card-head">
+        <span class="frame-no">07e</span>
+        <span class="frame-name">Phiên ôn tập — câu Gõ chữ</span>
+      </div>
+      <p class="index-card-desc">Dạng 2/3 trong cùng phiên: hiện nghĩa tiếng Việt, gõ lại từ tiếng Anh. Đúng/sai tự động ánh xạ q=4 (Tốt) / q=1 (Quên) cho SM-2 — không cần người dùng tự chấm như dạng lật thẻ.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-07f-phien-on-tap-cau-trac-nghiem.html">
+      <div class="index-card-head">
+        <span class="frame-no">07f</span>
+        <span class="frame-name">Phiên ôn tập — câu Trắc nghiệm</span>
+      </div>
+      <p class="index-card-desc">Dạng 3/3: hiện từ tiếng Anh + nút loa phát âm, chọn nghĩa tiếng Việt đúng trong 4 lựa chọn. Nếu bộ ít từ, đáp án nhiễu mượn thêm từ cùng chương gốc trong vocab.db.</p>
+    </a>
+</div>
+
+<footer class="note">
+  Mockup tĩnh, không tương tác — dựng để duyệt hướng thị giác trước khi đưa vào Flutter. Bảng màu giữ đúng tinh thần bộ nhận diện hiện có (navy + vàng phù hiệu) trong <code>app_theme.dart</code>, bổ sung xanh lục/đỏ tín hiệu cho trạng thái ôn tập và lưới toạ độ hải đồ làm hoạ tiết nền.
+</footer>
+</body>
+</html>

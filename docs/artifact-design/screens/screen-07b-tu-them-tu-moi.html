@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07b — Tự thêm từ mới · CSB Vocab Mockup</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 40px 24px; }
+  .screen-page-head { max-width: 700px; margin: 0 auto 32px; }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); margin-bottom: 16px; text-decoration: none; }
+  .back-link:hover { color: var(--accent); }
+  .screen-stage { display: flex; justify-content: center; }
+  .screen-nav { display: flex; justify-content: space-between; max-width: 300px; margin: 24px auto 0; font-size: 13px; }
+  .screen-nav a { color: var(--navy-700); text-decoration: none; font-weight: 700; }
+  :root[data-theme="dark"] .screen-nav a, body { }
+  @media (prefers-color-scheme: dark) { .screen-nav a { color: var(--accent); } }
+  :root[data-theme="dark"] .screen-nav a { color: var(--accent); }
+  .screen-nav span.disabled { color: var(--text-soft); opacity: 0.4; }
+</style>
+</head>
+<body>
+  <div class="screen-page-head">
+    <a class="back-link" href="../index.html">&larr; Tất cả màn hình</a>
+    <div class="frame-label"><span class="frame-no">07b</span><span class="frame-name">Tự thêm từ mới</span></div>
+    <p class="frame-desc" style="margin-top:6px;">Từ không có trong giáo trình — nhập tay đầy đủ, gán thẳng vào 1 bộ từ điển cá nhân. Chỉ 2 trường bắt buộc (từ + nghĩa); phiên âm/loại từ để tuỳ chọn vì người dùng không phải chuyên gia ngôn ngữ.</p>
+  </div>
+  <div class="screen-stage">
+    <div class="phone"><div class="notch"></div>
+      <div class="screen">
+        <div class="appbar">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <span class="t">Tự thêm từ mới</span>
+        </div>
+        <div class="content">
+          <div class="form-wrap">
+            <div class="form-field">
+              <div class="form-label">Từ tiếng Anh</div>
+              <input class="form-input" type="text" value="chock" />
+            </div>
+            <div class="form-field">
+              <div class="form-label">Nghĩa tiếng Việt</div>
+              <input class="form-input" type="text" value="cọc buộc dây (trên tàu)" />
+            </div>
+            <div class="form-field">
+              <div class="form-label">Phiên âm <span class="optional">(tuỳ chọn)</span></div>
+              <input class="form-input" type="text" placeholder="/tʃɒk/" />
+            </div>
+            <div class="form-field">
+              <div class="form-label">Loại từ <span class="optional">(tuỳ chọn)</span></div>
+              <input class="form-input" type="text" placeholder="dt, đt, tt…" />
+            </div>
+            <div class="form-field">
+              <div class="form-label">Thuộc bộ từ điển</div>
+              <div class="form-select" style="--deck-color:var(--brass)">
+                <span class="chosen"><i></i>Từ vựng công tác</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+            <div class="form-submit">Lưu từ mới</div>
+            <div class="form-hint">Từ tự thêm chỉ hiển thị trong bộ từ điển cá nhân — không xuất hiện khi Tra cứu trong giáo trình gốc.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="screen-nav">
+    <a href="screen-07-tu-dien-cua-toi.html">&larr; 07 Từ điển của tôi</a>
+    <a href="screen-07c-chi-tiet-bo-da-hoc.html">07c Chi tiết bộ — Đã học &rarr;</a>
+  </div>
+</body>
+</html>

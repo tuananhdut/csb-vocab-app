@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 — Splash · CSB Vocab Mockup</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 40px 24px; }
+  .screen-page-head { max-width: 700px; margin: 0 auto 32px; }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-soft); margin-bottom: 16px; text-decoration: none; }
+  .back-link:hover { color: var(--accent); }
+  .screen-stage { display: flex; justify-content: center; }
+  .screen-nav { display: flex; justify-content: space-between; max-width: 300px; margin: 24px auto 0; font-size: 13px; }
+  .screen-nav a { color: var(--navy-700); text-decoration: none; font-weight: 700; }
+  :root[data-theme="dark"] .screen-nav a, body { }
+  @media (prefers-color-scheme: dark) { .screen-nav a { color: var(--accent); } }
+  :root[data-theme="dark"] .screen-nav a { color: var(--accent); }
+  .screen-nav span.disabled { color: var(--text-soft); opacity: 0.4; }
+</style>
+</head>
+<body>
+  <div class="screen-page-head">
+    <a class="back-link" href="../index.html">&larr; Tất cả màn hình</a>
+    <div class="frame-label"><span class="frame-no">01</span><span class="frame-name">Splash</span></div>
+    <p class="frame-desc" style="margin-top:6px;">Carousel 3 lượt giới thiệu, tự chuyển vào màn chính sau 5s. Gradient navy → ánh đồng, huy hiệu la bàn thay logo tạm.</p>
+  </div>
+  <div class="screen-stage">
+    <div class="phone"><div class="notch"></div>
+      <div class="screen">
+        <div class="splash">
+          <div class="crest">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#C99A3E" stroke-width="1.6"><path d="M12 2v20M5 12a7 7 0 0014 0M3 7h5M16 7h5M8 20h8"/></svg>
+          </div>
+          <h2>Cảnh Sát Biển<br>Việt Nam</h2>
+          <div class="sub">Vì chủ quyền biển đảo</div>
+          <div class="dots"><i class="on"></i><i></i><i></i></div>
+          <div class="skip">Bỏ qua ➜</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="screen-nav">
+    <span class="disabled">&larr; Đầu tiên</span>
+    <a href="screen-02-tra-cuu.html">02 Tra cứu &rarr;</a>
+  </div>
+</body>
+</html>
