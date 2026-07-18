@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
+import '../../data/services/tts_service.dart';
 import '../../domain/entities/vocab.dart';
 import '../review/review_providers.dart';
 
@@ -58,7 +59,9 @@ class WordTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     const ipaColor = AppColors.brand;
-    final bg = selected ? AppColors.panel2 : Colors.transparent;
+    final bg = selected
+        ? AppColors.brand.withValues(alpha: 0.08)
+        : Colors.transparent;
 
     return InkWell(
       onTap: onTap ?? () => showWordDetail(context, word),
@@ -69,6 +72,11 @@ class WordTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
         decoration: BoxDecoration(
           color: bg,
+          border: selected
+              ? Border(
+                  left: BorderSide(color: AppColors.brand, width: 3),
+                )
+              : null,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Column(
@@ -79,6 +87,17 @@ class WordTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.brand
+                        : scheme.outline.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                  ),
+                ),
                 Flexible(
                   child: Text(
                     word.word,
@@ -103,25 +122,36 @@ class WordTile extends StatelessWidget {
                 ],
               ],
             ),
-            Row(
-              children: [
-                if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
-                Expanded(
-                  child: Text(
-                    word.meaningVi,
-                    style: TextStyle(color: scheme.outline, fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (showChapter && word.chapterTitle.isNotEmpty)
-                  Text(
-                    word.chapterTitle,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      color: scheme.outline.withValues(alpha: 0.7),
+            Padding(
+              padding: const EdgeInsets.only(left: 14),
+              child: Row(
+                children: [
+                  if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
+                  Expanded(
+                    child: Text(
+                      word.meaningVi,
+                      style: TextStyle(color: scheme.outline, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-              ],
+                  if (showChapter && word.chapterTitle.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 90),
+                      child: Text(
+                        word.chapterTitle,
+                        textAlign: TextAlign.right,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: scheme.outline.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         ),
@@ -192,32 +222,13 @@ class WordDetailContent extends ConsumerWidget {
       controller: scrollController,
       padding: padding,
       children: [
-        Text(
-          word.word,
-          style: const TextStyle(
-            fontFamily: AppFonts.serif,
-            fontWeight: FontWeight.bold,
-            fontSize: 30,
-          ),
-        ),
-        if (word.phonetic.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            word.phonetic,
-            style: TextStyle(
-              fontFamily: AppFonts.mono,
-              fontSize: 15,
-              color: ipaColor,
-            ),
-          ),
-        ],
-        const SizedBox(height: 14),
         Row(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
             OutlinedButton.icon(
               onPressed: null,
               icon: const Icon(Icons.playlist_add, size: 16),
-              label: const Text('Thêm vào bộ'),
+              label: const Text('Add to deck'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: accentColor,
                 side: BorderSide(color: accentColor, width: 1.5),
@@ -243,9 +254,9 @@ class WordDetailContent extends ConsumerWidget {
                 icon: Icon(isLearned
                     ? Icons.check_circle
                     : Icons.bookmark_add_outlined),
-                label: Text(isLearned ? 'Đã học' : 'Đánh dấu đã học'),
+                label: Text(isLearned ? 'Learned' : 'Mark as learned'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.teal,
+                  backgroundColor: AppColors.brandDeep,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -254,14 +265,69 @@ class WordDetailContent extends ConsumerWidget {
             ),
           ],
         ),
-        if (word.partOfSpeech.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          PosTag(word.partOfSpeech),
+        const SizedBox(height: 20),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                word.word,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 32,
+                ),
+              ),
+            ),
+            if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
+          ],
+        ),
+        if (word.phonetic.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Text(
+                word.phonetic,
+                style: TextStyle(
+                  fontFamily: AppFonts.mono,
+                  fontSize: 15,
+                  color: ipaColor,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text('UK',
+                  style: TextStyle(color: scheme.outline, fontSize: 12)),
+              const SizedBox(width: 6),
+              IconButton(
+                onPressed: () => TtsService.instance.speak(word.word),
+                icon: const Icon(Icons.volume_up_outlined, size: 20),
+                color: ipaColor,
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Phát âm',
+              ),
+            ],
+          ),
         ],
-        const SizedBox(height: 18),
-        Text('NGHĨA', style: _labelStyle.copyWith(color: scheme.outline)),
-        const SizedBox(height: 6),
-        Text(word.meaningVi, style: const TextStyle(fontSize: 17, height: 1.5)),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Icon(Icons.translate, size: 14, color: scheme.outline),
+            const SizedBox(width: 6),
+            Text('NGHĨA TIẾNG VIỆT',
+                style: _labelStyle.copyWith(color: scheme.outline)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.panel2,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Text(word.meaningVi,
+              style: const TextStyle(fontSize: 18, height: 1.4)),
+        ),
         if (word.chapterTitle.isNotEmpty) ...[
           const SizedBox(height: 12),
           Row(children: [
@@ -280,11 +346,29 @@ class WordDetailContent extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('VÍ DỤ', style: _labelStyle.copyWith(color: scheme.outline)),
-                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.format_quote, size: 14, color: scheme.outline),
+                    const SizedBox(width: 6),
+                    Text('VÍ DỤ THỰC TẾ',
+                        style: _labelStyle.copyWith(color: scheme.outline)),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 for (final ex in list)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.panel2,
+                      border: Border(
+                        left: BorderSide(color: AppColors.brand, width: 3),
+                      ),
+                      borderRadius: const BorderRadius.horizontal(
+                        right: Radius.circular(6),
+                      ),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

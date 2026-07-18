@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../domain/entities/vocab.dart';
 import '../vocab/word_widgets.dart';
@@ -33,39 +34,45 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: TextField(
+        controller: _controller,
+        autofocus: true,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(fontSize: 13.5),
+        decoration: InputDecoration(
+          hintText: 'Nhập từ tiếng Anh hoặc tiếng Việt…',
+          prefixIcon: const Icon(Icons.search, size: 18),
+          suffixIcon: _query.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _controller.clear();
+                    _setQuery('');
+                  },
+                ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        ),
+        onChanged: _setQuery,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final results = ref.watch(searchProvider(_query));
     final isDesktop =
         MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
 
+    if (isDesktop) return _buildTwoPane(results);
+
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(14),
-          child: TextField(
-            controller: _controller,
-            autofocus: true,
-            textInputAction: TextInputAction.search,
-            style: const TextStyle(fontSize: 13.5),
-            decoration: InputDecoration(
-              hintText: 'Nhập từ tiếng Anh hoặc tiếng Việt…',
-              prefixIcon: const Icon(Icons.search, size: 18),
-              suffixIcon: _query.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _controller.clear();
-                        _setQuery('');
-                      },
-                    ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            ),
-            onChanged: _setQuery,
-          ),
-        ),
+        _buildSearchField(),
         Expanded(
           child: _query.trim().isEmpty
               ? const _SearchEmptyCarousel()
@@ -80,9 +87,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             style: Theme.of(context).textTheme.bodyLarge),
                       );
                     }
-                    return isDesktop
-                        ? _buildTwoPane(words)
-                        : _buildSingleColumn(words);
+                    return _buildSingleColumn(words);
                   },
                 ),
         ),
@@ -99,36 +104,68 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
-  /// Windows: bố cục 2 cột — danh sách bên trái (`pane-list`), chi tiết từ
-  /// đang chọn hiển thị inline bên phải (`pane-detail`), khớp mockup
+  /// Windows: bố cục 2 cột — cột trái gồm ô tìm kiếm + danh sách kết quả
+  /// (`pane-list`), cột phải hiển thị chi tiết từ đang chọn
+  /// (`pane-detail`), khớp mockup
   /// `docs/artifact-design-windows/screens/screen-02-tra-cuu.html`.
-  Widget _buildTwoPane(List<VocabWord> words) {
+  Widget _buildTwoPane(AsyncValue<List<VocabWord>> results) {
     return Row(
       children: [
         SizedBox(
           width: 340,
-          child: ListView.separated(
-            itemCount: words.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (_, i) {
-              final word = words[i];
-              return WordTile(
-                word: word,
-                showChapter: true,
-                selected: _selected?.id == word.id,
-                onTap: () => setState(() => _selected = word),
-              );
-            },
+          child: Column(
+            children: [
+              _buildSearchField(),
+              Expanded(
+                child: _query.trim().isEmpty
+                    ? const _SearchEmptyCarousel()
+                    : results.when(
+                        loading: () => const Center(
+                            child: CircularProgressIndicator()),
+                        error: (e, _) => Center(child: Text('Lỗi: $e')),
+                        data: (words) {
+                          if (words.isEmpty) {
+                            return Center(
+                              child: Text('Không tìm thấy "$_query"',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium),
+                            );
+                          }
+                          return ListView.separated(
+                            itemCount: words.length,
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 1),
+                            itemBuilder: (_, i) {
+                              final word = words[i];
+                              return WordTile(
+                                word: word,
+                                showChapter: true,
+                                selected: _selected?.id == word.id,
+                                onTap: () =>
+                                    setState(() => _selected = word),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
         ),
         const VerticalDivider(width: 1),
         Expanded(
-          child: _selected == null
-              ? const _PaneDetailEmpty()
-              : WordDetailContent(
-                  key: ValueKey(_selected!.id),
-                  word: _selected!,
-                ),
+          child: ColoredBox(
+            color: AppColors.pageBg,
+            child: _selected == null
+                ? const _PaneDetailEmpty()
+                : WordDetailContent(
+                    key: ValueKey(_selected!.id),
+                    word: _selected!,
+                    padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+                  ),
+          ),
         ),
       ],
     );
@@ -172,64 +209,81 @@ class _SearchEmptyCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop =
-        MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
     final scheme = Theme.of(context).colorScheme;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            'Tra cứu từ vựng chuyên ngành',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: scheme.primary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            'Gõ từ tiếng Anh hoặc tiếng Việt để tìm',
-            style: TextStyle(color: scheme.outline),
-          ),
-        ),
-        const SizedBox(height: 20),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: isDesktop ? 48 : 16),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: CarouselSlider(
-              options: CarouselOptions(
-                height: isDesktop ? 320 : 220,
-                viewportFraction: 1,
-                autoPlay: true,
-                autoPlayInterval: const Duration(seconds: 4),
-                autoPlayAnimationDuration: const Duration(milliseconds: 600),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Thích ứng theo chiều rộng thực tế của widget (không phải toàn màn
+        // hình) — widget này có thể nằm trong cột hẹp (pane-list desktop)
+        // hoặc full-width (mobile/pane rỗng).
+        final isWide = constraints.maxWidth >= 500;
+        final horizontalPadding = isWide ? 48.0 : 16.0;
+        final carouselHeight = isWide ? 320.0 : 220.0;
+
+        return SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Tra cứu từ vựng chuyên ngành',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: scheme.primary,
+                  ),
+                ),
               ),
-              items: _images
-                  .map(
-                    (path) => Image.asset(
-                      path,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          ColoredBox(
-                        color: scheme.surfaceContainerHighest,
-                        child: Icon(Icons.image_not_supported_outlined,
-                            color: scheme.outline),
-                      ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Gõ từ tiếng Anh hoặc tiếng Việt để tìm',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: scheme.outline),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding:
+                    EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: CarouselSlider(
+                    options: CarouselOptions(
+                      height: carouselHeight,
+                      viewportFraction: 1,
+                      autoPlay: true,
+                      autoPlayInterval: const Duration(seconds: 4),
+                      autoPlayAnimationDuration:
+                          const Duration(milliseconds: 600),
                     ),
-                  )
-                  .toList(),
-            ),
+                    items: _images
+                        .map(
+                          (path) => Image.asset(
+                            path,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                ColoredBox(
+                              color: scheme.surfaceContainerHighest,
+                              child: Icon(Icons.image_not_supported_outlined,
+                                  color: scheme.outline),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }

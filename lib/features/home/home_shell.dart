@@ -50,9 +50,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       }
     });
 
-    final body = IndexedStack(
-      index: _index,
-      children: [for (final d in _destinations) d.screen],
+    final body = Stack(
+      children: [
+        const Positioned.fill(child: _ContentWatermark()),
+        IndexedStack(
+          index: _index,
+          children: [for (final d in _destinations) d.screen],
+        ),
+      ],
     );
 
     return Scaffold(
@@ -63,15 +68,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               actions: const [
                 Padding(
                   padding: EdgeInsets.only(right: 12),
-                  child: _ConnectivityBadge(),
+                  child: _ConnectivityAppBarBadge(),
                 ),
               ],
             ),
       body: isDesktop
           ? Row(
               children: [
-                SizedBox(
+                Container(
                   width: 220,
+                  color: AppColors.brandDeep,
                   child: Column(
                     children: [
                       const _NavRailBrand(),
@@ -89,10 +95,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                           ],
                         ),
                       ),
+                      const _NavRailConnectivityFooter(),
                     ],
                   ),
                 ),
-                const VerticalDivider(width: 1),
                 Expanded(
                   child: Column(
                     children: [
@@ -137,6 +143,31 @@ class _Destination {
   final Widget screen;
 }
 
+/// Logo Cảnh sát biển in mờ phía sau nội dung mỗi tab chính — hiệu ứng
+/// "giấy tờ chính thức có dấu mờ". Không chặn tương tác của nội dung phía
+/// trên ([IgnorePointer]).
+class _ContentWatermark extends StatelessWidget {
+  const _ContentWatermark();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Center(
+        child: Opacity(
+          opacity: 0.05,
+          child: Image.asset(
+            'assets/images/logo/csb-logo.png',
+            width: 420,
+            height: 420,
+            errorBuilder: (context, error, stackTrace) =>
+                const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// 1 mục trong nav-rail Windows — nền phủ full-width khi được chọn (khớp
 /// `.nav-item`/`.nav-item.active` trong mockup), khác `NavigationRail` mặc
 /// định của Material (chỉ khoanh vùng quanh icon).
@@ -155,7 +186,7 @@ class _NavRailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inactiveFg = Theme.of(context).colorScheme.outline;
+    final inactiveFg = AppColors.white.withValues(alpha: 0.65);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -165,6 +196,7 @@ class _NavRailItem extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
+          hoverColor: AppColors.white.withValues(alpha: 0.06),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 10),
             child: Row(
@@ -209,6 +241,7 @@ class _PageHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
       decoration: BoxDecoration(
+        color: AppColors.white,
         border: Border(
           bottom: BorderSide(color: Theme.of(context).dividerColor),
         ),
@@ -222,21 +255,59 @@ class _PageHeader extends StatelessWidget {
               fontSize: 20,
             ),
           ),
-          const Spacer(),
-          const _ConnectivityBadge(),
         ],
       ),
     );
   }
 }
 
-/// Chỉ báo trạng thái mạng Offline/Online — khớp `.net-badge` trong
-/// mockup (cả Windows lẫn Mobile đều có, xem
-/// `docs/artifact-design-windows/styles.css` và
-/// `docs/artifact-design/styles.css`). Dùng chung cho [_PageHeader]
-/// (desktop) và `AppBar.actions` (mobile).
-class _ConnectivityBadge extends ConsumerWidget {
-  const _ConnectivityBadge();
+/// Chỉ báo trạng thái mạng Offline/Online dạng chấm màu + nhãn, đặt cuối
+/// nav-rail (khớp thiết kế Google Stitch được duyệt). Mobile dùng
+/// [_ConnectivityAppBarBadge] dạng bo tròn trong `AppBar.actions`.
+class _NavRailConnectivityFooter extends ConsumerWidget {
+  const _NavRailConnectivityFooter();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isOnline = ref.watch(connectivityProvider).value ?? false;
+    final dotColor = isOnline ? AppColors.teal : AppColors.inkSoft;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isOnline ? 'Trực tuyến' : 'Ngoại tuyến',
+              style: TextStyle(
+                color: AppColors.white.withValues(alpha: 0.85),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Chỉ báo trạng thái mạng cho `AppBar.actions` (Mobile) — bo tròn dạng
+/// pill, khớp `.net-badge` trong mockup mobile
+/// (`docs/artifact-design/styles.css`).
+class _ConnectivityAppBarBadge extends ConsumerWidget {
+  const _ConnectivityAppBarBadge();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -268,55 +339,49 @@ class _ConnectivityBadge extends ConsumerWidget {
 }
 
 /// Khối logo/tên app phía trên [NavigationRail] (chỉ Windows/desktop) —
-/// khớp `.nav-rail-brand` trong mockup Windows
-/// (`docs/artifact-design-windows/styles.css`).
+/// logo dạng app-icon lớn, tên + phụ đề bên dưới (khớp thiết kế Google
+/// Stitch được duyệt).
 class _NavRailBrand extends StatelessWidget {
   const _NavRailBrand();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: AppColors.brand,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.anchor,
-                    size: 16, color: AppColors.snap),
+          Image.asset(
+            'assets/images/logo/csb-logo.png',
+            width: 96,
+            height: 96,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      AppConstants.appName,
-                      style: TextStyle(
-                        fontFamily: AppFonts.serif,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        height: 1.25,
-                      ),
-                    ),
-                    Text(
-                      'Cảnh sát biển VN',
-                      style: TextStyle(fontSize: 10.5),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              child: const Icon(Icons.anchor, size: 40, color: AppColors.brand),
+            ),
           ),
-          const SizedBox(height: 18),
-          const Divider(height: 1),
+          const SizedBox(height: 14),
+          const Text(
+            AppConstants.appName,
+            style: TextStyle(
+              fontFamily: AppFonts.serif,
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: AppColors.white,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Cảnh sát biển VN',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.white.withValues(alpha: 0.7),
+            ),
+          ),
         ],
       ),
     );
