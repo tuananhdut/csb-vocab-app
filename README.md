@@ -1,34 +1,37 @@
 # CSB Vocab App — App Học Từ Vựng Tiếng Anh (Cảnh Sát Biển VN)
 
-Ứng dụng học từ vựng + tra cứu + dịch tiếng Anh **offline**, tham khảo chức năng chính của TFlat.
-Xây dựng bằng **Flutter**. Ưu tiên nền tảng: **Windows → Android → iOS**. Lưu dữ liệu bằng **SQLite**.
+Ứng dụng học từ vựng chuyên ngành + tra cứu + dịch tiếng Anh **offline** cho lực lượng Cảnh sát biển
+Việt Nam. Xây dựng bằng **Flutter**. Ưu tiên nền tảng: **Windows → Android → iOS**. Lưu dữ liệu bằng
+**SQLite** (`vocab.db` chỉ đọc + `user.db` đọc/ghi cho tiến độ học).
+
+Đây là project Flutter chuẩn — chạy trực tiếp bằng `flutter run`/`flutter build` từ thư mục gốc này,
+không có lớp thư mục con nào khác.
 
 ## 📁 Cấu trúc thư mục dự án
 
-```
+```text
 csb-vocab-app/
-├── plan/       # 📋 Tài liệu đặc tả (specs) — ĐỌC TRƯỚC. Bắt đầu ở plan/README.md
-├── src/        # 💻 Mã nguồn Flutter (sẽ tạo ở Giai đoạn 0 bằng `flutter create`)
-├── tools/      # 🔧 Script tạo dữ liệu: parse PDF → SQLite (Python/Dart)
-├── assets/     # 🖼️ Tài nguyên nguồn: ảnh splash, logo, file PDF gốc, DB sinh ra
-├── docs/       # 📄 Báo cáo Microsoft Word & tài liệu bàn giao
+├── lib/        # 💻 Mã nguồn Flutter (features, data, domain, core)
+├── android/    # Cấu hình build Android
+├── ios/        # Cấu hình build iOS
+├── windows/    # Cấu hình build Windows
+├── test/       # Unit test
+├── assets/     # 🖼️ Tài nguyên: ảnh, logo, PDF/tài liệu nguồn, vocab.db đã sinh sẵn
+├── docs/       # 📄 Tài liệu thiết kế DB, mockup UI (mobile + Windows), báo cáo bàn giao
+├── pubspec.yaml
 └── README.md   # (file này)
 ```
 
 ## 🚦 Trạng thái hiện tại
 
-- ✅ Đã có bộ **specs** đầy đủ trong `plan/`.
-- ✅ Đã chốt hầu hết yêu cầu (xem `plan/06-cau-hoi-can-chot.md`).
-- ⏳ **Đang chờ khách cung cấp:**
-  1. File PDF gốc (giáo trình từ vựng) → đặt vào `assets/`.
-  2. File PDF định nghĩa chương → đặt vào `assets/`.
-  3. Xác nhận có máy Mac (để build iOS).
-  4. Logo Cảnh sát biển độ phân giải cao (nếu có).
+Đã triển khai xong các tính năng chính: Tra cứu song ngữ (FR-2), Học theo chương (FR-3), Ôn tập theo
+thuật toán lặp lại ngắt quãng SM-2 kèm nhắc nhở (FR-5). Xem chi tiết thiết kế cơ sở dữ liệu tại
+[`docs/03-thiet-ke-co-so-du-lieu.md`](docs/03-thiet-ke-co-so-du-lieu.md) và mockup giao diện tại
+[`docs/artifact-design/`](docs/artifact-design/) (mobile) và [`docs/artifact-design-windows/`](docs/artifact-design-windows/) (Windows desktop).
 
-## ▶️ Bước tiếp theo
+## ▶️ Chạy dự án
 
-1. Nhận 2 file PDF → bỏ vào `assets/`.
-2. Viết script `tools/` parse PDF → `vocab.db`.
-3. `flutter create` project trong `src/` (Giai đoạn 0 — xem `plan/05-lo-trinh-phat-trien.md`).
-
-> Chi tiết công nghệ, kiến trúc, DB, roadmap: xem thư mục **`plan/`**.
+```sh
+flutter pub get
+flutter run -d windows   # hoặc -d chrome / -d <device_id>
+```

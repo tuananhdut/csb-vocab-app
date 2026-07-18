@@ -1,30 +1,48 @@
 # Flutter / Dart
-src/**/.dart_tool/
-src/**/.flutter-plugins
-src/**/.flutter-plugins-dependencies
-src/**/build/
-src/**/.pub-cache/
-src/**/.pub/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+/build/
+/coverage/
+.pub-cache/
+.pub/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+app.*.symbols
+app.*.map.json
 **/*.g.dart
 **/*.freezed.dart
 
 # Native build artifacts
-src/**/android/.gradle/
-src/**/android/local.properties
-src/**/ios/Pods/
-src/**/ios/.symlinks/
-src/**/windows/flutter/ephemeral/
-src/**/macos/Flutter/ephemeral/
+android/.gradle/
+android/local.properties
+/android/app/debug
+/android/app/profile
+/android/app/release
+ios/Pods/
+ios/.symlinks/
+windows/flutter/ephemeral/
+macos/Flutter/ephemeral/
+
+# Misc
+*.class
+*.swp
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
 
 # IDE / OS
 .idea/
 .vscode/
 *.iml
+*.ipr
+*.iws
 .DS_Store
 Thumbs.db
 
 # Data / secrets
-tools/**/__pycache__/
-tools/**/*.pyc
-tools/**/.venv/
 *.log

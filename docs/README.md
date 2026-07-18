@@ -10,5 +10,5 @@ Chứa **báo cáo Microsoft Word** và tài liệu bàn giao cho khách.
 5. Giải thích các chức năng chính.
 6. Hướng dẫn sử dụng và triển khai.
 
-> Viết bằng tiếng Việt. Nội dung có thể tổng hợp lại từ thư mục `../plan/`.
-> Thực hiện ở **Giai đoạn 5** (xem `../plan/05-lo-trinh-phat-trien.md`).
+> Viết bằng tiếng Việt. Nội dung tổng hợp lại từ mã nguồn thực tế (`../lib/`) và các tài liệu
+> thiết kế trong thư mục này (`03-thiet-ke-co-so-du-lieu.md`, `artifact-design/`, `artifact-design-windows/`).

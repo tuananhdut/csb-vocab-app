@@ -16,9 +16,9 @@ Windows là `%APPDATA%\<app>\...`, Android/iOS là sandbox riêng của app.
 
 ## 1. `vocab.db` — dữ liệu từ vựng (read-only)
 
-Sinh một lần từ giáo trình *"Tiếng Anh chuyên ngành Cảnh sát biển"* bằng script
-Python trong `tools/pdf_to_sqlite/` (xem Giai đoạn 1), rồi đóng gói vào
-`assets/db/vocab.db`. Ứng dụng không bao giờ ghi vào file này.
+Sinh một lần từ giáo trình *"Tiếng Anh chuyên ngành Cảnh sát biển"* bằng script Python
+(dùng ở Giai đoạn 1, không còn giữ trong repo), rồi đóng gói vào `assets/db/vocab.db`.
+Ứng dụng không bao giờ ghi vào file này.
 
 ### Bảng `chapters`
 
@@ -157,9 +157,9 @@ function review(card, q):
     card.due_date = today + card.interval (ngày)
 ```
 
-Cài đặt tại [`src/lib/domain/srs/srs_scheduler.dart`](../src/lib/domain/srs/srs_scheduler.dart) —
+Cài đặt tại [`lib/domain/srs/srs_scheduler.dart`](../lib/domain/srs/srs_scheduler.dart) —
 thuần Dart, không phụ thuộc Flutter hay DB nên test được độc lập
-([`src/test/unit/srs_scheduler_test.dart`](../src/test/unit/srs_scheduler_test.dart)).
+([`test/unit/srs_scheduler_test.dart`](../test/unit/srs_scheduler_test.dart)).
 
 **Hàng đợi "ôn hôm nay"** là một truy vấn đơn giản trên `learned_words`:
 

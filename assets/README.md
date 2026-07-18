@@ -1,11 +1,13 @@
 # assets/ — Tài nguyên nguồn
 
-Nơi đặt tài nguyên đầu vào của dự án.
+Nơi đặt tài nguyên đầu vào của dự án, được `pubspec.yaml` đóng gói vào app.
 
-## Sẽ đặt ở đây
-- `pdf/` — ⏳ **2 file PDF từ khách**: (1) giáo trình từ vựng, (2) định nghĩa chương.
-- `db/vocab.db` — cơ sở dữ liệu sinh ra từ PDF (do `../tools/` tạo).
-- `images/coast_guard/` — ảnh splash Cảnh sát biển VN.
-- `logo/` — logo Cảnh sát biển VN.
+## Nội dung hiện có
 
-> 👉 Khi có file PDF, đặt vào `assets/pdf/` để bắt đầu viết script parse.
+- `TA_chuyen_nganh.docx`, `TA_chuyen_nganh_2.pdf`, `Tu_dien.pdf` — tài liệu nguồn gốc dùng để
+  biên soạn từ vựng (giáo trình + từ điển).
+- `csb-logo.png` — logo Cảnh sát biển VN, dùng làm gốc màu cho bảng màu app
+  (xem `../docs/artifact-design/bang-mau-ung-dung.md`).
+- `db/vocab.db` — cơ sở dữ liệu từ vựng đã sinh sẵn (read-only), app đóng gói và copy ra khi
+  chạy lần đầu (xem `../docs/03-thiet-ke-co-so-du-lieu.md`).
+- `images/words/` — ảnh minh hoạ cho từng từ (nếu có).
