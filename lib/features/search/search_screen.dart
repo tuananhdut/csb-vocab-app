@@ -109,65 +109,92 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   /// (`pane-detail`), khớp mockup
   /// `docs/artifact-design-windows/screens/screen-02-tra-cuu.html`.
   Widget _buildTwoPane(AsyncValue<List<VocabWord>> results) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 340,
-          child: Column(
-            children: [
-              _buildSearchField(),
-              Expanded(
-                child: _query.trim().isEmpty
-                    ? const _SearchEmptyCarousel()
-                    : results.when(
-                        loading: () => const Center(
-                            child: CircularProgressIndicator()),
-                        error: (e, _) => Center(child: Text('Lỗi: $e')),
-                        data: (words) {
-                          if (words.isEmpty) {
-                            return Center(
-                              child: Text('Không tìm thấy "$_query"',
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium),
-                            );
-                          }
-                          return ListView.separated(
-                            itemCount: words.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(height: 1),
-                            itemBuilder: (_, i) {
-                              final word = words[i];
-                              return WordTile(
-                                word: word,
-                                showChapter: true,
-                                selected: _selected?.id == word.id,
-                                onTap: () =>
-                                    setState(() => _selected = word),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 356,
+            child: _Card(
+              child: Column(
+                children: [
+                  _buildSearchField(),
+                  Expanded(
+                    child: _query.trim().isEmpty
+                        ? const _SearchEmptyCarousel()
+                        : results.when(
+                            loading: () => const Center(
+                                child: CircularProgressIndicator()),
+                            error: (e, _) => Center(child: Text('Lỗi: $e')),
+                            data: (words) {
+                              if (words.isEmpty) {
+                                return Center(
+                                  child: Text('Không tìm thấy "$_query"',
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium),
+                                );
+                              }
+                              return ListView.separated(
+                                itemCount: words.length,
+                                separatorBuilder: (_, _) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (_, i) {
+                                  final word = words[i];
+                                  return WordTile(
+                                    word: word,
+                                    showChapter: true,
+                                    selected: _selected?.id == word.id,
+                                    onTap: () =>
+                                        setState(() => _selected = word),
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-        const VerticalDivider(width: 1),
-        Expanded(
-          child: ColoredBox(
-            color: AppColors.pageBg,
-            child: _selected == null
-                ? const _PaneDetailEmpty()
-                : WordDetailContent(
-                    key: ValueKey(_selected!.id),
-                    word: _selected!,
-                    padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+                          ),
                   ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: _Card(
+              child: _selected == null
+                  ? const _PaneDetailEmpty()
+                  : WordDetailContent(
+                      key: ValueKey(_selected!.id),
+                      word: _selected!,
+                      padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Card trắng bo góc dùng chung cho cột trái/phải của layout 2 cột
+/// (khớp yêu cầu "bọc trong 2 card nền trắng" thay vì dùng đường kẻ dọc
+/// phân cách như thiết kế trước).
+class _Card extends StatelessWidget {
+  const _Card({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
     );
   }
 }

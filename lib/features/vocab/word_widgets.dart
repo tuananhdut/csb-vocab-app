@@ -39,8 +39,9 @@ class PosTag extends StatelessWidget {
 ///
 /// [onTap] mặc định mở [WordDetailSheet] (bottom sheet) — truyền tuỳ chỉnh
 /// để đổi hành vi (vd: chọn dòng hiển thị inline trên layout desktop 2 cột).
-/// [selected] tô nền khác khi dòng đang được chọn (khớp `.word-row.selected`
-/// trong mockup Windows).
+/// [selected] tô viền trái + nền nhạt khi dòng đang được chọn (khớp
+/// `.word-row.selected` trong mockup Windows) — chỉ có ý nghĩa ở layout
+/// desktop 2 cột, mobile (mở bottom sheet) không truyền.
 class WordTile extends StatelessWidget {
   const WordTile({
     super.key,
@@ -59,72 +60,55 @@ class WordTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     const ipaColor = AppColors.brand;
-    final bg = selected
-        ? AppColors.brand.withValues(alpha: 0.08)
-        : Colors.transparent;
 
-    return InkWell(
-      onTap: onTap ?? () => showWordDetail(context, word),
-      hoverColor: AppColors.pageBg,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-        decoration: BoxDecoration(
-          color: bg,
-          border: selected
-              ? Border(
-                  left: BorderSide(color: AppColors.brand, width: 3),
-                )
-              : null,
-          borderRadius: BorderRadius.circular(6),
+    return Container(
+      decoration: BoxDecoration(
+        color: selected ? AppColors.brand.withValues(alpha: 0.06) : null,
+        border: Border(
+          left: BorderSide(
+            color: selected ? AppColors.brand : Colors.transparent,
+            width: 3,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 3,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.brand
-                        : scheme.outline.withValues(alpha: 0.4),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Flexible(
-                  child: Text(
-                    word.word,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15.5,
-                    ),
-                  ),
-                ),
-                if (word.phonetic.isNotEmpty) ...[
-                  const SizedBox(width: 8),
+      ),
+      child: InkWell(
+        onTap: onTap ?? () => showWordDetail(context, word),
+        hoverColor: AppColors.pageBg,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 3,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
                   Flexible(
                     child: Text(
-                      word.phonetic,
-                      style: TextStyle(
-                        fontFamily: AppFonts.mono,
-                        color: ipaColor,
-                        fontSize: 12,
+                      word.word,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15.5,
                       ),
                     ),
                   ),
+                  if (word.phonetic.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        word.phonetic,
+                        style: TextStyle(
+                          fontFamily: AppFonts.mono,
+                          color: ipaColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 14),
-              child: Row(
+              ),
+              Row(
                 children: [
                   if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
                   Expanded(
@@ -137,12 +121,13 @@ class WordTile extends StatelessWidget {
                   if (showChapter && word.chapterTitle.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 90),
+                      constraints: const BoxConstraints(maxWidth: 96),
                       child: Text(
                         word.chapterTitle,
                         textAlign: TextAlign.right,
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
+                        softWrap: false,
                         style: TextStyle(
                           fontSize: 10.5,
                           color: scheme.outline.withValues(alpha: 0.7),
@@ -152,8 +137,8 @@ class WordTile extends StatelessWidget {
                   ],
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

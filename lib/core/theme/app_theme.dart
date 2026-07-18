@@ -140,6 +140,19 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: AppColors.brand),
       ),
+      scrollbarTheme: ScrollbarThemeData(
+        thickness: WidgetStateProperty.all(5),
+        radius: const Radius.circular(8),
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.dragged) ||
+              states.contains(WidgetState.hovered)) {
+            return AppColors.inkSoft.withValues(alpha: 0.5);
+          }
+          return AppColors.inkSoft.withValues(alpha: 0.25);
+        }),
+        trackColor: WidgetStateProperty.all(Colors.transparent),
+        trackBorderColor: WidgetStateProperty.all(Colors.transparent),
+      ),
       snackBarTheme: const SnackBarThemeData(
         backgroundColor: AppColors.brandDeep,
         contentTextStyle: TextStyle(color: AppColors.white),
