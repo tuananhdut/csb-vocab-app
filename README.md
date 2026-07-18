@@ -25,8 +25,8 @@ csb-vocab-app/
 ## 🚦 Trạng thái hiện tại
 
 Đã triển khai xong các tính năng chính: Tra cứu song ngữ (FR-2), Học theo chương (FR-3), Ôn tập theo
-thuật toán lặp lại ngắt quãng SM-2 kèm nhắc nhở (FR-5). Xem chi tiết thiết kế cơ sở dữ liệu tại
-[`docs/03-thiet-ke-co-so-du-lieu.md`](docs/03-thiet-ke-co-so-du-lieu.md) và mockup giao diện tại
+thuật toán lặp lại ngắt quãng SM-2 kèm nhắc nhở (FR-5). Xem phân tích chi tiết từng màn hình tại
+[`docs/csb-vocab-analysis/`](docs/csb-vocab-analysis/) và mockup giao diện tại
 [`docs/artifact-design/`](docs/artifact-design/) (mobile) và [`docs/artifact-design-windows/`](docs/artifact-design-windows/) (Windows desktop).
 
 ## ▶️ Chạy dự án
