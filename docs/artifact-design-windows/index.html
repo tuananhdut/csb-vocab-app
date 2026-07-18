@@ -33,7 +33,8 @@
 <div class="masthead">
   <div class="eyebrow">CSB VOCAB · Mockup Windows · v0.1</div>
   <h1 class="title">Học từ vựng chuyên ngành<br>Cảnh sát biển Việt Nam — bản Windows</h1>
-  <p>Bộ mockup cho phiên bản desktop (Windows), song song với bộ mobile trong <code>docs/artifact-design/</code>. Cùng bảng màu, cùng nội dung 13 màn hình — chỉ đổi khung ngoài: <strong>NavigationRail</strong> cố định bên trái thay bottom nav, layout <strong>2 cột (master/detail)</strong> thay bottom sheet cho các màn danh sách + chi tiết, và <strong>dialog modal căn giữa</strong> thay bottom sheet trượt lên cho các hộp thoại phụ. Đúng theo <code>home_shell.dart</code>: cửa sổ rộng ≥700px chuyển từ bottom nav sang rail.</p>
+  <p>Bộ mockup cho phiên bản desktop (Windows), song song với bộ mobile trong <code>docs/artifact-design/</code>. Cùng bảng màu, cùng nội dung màn hình — chỉ đổi khung ngoài: <strong>NavigationRail</strong> cố định bên trái thay bottom nav, layout <strong>2 cột (master/detail)</strong> thay bottom sheet cho các màn danh sách + chi tiết, và <strong>dialog modal căn giữa</strong> thay bottom sheet trượt lên cho các hộp thoại phụ. Đúng theo <code>home_shell.dart</code>: cửa sổ rộng ≥700px chuyển từ bottom nav sang rail.</p>
+  <p style="margin-top:-4px;"><strong>⚠️ Định hướng mới — chưa code (2026-07-18):</strong> tab Tra cứu (02/02b/02c) thêm trạng thái Online và slide ảnh CSB khi chưa tìm kiếm. Tab Học (03/03b/03c) đổi từ "danh sách chương → danh sách từ" sang "Section → Chapter (bài học dạng bài báo)" — duyệt từ theo bộ mặc định (giáo trình) đã chuyển sang tab Từ điển của tôi (07). Đồng bộ với bộ mobile, xem <code>docs/csb-vocab-analysis/00_Overview.md</code> và <code>docs/spec_history.md</code>.</p>
   <div class="legend">
     <span><i class="swatch" style="background:#0A2340"></i>Navy — nền/điều hướng</span>
     <span><i class="swatch" style="background:#C99A3E"></i>Brass — điểm nhấn, huy hiệu</span>
@@ -57,23 +58,47 @@
         <span class="frame-no">02</span>
         <span class="frame-name">Tra cứu</span>
       </div>
-      <p class="index-card-desc">Bố cục 2 cột tận dụng chiều ngang desktop: danh sách kết quả bên trái, chi tiết từ hiển thị ngay bên phải — không cần bottom sheet như mobile. Click 1 dòng để xem chi tiết mà không rời trang.</p>
+      <p class="index-card-desc">Bố cục 2 cột tận dụng chiều ngang desktop: danh sách kết quả bên trái, chi tiết từ hiển thị ngay bên phải. Trạng thái Offline: chỉ CSDL đóng gói sẵn (xem 02b cho Online). ⚠️ Định hướng mới — chưa code.</p>
     </a>
 
-    <a class="index-card" href="screens/screen-03-hoc-danh-sach-chuong.html">
+    <a class="index-card" href="screens/screen-02b-tra-cuu-online.html">
+      <div class="index-card-head">
+        <span class="frame-no">02b</span>
+        <span class="frame-name">Tra cứu — trạng thái Online</span>
+      </div>
+      <p class="index-card-desc">Khi có mạng, bổ sung thêm kết quả từ từ điển ngoài cho từ không có trong CSDL local, đánh dấu nhãn "Online". ⚠️ Định hướng mới — chưa code, nhà cung cấp API chưa chốt.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-02c-tra-cuu-trong.html">
+      <div class="index-card-head">
+        <span class="frame-no">02c</span>
+        <span class="frame-name">Tra cứu — chưa tìm kiếm</span>
+      </div>
+      <p class="index-card-desc">Trạng thái mặc định khi vừa vào màn, chưa gõ gì — slide ảnh Cảnh sát biển Việt Nam tự động lướt qua lại, chiếm toàn bộ vùng nội dung. ⚠️ Định hướng mới — chưa code.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-03-hoc-danh-sach-section.html">
       <div class="index-card-head">
         <span class="frame-no">03</span>
-        <span class="frame-name">Học — Danh sách chương</span>
+        <span class="frame-name">Học — Danh sách Section</span>
       </div>
-      <p class="index-card-desc">Danh sách 6 chương bên trái, chọn 1 chương hiển thị placeholder gợi ý bên phải (chi tiết từ A-Z xem ở 03b khi đã chọn chương).</p>
+      <p class="index-card-desc">Danh sách Section bên trái, mỗi Section chứa nhiều Chapter (bài học dạng bài báo — xem 03b/03c). Duyệt từ theo bộ mặc định nay ở tab "Từ điển của tôi" (07). ⚠️ Định hướng mới — chưa code.</p>
     </a>
 
-    <a class="index-card" href="screens/screen-03b-hoc-danh-sach-tu-a-z.html">
+    <a class="index-card" href="screens/screen-03b-hoc-danh-sach-chapter.html">
       <div class="index-card-head">
         <span class="frame-no">03b</span>
-        <span class="frame-name">Học — Danh sách từ (A-Z)</span>
+        <span class="frame-name">Học — Danh sách Chapter</span>
       </div>
-      <p class="index-card-desc">Sau khi chọn chương "Hàng hải" ở màn 03, cột phải hiển thị toàn bộ từ của chương sắp theo A-Z, tái dùng đúng .word-row của màn Tra cứu.</p>
+      <p class="index-card-desc">Sau khi chọn Section "Hàng hải" ở màn 03, cột trái hiển thị danh sách Chapter (bài học) của Section đó — mỗi Chapter là 1 bài đọc, không phải danh sách từ.</p>
+    </a>
+
+    <a class="index-card" href="screens/screen-03c-hoc-noi-dung-bai.html">
+      <div class="index-card-head">
+        <span class="frame-no">03c</span>
+        <span class="frame-name">Học — Nội dung bài</span>
+      </div>
+      <p class="index-card-desc">Chọn 1 Chapter ở màn 03b mở bài đọc dạng bài báo ở cột phải — từ vựng gạch chân trong đoạn văn, bấm vào mở cùng chi tiết từ với màn Tra cứu (04).</p>
     </a>
 
     <a class="index-card" href="screens/screen-04-chi-tiet-tu.html">
@@ -105,7 +130,7 @@
         <span class="frame-no">07</span>
         <span class="frame-name">Từ điển của tôi</span>
       </div>
-      <p class="index-card-desc">Desktop hiển thị các bộ dạng lưới (grid) tận dụng chiều ngang thay vì danh sách dọc như mobile. Bộ "Giáo trình" mặc định (viền nét đứt) đứng đầu, thẻ "Tạo bộ mới" luôn ở cuối lưới thay cho FAB nổi.</p>
+      <p class="index-card-desc">Desktop hiển thị các bộ dạng lưới (grid) tận dụng chiều ngang thay vì danh sách dọc như mobile. Bộ "Giáo trình" mặc định (viền nét đứt) đứng đầu; duyệt từ theo bộ mặc định cũng thực hiện tại đây. Thẻ "Tạo bộ mới" luôn ở cuối lưới thay cho FAB nổi.</p>
     </a>
 
     <a class="index-card" href="screens/screen-07b-tu-them-tu-moi.html">

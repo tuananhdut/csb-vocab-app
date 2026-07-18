@@ -4,6 +4,331 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-010] 2026-07-18 — Cập nhật mockup Windows (docs/artifact-design-windows/) theo định hướng mới
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Áp cùng thay đổi đã làm cho mockup mobile ([IMPL-008]/[IMPL-009]) vào bản
+Windows desktop (`docs/artifact-design-windows/`), giữ đúng ngôn ngữ layout
+riêng của bản này (`nav-rail`, `page-header`, layout 2 cột
+`pane-list`/`pane-detail` thay bottom nav/bottom sheet của mobile).
+
+1. **Trạng thái Offline/Online** — thêm `.net-badge` vào `page-header` của
+   `screen-02-tra-cuu.html` (Offline). Tạo `screen-02b-tra-cuu-online.html`:
+   badge Online, `.net-note`, kết quả gắn `.source-tag` "Online" ở cả
+   `pane-list` và `pane-detail`.
+2. **Trạng thái chưa tìm kiếm — slide ảnh CSB** — tạo
+   `screen-02c-tra-cuu-trong.html`: slide 3 ảnh (tái dùng từ
+   `docs/artifact-design/assets/images/`, copy sang
+   `docs/artifact-design-windows/assets/images/`) chiếm toàn bộ
+   `page-content` (khác mobile — không có `pane-list`/`pane-detail` khi ở
+   trạng thái này), autoplay bằng cùng đoạn `<script>` minh hoạ.
+3. **Section → Chapter dạng bài báo** — thay `screen-03-hoc-danh-sach-
+   chuong.html` bằng `screen-03-hoc-danh-sach-section.html` (danh sách
+   Section trong `pane-list`, gợi ý trong `pane-detail-empty`); thay
+   `screen-03b-hoc-danh-sach-tu-a-z.html` bằng `screen-03b-hoc-danh-sach-
+   chapter.html` (danh sách Chapter dùng `.lesson-list` mới trong
+   `pane-list`); thêm `screen-03c-hoc-noi-dung-bai.html` — khác biệt so với
+   mobile: giữ layout 2 cột, `pane-list` bên trái vẫn hiện danh sách Chapter
+   để chuyển bài nhanh, `pane-detail` bên phải là nội dung bài
+   (`.article-*`). Xoá 2 file cũ.
+4. **`screen-07-tu-dien-cua-toi.html`** — đổi "Giáo trình (6 chương)" →
+   "Giáo trình (mặc định)", bổ sung câu giải thích duyệt theo bộ mặc định
+   nay cũng ở đây.
+5. **`index.html`** — cập nhật/thêm thẻ 02/02b/02c/03/03b/03c/07, thêm đoạn
+   banner "Định hướng mới — chưa code" vào masthead.
+6. **`styles.css`** — thêm class mới tương ứng bản mobile nhưng theo kích
+   thước/khoảng cách desktop: `.net-badge`, `.net-note`, `.source-tag`,
+   `.search-empty` (+ `.slide`/`.slide-caption`/`.dots`), `.lesson-list`/
+   `.lesson-row`, `.article-wrap`/`.article-title`/`.article-body`/
+   `.vocab-hl`. Không sửa class cũ đang dùng ở màn khác.
+
+Toàn bộ màn mới/sửa đều ghi banner "⚠️ Định hướng mới — chưa code" trong
+`frame-desc`, nhất quán với bản mobile.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/artifact-design-windows/screens/screen-02-tra-cuu.html` | Thêm badge Offline, sửa link điều hướng |
+| `docs/artifact-design-windows/screens/screen-02b-tra-cuu-online.html` | **Mới** — trạng thái Online |
+| `docs/artifact-design-windows/screens/screen-02c-tra-cuu-trong.html` | **Mới** — trạng thái chưa tìm kiếm, slide ảnh CSB |
+| `docs/artifact-design-windows/screens/screen-03-hoc-danh-sach-section.html` | **Mới** — thay `screen-03-hoc-danh-sach-chuong.html` (đã xoá) |
+| `docs/artifact-design-windows/screens/screen-03b-hoc-danh-sach-chapter.html` | **Mới** — thay `screen-03b-hoc-danh-sach-tu-a-z.html` (đã xoá) |
+| `docs/artifact-design-windows/screens/screen-03c-hoc-noi-dung-bai.html` | **Mới** — bài đọc dạng article, layout 2 cột |
+| `docs/artifact-design-windows/screens/screen-01-splash.html` | Sửa link cuối trang trỏ sang 02c |
+| `docs/artifact-design-windows/screens/screen-04-chi-tiet-tu.html` | Sửa link điều hướng trỏ về 03c |
+| `docs/artifact-design-windows/screens/screen-07-tu-dien-cua-toi.html` | Bỏ nhắc "6 chương" cứng |
+| `docs/artifact-design-windows/index.html` | Cập nhật/thêm thẻ màn hình, banner định hướng mới |
+| `docs/artifact-design-windows/styles.css` | Thêm class mới cho badge mạng, danh sách bài học, bài đọc article |
+| `docs/artifact-design-windows/assets/images/csb-slide-01/02/03.jpg` | **Mới** — copy từ `docs/artifact-design/assets/images/` |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — cùng các điểm mở đã ghi ở [IMPL-005]/[IMPL-009].
+Bộ mobile và Windows nay đồng bộ hoàn toàn về nội dung định hướng mới, chỉ
+khác khung layout theo đúng quy ước đã có của từng bộ.
+
+---
+
+## [IMPL-009] 2026-07-18 — Thêm trạng thái "chưa tìm kiếm" cho màn Tra cứu (slide ảnh CSB)
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Bổ sung 1 trạng thái nữa cho màn Tra cứu (SCR-02, mockup) — khi vừa vào màn,
+chưa gõ gì, hiện slide ảnh Cảnh sát biển Việt Nam tự động lướt qua lại
+(autoplay carousel), có dots chỉ báo cùng ngôn ngữ thị giác với màn Splash
+(01). Trước đây trạng thái rỗng chỉ có gợi ý dạng chữ đơn giản (`_Hint`,
+theo mô tả trong `02_Search.md` mục code thật) — mockup nay minh hoạ thêm
+phương án trực quan hơn.
+
+Nguồn ảnh: 3 ảnh do user cung cấp từ
+`C:\Users\anhnt\Desktop\csb\ẢNH LÀM PHẦN MỀM\slide\` — 2 ảnh diễu binh đội
+danh dự Cảnh sát biển và 1 ảnh trụ sở Bộ Tư lệnh Cảnh sát biển Việt Nam.
+Copy vào `docs/artifact-design/assets/images/` (đặt tên lại
+`csb-slide-01/02/03.jpg`, kể cả file gốc `.jfif` cũng đổi đuôi `.jpg` vì
+cùng là dữ liệu JPEG) để mockup tự chứa, không phụ thuộc đường dẫn ngoài
+repo.
+
+Tạo màn mới `screen-02c-tra-cuu-trong.html`, chèn vào **trước** 02 trong
+luồng điều hướng (01 Splash → 02c chưa tìm kiếm → 02 có kết quả → 02b
+online). CSS carousel (`.search-empty`, `.slide`, `.dots` dùng lại) thêm vào
+`styles.css`, có đoạn `<script>` nhỏ chỉ để minh hoạ hiệu ứng autoplay trong
+mockup tĩnh — không phải code thật, không đại diện cho cách Flutter sẽ cài
+đặt animation này.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/artifact-design/screens/screen-02c-tra-cuu-trong.html` | **Mới** — trạng thái chưa tìm kiếm, slide ảnh CSB autoplay |
+| `docs/artifact-design/screens/screen-02-tra-cuu.html` | Sửa link điều hướng, cập nhật mô tả nhắc tới 02c |
+| `docs/artifact-design/screens/screen-01-splash.html` | Sửa link cuối trang trỏ sang 02c thay vì 02 |
+| `docs/artifact-design/index.html` | Thêm thẻ 02c |
+| `docs/artifact-design/styles.css` | Thêm `.search-empty`, `.slide`, `.slide-caption`, dùng lại `.dots` |
+| `docs/artifact-design/assets/images/csb-slide-01/02/03.jpg` | **Mới** — 3 ảnh CSB do user cung cấp |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới. Lưu ý: ảnh dùng ở đây (diễu binh đội danh dự,
+trụ sở Bộ Tư lệnh) khác nội dung với `assets/csb-logo.png` đang dùng cho
+theme màu app — chưa xác nhận ảnh này có được dùng chính thức trong app thật
+(bản quyền/nguồn ảnh) hay chỉ minh hoạ ý tưởng bố cục cho mockup.
+
+---
+
+## [IMPL-008] 2026-07-18 — Cập nhật mockup mobile (docs/artifact-design/) theo định hướng mới
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Lan tỏa định hướng mới ([IMPL-005]/[IMPL-006]) vào mockup HTML tĩnh mobile
+(`docs/artifact-design/`) — Windows (`docs/artifact-design-windows/`) chưa
+làm, để ở bước riêng theo yêu cầu.
+
+1. **Trạng thái Offline/Online ở màn Tra cứu** — thêm chỉ báo mạng
+   (`.net-badge`) trên appbar của `screen-02-tra-cuu.html` (Offline).
+   Tạo mới `screen-02b-tra-cuu-online.html`: badge Online, banner giải
+   thích, và 2 kết quả mẫu gắn nhãn nguồn "Online" (`.source-tag`) cho từ
+   không có trong CSDL local.
+2. **Section → Chapter dạng bài báo** — thay hoàn toàn luồng "danh sách
+   chương → danh sách từ A-Z" cũ bằng 3 màn mới: `screen-03-hoc-danh-sach-
+   section.html` (danh sách Section, tái dùng `.chapter-list`), `screen-03b-
+   hoc-danh-sach-chapter.html` (danh sách Chapter/bài học trong 1 Section,
+   layout mới `.lesson-list`/`.lesson-row`), `screen-03c-hoc-noi-dung-
+   bai.html` (bài đọc dạng article — `.article-*`, từ vựng highlight lồng
+   trong đoạn văn bằng `.vocab-hl`, bấm vào mở chung `WordDetailSheet` với
+   màn 04). **Xoá** 2 file cũ `screen-03-hoc-danh-sach-chuong.html` và
+   `screen-03b-danh-sach-tu-a-z.html` (đã hỏi ý kiến — không giữ song song
+   để tránh 2 mô hình mâu thuẫn cùng tồn tại trong mockup).
+3. **Duyệt theo bộ từ điển mặc định chuyển hẳn sang tab "Từ điển của tôi"**
+   (quyết định của user) — tab "Học" từ nay chỉ còn Section/Chapter dạng bài
+   báo, không có đường vào khác để browse từ theo bộ mặc định. Cập nhật
+   `screen-07-tu-dien-cua-toi.html`: bỏ nhắc cứng "6 chương", đổi tên thẻ
+   "Giáo trình (6 chương)" → "Giáo trình (mặc định)", làm rõ quan hệ N-N.
+4. **`index.html`** — cập nhật thẻ 02/03/07, thêm thẻ 02b/03c, thêm đoạn
+   banner "Định hướng mới — chưa code" vào masthead.
+5. **`styles.css`** — thêm class mới: `.net-badge`, `.net-note`,
+   `.source-tag` (trạng thái mạng); `.lesson-list`/`.lesson-row` (danh sách
+   Chapter); `.article-wrap`/`.article-title`/`.article-body`/`.vocab-hl`
+   (bài đọc dạng article). Không sửa class cũ đang dùng ở màn khác.
+
+Toàn bộ màn mới/sửa đều ghi rõ banner "⚠️ Định hướng mới — chưa code" trong
+`frame-desc`, trỏ về `docs/csb-vocab-analysis/00_Overview.md` và
+`docs/spec_history.md` — nhất quán với cách đã làm ở [IMPL-006] cho tài liệu
+phân tích.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/artifact-design/screens/screen-02-tra-cuu.html` | Thêm badge Offline, sửa link điều hướng cuối trang |
+| `docs/artifact-design/screens/screen-02b-tra-cuu-online.html` | **Mới** — trạng thái Online |
+| `docs/artifact-design/screens/screen-03-hoc-danh-sach-section.html` | **Mới** — thay `screen-03-hoc-danh-sach-chuong.html` (đã xoá) |
+| `docs/artifact-design/screens/screen-03b-hoc-danh-sach-chapter.html` | **Mới** — thay `screen-03b-danh-sach-tu-a-z.html` (đã xoá) |
+| `docs/artifact-design/screens/screen-03c-hoc-noi-dung-bai.html` | **Mới** — bài đọc dạng article |
+| `docs/artifact-design/screens/screen-04-chi-tiet-tu.html` | Sửa link điều hướng trỏ về 03c thay vì 03b cũ |
+| `docs/artifact-design/screens/screen-07-tu-dien-cua-toi.html` | Bỏ nhắc "6 chương" cứng, đổi tên thẻ bộ mặc định |
+| `docs/artifact-design/index.html` | Cập nhật/thêm thẻ màn hình, thêm banner định hướng mới |
+| `docs/artifact-design/styles.css` | Thêm class mới cho badge mạng, danh sách bài học, bài đọc article |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — mockup minh hoạ trực quan cho Q-CSB-04..07 đã
+ghi ở [IMPL-005], chưa tự ý chốt các điểm đó (ví dụ: API cụ thể, có lưu từ
+tra online hay không, cách trích xuất `.docx`). `docs/artifact-design-
+windows/` (bản Windows) **chưa cập nhật** — làm ở bước sau theo yêu cầu.
+
+---
+
+## [IMPL-007] 2026-07-18 — Chốt dùng Drift thay cho sqlite3 raw cho schema mới
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Trao đổi về việc truy vấn SQLite sẽ phức tạp hơn khi thêm bộ từ điển N-N,
+Section/Chapter, và các truy vấn ôn tập mở rộng trong tương lai — có nên gọi
+`sqlite3` trực tiếp hay qua một lớp nữa, và có cần ORM không.
+
+**Đã chốt:** chuyển sang **Drift** (type-safe query builder + code gen cho
+SQLite trên Flutter, dùng `build_runner`) thay cho gọi `sqlite3` package
+trực tiếp như hiện tại (`lib/data/local/vocab_database.dart`,
+`user_database.dart`). Áp dụng **ngay từ bước thiết kế schema mới** (bảng
+N-N `word_dictionaries`, Section/Chapter), không chờ đổi sau — chấp nhận chi
+phí viết lại data layer hiện tại một lần thay vì đổi 2 lần (raw → raw mới →
+Drift). Việc dùng Repository pattern làm lớp trung gian (đã có sẵn qua
+`VocabRepository`) vẫn giữ nguyên — Drift không thay thế Repository, mà thay
+thế cách Repository nói chuyện với SQLite bên trong.
+
+Lý do chính: schema dự kiến đổi nhiều lần trong thời gian ngắn (N-N bộ từ
+điển, Section/Chapter dạng bài báo, có thể thêm bảng ôn tập mở rộng sau) —
+Drift cho type-safe query + migration kiểm tra được lúc compile, giảm rủi ro
+lỗi runtime khi cột/bảng đổi so với viết SQL string tay.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/00_Overview.md` | Thêm ghi chú Drift vào mục Dữ liệu (Kiến trúc kỹ thuật); thêm dòng D3 vào bảng "Quyết định đã chốt" |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới. Việc thiết kế schema Drift cụ thể (bảng, cột,
+migration) sẽ làm ở bước implement sau, sau khi Q-CSB-04..07 ([IMPL-005])
+được trả lời.
+
+---
+
+## [IMPL-006] 2026-07-18 — Lan tỏa định hướng mới vào 02_Search.md, 03_Lessons-by-chapter.md, bảng truy vết
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Tiếp nối [IMPL-005] (chốt định hướng mới ở `00_Overview.md`), cập nhật các
+tài liệu phân tích màn hình còn lại theo cùng định hướng — tra cứu 2 trạng
+thái Offline/Online, bộ từ điển N-N (mặc định + cá nhân), Section chứa nhiều
+Chapter hiển thị dạng bài báo. Nguyên tắc áp dụng: **giữ nguyên nội dung mô
+tả code thật hiện có**, chỉ gắn nhãn `[ĐÃ CODE]` rõ ràng, và thêm phần mới
+riêng biệt mô tả định hướng `[CHƯA CODE]` — không xoá hay viết đè thông tin
+về hành vi thật đang chạy.
+
+1. **`02_Search.md`** — tách "Hành vi"/"Truy vấn dữ liệu"/"Phụ thuộc" hiện
+   có thành "...— Chế độ Offline [ĐÃ CODE]"; thêm mục mới "Chế độ Online —
+   định hướng mới [CHƯA CODE]" mô tả cơ chế phát hiện mạng, hành vi gọi
+   thêm API ngoài, câu hỏi về lưu từ mới tra được, và ảnh hưởng tới
+   `searchProvider`/`VocabRepository`.
+2. **`03_Lessons-by-chapter.md`** — đây là thay đổi mô hình lớn nhất: khái
+   niệm "chương" (nhóm từ, 1-N) sẽ trở thành "bộ từ điển mặc định"; "Chapter"
+   được định nghĩa lại thành 1 bài học dạng bài báo, nằm trong "Section" (cấp
+   mới). Thêm mục "Mô hình mới: Section / Chapter dạng bài báo [CHƯA CODE]"
+   với bảng đối chiếu ý nghĩa cũ/mới, hành vi điều hướng dự kiến (tối thiểu
+   3 cấp: Section → Chapter → nội dung bài), và ảnh hưởng tầng dữ liệu
+   (`chapter_words`, quy trình từ `.docx`). Ghi rõ đây **không phải chỉnh
+   sửa nhỏ** — màn hình sẽ cần viết lại gần như hoàn toàn khi mô hình mới
+   được code.
+3. **`90_Traceability-matrix.md`** — thêm banner nói rõ bảng phản ánh code
+   thật (mô hình cũ); thêm 2 dòng vào bảng "Truy vết mockup ↔ code" cho 2
+   khoảng cách mới (tra cứu online, Section/Chapter dạng bài báo).
+4. **`README.md`** — nâng phiên bản lên 1.2, thêm banner định hướng mới ở
+   đầu trỏ tới `00_Overview.md`, cập nhật dòng lịch sử.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/02_Search.md` | Gắn nhãn `[ĐÃ CODE]` cho hành vi hiện tại; thêm mục "Chế độ Online — định hướng mới [CHƯA CODE]" |
+| `docs/csb-vocab-analysis/03_Lessons-by-chapter.md` | Gắn nhãn `[ĐÃ CODE]` cho mô hình cũ; thêm mục "Mô hình mới: Section / Chapter dạng bài báo [CHƯA CODE]" |
+| `docs/csb-vocab-analysis/90_Traceability-matrix.md` | Thêm banner cảnh báo phạm vi; thêm 2 dòng khoảng cách mockup↔code mới |
+| `docs/csb-vocab-analysis/README.md` | Nâng phiên bản 1.2, thêm banner định hướng mới, cập nhật lịch sử |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mở mới — vẫn dùng Q-CSB-04..07 đã ghi ở [IMPL-005].
+Xem thêm ghi chú trong `03_Lessons-by-chapter.md` mục "Hành vi dự kiến": vị
+trí chính xác của "duyệt theo bộ từ điển mặc định" trong điều hướng chính
+(tab nào) chưa chốt, cần rà soát cùng `07_Home-shell.md` và mockup "Từ điển
+của tôi" khi bước sang cập nhật `docs/artifact-design/`.
+
+---
+
+## [IMPL-005] 2026-07-18 — Định hướng mới: tra cứu online/offline, bộ từ điển N-N, Section/Chapter dạng bài báo
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+User đưa ra định hướng mở rộng đáng kể so với code thật hiện tại (chưa
+triển khai, mới cập nhật tài liệu phân tích):
+
+1. **Tra cứu 2 trạng thái** — Offline: chỉ `vocab.db` local (giữ nguyên hành
+   vi hiện tại). Online: `vocab.db` local **+** gọi thêm API từ điển ngoài
+   cho từ không có sẵn. Ràng buộc "Offline hoàn toàn" đổi thành
+   "Offline-first, online tùy chọn" — toàn bộ tính năng cốt lõi vẫn phải
+   chạy được không cần mạng.
+2. **Bộ từ điển (dictionary), quan hệ N-N với từ** — khái niệm "chương" hiện
+   tại (bảng `chapters`, 6 chương cố định, quan hệ 1-N với từ qua
+   `chapter_id`) được diễn giải lại thành **1 bộ từ điển mặc định**. Một từ
+   có thể thuộc **nhiều** bộ từ điển cùng lúc (cần bảng trung gian N-N thay
+   cột `chapter_id` đơn). 2 loại: mặc định (đóng gói sẵn, read-only) và cá
+   nhân (user tự tạo **nhiều** bộ, tự thêm/bỏ từ — giống playlist, xác nhận
+   lại hướng đã có ở mockup cũ Q-CSB-02).
+3. **Section → Chapter, Chapter là bài học dạng bài báo** — Section là cấp
+   mới, đứng trên Chapter (1 Section nhiều Chapter). Chapter được định nghĩa
+   lại: không còn là nhóm từ vựng (vai trò đó nay thuộc "bộ từ điển mặc
+   định" ở mục 2) mà là **1 bài học hiển thị dạng bài báo/bài đọc chuyên
+   ngành**, từ vựng lồng trong nội dung bài thay vì liệt kê trần. Nguồn nội
+   dung hiện là file Word (`.docx`).
+
+Đây là **thay đổi mô hình dữ liệu + kiến trúc lớn**, ảnh hưởng dây chuyền
+tới `vocab.db` schema, `VocabRepository`, các provider, và toàn bộ UI của
+SCR-02 (Tra cứu) và SCR-03 (Học theo chương). Bước này **chỉ cập nhật
+`00_Overview.md`** để chốt khung khái niệm chung; các file `01`–`07` và
+`docs/artifact-design/` sẽ cập nhật ở bước kế tiếp theo yêu cầu của user.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/00_Overview.md` | Thêm banner định hướng mới ở đầu file; thêm mục "Mô hình dữ liệu — định hướng mới" (trạng thái online/offline, bộ từ điển N-N, Section/Chapter); cập nhật Ràng buộc, Glossary, Câu hỏi mở |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| Q-CSB-04 | API từ điển ngoài dùng khi online là nhà cung cấp nào cụ thể (Oxford, Free Dictionary API, Google...)? Ảnh hưởng chi phí, giới hạn rate, và cách xử lý lỗi mạng chập chờn. |
+| Q-CSB-05 | Từ tra được qua API ngoài khi online có được lưu lại vào DB local để dùng khi offline không? Nếu có, lưu vào bộ từ điển nào (mặc định hay tự tạo 1 bộ "đã tra online" riêng)? |
+| Q-CSB-06 | Cơ chế phát hiện trạng thái online/offline dùng gói nào (`connectivity_plus`?) và có xử lý trường hợp "có kết nối mạng nhưng API đích không phản hồi" (khác với offline hẳn) không? |
+| Q-CSB-07 | Quy trình chuyển nội dung bài học từ file Word (`.docx`) sang dữ liệu có cấu trúc (Section → Chapter → nội dung bài + từ vựng liên kết) sẽ làm thủ công, bán tự động (script + soát lại), hay tự động hoàn toàn? Ảnh hưởng trực tiếp tới việc có tách bảng `chapter_words` riêng hay suy ra từ nội dung bài lúc hiển thị. |
+
+---
+
 ## [IMPL-004] 2026-07-18 — Tách tài liệu nguồn (docx/pdf) ra khỏi assets/
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude

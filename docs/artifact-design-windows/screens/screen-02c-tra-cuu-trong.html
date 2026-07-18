@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>02 — Tra cứu · CSB Vocab Windows Mockup</title>
+<title>02c — Tra cứu — chưa tìm kiếm · CSB Vocab Windows Mockup</title>
 <link rel="stylesheet" href="../styles.css">
 <style>
   body { padding: 40px 24px; }
@@ -21,15 +21,15 @@
 <body>
   <div class="screen-page-head">
     <a class="back-link" href="../index.html">&larr; Tất cả màn hình</a>
-    <div class="frame-label"><span class="frame-no">02</span><span class="frame-name">Tra cứu</span></div>
-    <p class="frame-desc" style="margin-top:6px;">Bố cục 2 cột tận dụng chiều ngang desktop: danh sách kết quả bên trái, chi tiết từ hiển thị ngay bên phải — không cần bottom sheet như mobile. Click 1 dòng để xem chi tiết mà không rời trang. Chưa gõ gì → slide ảnh CSB (xem 02c). 2 trạng thái mạng: Offline/Online (xem 02b). ⚠️ Định hướng mới — chưa code, xem <code>docs/csb-vocab-analysis/02_Search.md</code>.</p>
+    <div class="frame-label"><span class="frame-no">02c</span><span class="frame-name">Tra cứu — chưa tìm kiếm</span></div>
+    <p class="frame-desc" style="margin-top:6px;">Trạng thái mặc định khi vừa vào màn Tra cứu, chưa gõ gì — slide ảnh Cảnh sát biển Việt Nam tự động lướt qua lại, chiếm toàn bộ vùng nội dung (khác placeholder 2 dòng chữ đơn giản trước đây). ⚠️ Định hướng mới — chưa code.</p>
   </div>
   <div class="screen-stage">
     <div class="frame-wrap" style="max-width:980px;">
       <div class="window">
-        
+
         <div class="app-body">
-          
+
     <div class="nav-rail">
       <div class="nav-rail-brand">
         <div class="crest-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M5 12a7 7 0 0014 0M3 7h5M16 7h5M8 20h8"/></svg></div>
@@ -55,49 +55,18 @@
             Offline
           </span>
         </div>
-          <div class="page-content">
-            <div class="pane-list">
-              <div class="search-box"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>buoy</div>
-              <div class="word-list">
-                <div class="word-row selected">
-                  <div class="headword"><b>buoy</b><span class="ipa">/bɔɪ/</span></div>
-                  <div class="meaning"><span><span class="pos-tag">dt</span>phao</span><span class="chap">Ch.2 — Hàng hải</span></div>
-                </div>
-                <div class="word-row">
-                  <div class="headword"><b>anchor buoy</b><span class="ipa">/ˈæŋkə(r)/ /bɔɪ/</span></div>
-                  <div class="meaning"><span><span class="pos-tag">dt</span>phao — phao neo</span><span class="chap">Ch.2 — Hàng hải</span></div>
-                </div>
-                <div class="word-row">
-                  <div class="headword"><b>channel buoy</b><span class="ipa">/ˈtʃænl/ /bɔɪ/</span></div>
-                  <div class="meaning"><span><span class="pos-tag">dt</span>phao — phao luồng</span><span class="chap">Ch.2 — Hàng hải</span></div>
-                </div>
-                <div class="word-row">
-                  <div class="headword"><b>lifebuoy</b><span class="ipa">/ˈlaɪfbɔɪ/</span></div>
-                  <div class="meaning"><span><span class="pos-tag">dt</span>phao — phao cứu sinh</span><span class="chap">Ch.2 — Hàng hải</span></div>
-                </div>
+          <div class="page-content" style="flex-direction:column;">
+            <div class="search-box" style="margin:14px 16px 0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><span style="opacity:.55;">Gõ từ tiếng Anh hoặc tiếng Việt để tìm</span></div>
+            <div class="search-empty" style="flex:1; margin-top:14px;">
+              <div class="slide on" style="background-image:url('../assets/images/csb-slide-03.jpg')"></div>
+              <div class="slide" style="background-image:url('../assets/images/csb-slide-01.jpg')"></div>
+              <div class="slide" style="background-image:url('../assets/images/csb-slide-02.jpg')"></div>
+              <div class="slide-caption">
+                <div class="eyebrow-sm">Cảnh sát biển Việt Nam</div>
+                <div class="headline">Vì chủ quyền, an ninh, trật tự trên biển</div>
+                <div class="hint">Bắt đầu gõ để tra từ vựng chuyên ngành</div>
               </div>
-            </div>
-            <div class="pane-detail">
-              <div class="detail-head">
-                <div>
-                  <div class="name">buoy</div>
-                  <div class="ipa">/bɔɪ/</div>
-                </div>
-                <div class="detail-actions">
-                  <div class="add-deck-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Thêm vào bộ</div>
-                  <div class="mark-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Đã học</div>
-                </div>
-              </div>
-              <div class="detail-body">
-                <span class="pos-tag">dt</span>
-                <div class="label">Nghĩa</div>
-                <div class="meaning-vi">Phao.</div>
-                <div class="chap-ref"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5z"/></svg>Chương 2 — Hàng hải</div>
-                <div class="label">Từ liên quan</div>
-                <div class="example"><div class="en">anchor buoy — phao neo</div></div>
-                <div class="example"><div class="en">channel buoy — phao luồng</div></div>
-                <div class="example"><div class="en">lifebuoy — phao cứu sinh</div></div>
-              </div>
+              <div class="dots"><i class="on"></i><i></i><i></i></div>
             </div>
           </div>
           </div>
@@ -106,8 +75,23 @@
     </div>
   </div>
   <div class="screen-nav">
-    <a href="screen-02c-tra-cuu-trong.html">&larr; 02c Tra cứu — chưa tìm kiếm</a>
-    <a href="screen-02b-tra-cuu-online.html">02b Tra cứu — trạng thái Online &rarr;</a>
+    <a href="screen-01-splash.html">&larr; 01 Splash</a>
+    <a href="screen-02-tra-cuu.html">02 Tra cứu — có kết quả &rarr;</a>
   </div>
+  <script>
+    // Minh hoạ autoplay carousel — chỉ chạy trong mockup tĩnh, không phải code thật.
+    (function () {
+      var slides = document.querySelectorAll('.search-empty .slide');
+      var dots = document.querySelectorAll('.search-empty .dots i');
+      var i = 0;
+      setInterval(function () {
+        slides[i].classList.remove('on');
+        dots[i].classList.remove('on');
+        i = (i + 1) % slides.length;
+        slides[i].classList.add('on');
+        dots[i].classList.add('on');
+      }, 3200);
+    })();
+  </script>
 </body>
 </html>

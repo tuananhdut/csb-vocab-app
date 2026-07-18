@@ -2,6 +2,13 @@
 
 Truy vết FR ↔ màn hình ↔ file code chính. Cập nhật khi thêm/sửa FR hoặc file.
 
+> ⚠️ Bảng dưới đây phản ánh **code thật hiện tại** (mô hình cũ: 1 `vocab.db`
+> offline-only, "chương" = nhóm từ 1-N). Định hướng mới (tra cứu
+> online/offline, bộ từ điển N-N, Section/Chapter dạng bài báo — xem
+> `00_Overview.md`, `docs/spec_history.md` [IMPL-005]) **chưa code nên chưa
+> đưa vào bảng truy vết này**; sẽ bổ sung khi có schema/file code thật tương
+> ứng.
+
 | FR | Mô tả | Màn hình | Trạng thái | File code chính |
 |----|-------|----------|------------|------------------|
 | FR-1 | Splash — giới thiệu ứng dụng | SCR-01 | ✅ Xong | `lib/features/splash/splash_screen.dart` |
@@ -38,3 +45,5 @@ và `../../lib/data/local/user_database.dart`.
 | Danh sách từ theo chương sắp A-Z (không qua bước lật thẻ) | `docs/artifact-design/screens/screen-03b-*.html` | ✅ Khớp — `ChapterWordsScreen` đã làm đúng vậy |
 | Title bar tuỳ biến kiểu Windows (nút minimize/maximize/close) | `docs/artifact-design-windows/` | ❌ Chưa — code dùng `AppBar` Material chuẩn |
 | Dịch 2 chiều với chip từ đã ghép nghĩa | `docs/artifact-design/screens/screen-06-dich-nhanh.html` | ❌ Chưa — SCR-04 là placeholder |
+| Tra cứu có trạng thái Online (gọi thêm API từ điển ngoài) | *(chưa có ở mockup, mới chốt ở [IMPL-005])* | ❌ Chưa — SCR-02 chỉ có chế độ Offline, xem `02_Search.md` |
+| Section chứa nhiều Chapter, Chapter hiển thị dạng bài báo | *(chưa có ở mockup, mới chốt ở [IMPL-005])* | ❌ Chưa — SCR-03 vẫn là mô hình "chương = nhóm từ" cũ, xem `03_Lessons-by-chapter.md` |

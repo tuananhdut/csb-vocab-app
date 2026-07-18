@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>02 — Tra cứu · CSB Vocab Windows Mockup</title>
+<title>02b — Tra cứu — trạng thái Online · CSB Vocab Windows Mockup</title>
 <link rel="stylesheet" href="../styles.css">
 <style>
   body { padding: 40px 24px; }
@@ -21,15 +21,15 @@
 <body>
   <div class="screen-page-head">
     <a class="back-link" href="../index.html">&larr; Tất cả màn hình</a>
-    <div class="frame-label"><span class="frame-no">02</span><span class="frame-name">Tra cứu</span></div>
-    <p class="frame-desc" style="margin-top:6px;">Bố cục 2 cột tận dụng chiều ngang desktop: danh sách kết quả bên trái, chi tiết từ hiển thị ngay bên phải — không cần bottom sheet như mobile. Click 1 dòng để xem chi tiết mà không rời trang. Chưa gõ gì → slide ảnh CSB (xem 02c). 2 trạng thái mạng: Offline/Online (xem 02b). ⚠️ Định hướng mới — chưa code, xem <code>docs/csb-vocab-analysis/02_Search.md</code>.</p>
+    <div class="frame-label"><span class="frame-no">02b</span><span class="frame-name">Tra cứu — trạng thái Online</span></div>
+    <p class="frame-desc" style="margin-top:6px;">Khi có mạng, badge chuyển "Online" (xanh lục). Từ không có trong CSDL local được bổ sung từ từ điển ngoài, đánh dấu nhãn "Online" để phân biệt nguồn. ⚠️ Định hướng mới — chưa code, nhà cung cấp API cụ thể và việc có lưu lại từ tra được hay không <strong>chưa chốt</strong> (xem Q-CSB-04, Q-CSB-05 trong <code>docs/spec_history.md</code>).</p>
   </div>
   <div class="screen-stage">
     <div class="frame-wrap" style="max-width:980px;">
       <div class="window">
-        
+
         <div class="app-body">
-          
+
     <div class="nav-rail">
       <div class="nav-rail-brand">
         <div class="crest-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M5 12a7 7 0 0014 0M3 7h5M16 7h5M8 20h8"/></svg></div>
@@ -50,38 +50,34 @@
         <div class="page-header">
 
           <span class="page-title">Tra cứu</span>
-          <span class="net-badge offline">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M1 1l22 22M8.5 16.5a5 5 0 017 0M5 12.5a10 10 0 013-2.5M19 12.5a10 10 0 00-2.2-1.8M10.5 8.5a10 10 0 018 2M12 20h.01"/></svg>
-            Offline
+          <span class="net-badge online">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M5 12.5a10 10 0 0114 0M8.5 16.5a5 5 0 017 0M12 20h.01"/></svg>
+            Online
           </span>
         </div>
           <div class="page-content">
             <div class="pane-list">
-              <div class="search-box"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>buoy</div>
+              <div class="search-box"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>transponder</div>
+              <div class="net-note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4M12 16h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Không có trong giáo trình — bổ sung từ từ điển ngoài
+              </div>
               <div class="word-list">
                 <div class="word-row selected">
-                  <div class="headword"><b>buoy</b><span class="ipa">/bɔɪ/</span></div>
-                  <div class="meaning"><span><span class="pos-tag">dt</span>phao</span><span class="chap">Ch.2 — Hàng hải</span></div>
+                  <div class="headword"><b>transponder</b><span class="ipa">/trænˈspɒndə(r)/</span></div>
+                  <div class="meaning"><span><span class="pos-tag">dt</span>bộ phát đáp (tín hiệu radar)</span><span class="source-tag">Online</span></div>
                 </div>
                 <div class="word-row">
-                  <div class="headword"><b>anchor buoy</b><span class="ipa">/ˈæŋkə(r)/ /bɔɪ/</span></div>
-                  <div class="meaning"><span><span class="pos-tag">dt</span>phao — phao neo</span><span class="chap">Ch.2 — Hàng hải</span></div>
-                </div>
-                <div class="word-row">
-                  <div class="headword"><b>channel buoy</b><span class="ipa">/ˈtʃænl/ /bɔɪ/</span></div>
-                  <div class="meaning"><span><span class="pos-tag">dt</span>phao — phao luồng</span><span class="chap">Ch.2 — Hàng hải</span></div>
-                </div>
-                <div class="word-row">
-                  <div class="headword"><b>lifebuoy</b><span class="ipa">/ˈlaɪfbɔɪ/</span></div>
-                  <div class="meaning"><span><span class="pos-tag">dt</span>phao — phao cứu sinh</span><span class="chap">Ch.2 — Hàng hải</span></div>
+                  <div class="headword"><b>transponder code</b><span class="ipa">/trænˈspɒndə(r)/ /kəʊd/</span></div>
+                  <div class="meaning"><span><span class="pos-tag">dt</span>mã bộ phát đáp</span><span class="source-tag">Online</span></div>
                 </div>
               </div>
             </div>
             <div class="pane-detail">
               <div class="detail-head">
                 <div>
-                  <div class="name">buoy</div>
-                  <div class="ipa">/bɔɪ/</div>
+                  <div class="name">transponder</div>
+                  <div class="ipa">/trænˈspɒndə(r)/</div>
                 </div>
                 <div class="detail-actions">
                   <div class="add-deck-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>Thêm vào bộ</div>
@@ -90,13 +86,12 @@
               </div>
               <div class="detail-body">
                 <span class="pos-tag">dt</span>
+                <span class="source-tag" style="margin-left:8px;">Online</span>
                 <div class="label">Nghĩa</div>
-                <div class="meaning-vi">Phao.</div>
-                <div class="chap-ref"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 4.5A2.5 2.5 0 016.5 2H20v20H6.5A2.5 2.5 0 014 19.5z"/></svg>Chương 2 — Hàng hải</div>
+                <div class="meaning-vi">Bộ phát đáp — thiết bị phát tín hiệu phản hồi khi nhận sóng radar, dùng để nhận diện tàu/máy bay.</div>
+                <div class="chap-ref"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4M12 16h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Không có trong giáo trình — kết quả từ từ điển ngoài</div>
                 <div class="label">Từ liên quan</div>
-                <div class="example"><div class="en">anchor buoy — phao neo</div></div>
-                <div class="example"><div class="en">channel buoy — phao luồng</div></div>
-                <div class="example"><div class="en">lifebuoy — phao cứu sinh</div></div>
+                <div class="example"><div class="en">transponder code — mã bộ phát đáp</div></div>
               </div>
             </div>
           </div>
@@ -106,8 +101,8 @@
     </div>
   </div>
   <div class="screen-nav">
-    <a href="screen-02c-tra-cuu-trong.html">&larr; 02c Tra cứu — chưa tìm kiếm</a>
-    <a href="screen-02b-tra-cuu-online.html">02b Tra cứu — trạng thái Online &rarr;</a>
+    <a href="screen-02-tra-cuu.html">&larr; 02 Tra cứu</a>
+    <a href="screen-03-hoc-danh-sach-section.html">03 Học — Danh sách Section &rarr;</a>
   </div>
 </body>
 </html>

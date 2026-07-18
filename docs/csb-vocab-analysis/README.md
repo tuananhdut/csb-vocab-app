@@ -4,7 +4,15 @@
 > khác với mockup thiết kế ở `docs/artifact-design/` (mobile) và
 > `docs/artifact-design-windows/` (Windows), vốn đã đi trước một bước và có
 > vài tính năng/luồng chưa được triển khai (xem mục "Trạng thái" bên dưới).
-> Phiên bản: 1.0 | Cập nhật: 2026-07-18 | Nguồn: `docs/spec_history.md` [IMPL-002].
+> Phiên bản: 1.2 | Cập nhật: 2026-07-18 | Nguồn: `docs/spec_history.md` [IMPL-002], [IMPL-005].
+>
+> ⚠️ **Định hướng mới (chưa code, [IMPL-005]):** tra cứu 2 trạng thái
+> Offline/Online, bộ từ điển (dictionary) quan hệ nhiều-nhiều với từ (mặc
+> định + cá nhân), và Section chứa nhiều Chapter hiển thị dạng bài báo —
+> xem [00_Overview.md](00_Overview.md) mục "Mô hình dữ liệu — định hướng
+> mới". Đã cập nhật vào [02_Search.md](02_Search.md) và
+> [03_Lessons-by-chapter.md](03_Lessons-by-chapter.md) dưới dạng phần riêng
+> "định hướng mới — chưa code", tách biệt rõ với phần mô tả code thật.
 
 ---
 
@@ -77,4 +85,4 @@ theo đúng hướng mockup mới hay không.
 - **Giả định:** `> ⚠️ Giả định: ... — cần xác nhận`.
 - **Ngôn ngữ:** Tiếng Việt.
 
-> 🛠 **Lịch sử:** v1.0 (2026-07-18) — tạo mới theo yêu cầu, phân tích các màn hình đã code thật tại thời điểm này. Xem `docs/spec_history.md` [IMPL-002]. v1.1 (2026-07-18) — đổi tên toàn bộ file trong thư mục này sang tiếng Anh (nội dung bên trong vẫn tiếng Việt), xem `docs/spec_history.md` [IMPL-003].
+> 🛠 **Lịch sử:** v1.0 (2026-07-18) — tạo mới theo yêu cầu, phân tích các màn hình đã code thật tại thời điểm này. Xem `docs/spec_history.md` [IMPL-002]. v1.1 (2026-07-18) — đổi tên toàn bộ file trong thư mục này sang tiếng Anh (nội dung bên trong vẫn tiếng Việt), xem `docs/spec_history.md` [IMPL-003]. v1.2 (2026-07-18) — thêm định hướng mới (tra cứu online/offline, bộ từ điển N-N, Section/Chapter dạng bài báo) vào `00_Overview.md`, `02_Search.md`, `03_Lessons-by-chapter.md`, `90_Traceability-matrix.md`, xem `docs/spec_history.md` [IMPL-005]/[IMPL-006]. v1.3 (2026-07-18) — lan tỏa định hướng mới vào mockup mobile `docs/artifact-design/` (màn 02b/02c, 03/03b/03c mới, cập nhật 07, slide ảnh CSB ở trạng thái chưa tìm kiếm), xem `docs/spec_history.md` [IMPL-008]/[IMPL-009]. v1.4 (2026-07-18) — đồng bộ toàn bộ thay đổi trên vào mockup Windows `docs/artifact-design-windows/`, xem `docs/spec_history.md` [IMPL-010].
