@@ -4,6 +4,75 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-010] 2026-07-18 — Cập nhật mockup Windows (docs/artifact-design-windows/) theo định hướng mới
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Áp cùng thay đổi đã làm cho mockup mobile ([IMPL-008]/[IMPL-009]) vào bản
+Windows desktop (`docs/artifact-design-windows/`), giữ đúng ngôn ngữ layout
+riêng của bản này (`nav-rail`, `page-header`, layout 2 cột
+`pane-list`/`pane-detail` thay bottom nav/bottom sheet của mobile).
+
+1. **Trạng thái Offline/Online** — thêm `.net-badge` vào `page-header` của
+   `screen-02-tra-cuu.html` (Offline). Tạo `screen-02b-tra-cuu-online.html`:
+   badge Online, `.net-note`, kết quả gắn `.source-tag` "Online" ở cả
+   `pane-list` và `pane-detail`.
+2. **Trạng thái chưa tìm kiếm — slide ảnh CSB** — tạo
+   `screen-02c-tra-cuu-trong.html`: slide 3 ảnh (tái dùng từ
+   `docs/artifact-design/assets/images/`, copy sang
+   `docs/artifact-design-windows/assets/images/`) chiếm toàn bộ
+   `page-content` (khác mobile — không có `pane-list`/`pane-detail` khi ở
+   trạng thái này), autoplay bằng cùng đoạn `<script>` minh hoạ.
+3. **Section → Chapter dạng bài báo** — thay `screen-03-hoc-danh-sach-
+   chuong.html` bằng `screen-03-hoc-danh-sach-section.html` (danh sách
+   Section trong `pane-list`, gợi ý trong `pane-detail-empty`); thay
+   `screen-03b-hoc-danh-sach-tu-a-z.html` bằng `screen-03b-hoc-danh-sach-
+   chapter.html` (danh sách Chapter dùng `.lesson-list` mới trong
+   `pane-list`); thêm `screen-03c-hoc-noi-dung-bai.html` — khác biệt so với
+   mobile: giữ layout 2 cột, `pane-list` bên trái vẫn hiện danh sách Chapter
+   để chuyển bài nhanh, `pane-detail` bên phải là nội dung bài
+   (`.article-*`). Xoá 2 file cũ.
+4. **`screen-07-tu-dien-cua-toi.html`** — đổi "Giáo trình (6 chương)" →
+   "Giáo trình (mặc định)", bổ sung câu giải thích duyệt theo bộ mặc định
+   nay cũng ở đây.
+5. **`index.html`** — cập nhật/thêm thẻ 02/02b/02c/03/03b/03c/07, thêm đoạn
+   banner "Định hướng mới — chưa code" vào masthead.
+6. **`styles.css`** — thêm class mới tương ứng bản mobile nhưng theo kích
+   thước/khoảng cách desktop: `.net-badge`, `.net-note`, `.source-tag`,
+   `.search-empty` (+ `.slide`/`.slide-caption`/`.dots`), `.lesson-list`/
+   `.lesson-row`, `.article-wrap`/`.article-title`/`.article-body`/
+   `.vocab-hl`. Không sửa class cũ đang dùng ở màn khác.
+
+Toàn bộ màn mới/sửa đều ghi banner "⚠️ Định hướng mới — chưa code" trong
+`frame-desc`, nhất quán với bản mobile.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/artifact-design-windows/screens/screen-02-tra-cuu.html` | Thêm badge Offline, sửa link điều hướng |
+| `docs/artifact-design-windows/screens/screen-02b-tra-cuu-online.html` | **Mới** — trạng thái Online |
+| `docs/artifact-design-windows/screens/screen-02c-tra-cuu-trong.html` | **Mới** — trạng thái chưa tìm kiếm, slide ảnh CSB |
+| `docs/artifact-design-windows/screens/screen-03-hoc-danh-sach-section.html` | **Mới** — thay `screen-03-hoc-danh-sach-chuong.html` (đã xoá) |
+| `docs/artifact-design-windows/screens/screen-03b-hoc-danh-sach-chapter.html` | **Mới** — thay `screen-03b-hoc-danh-sach-tu-a-z.html` (đã xoá) |
+| `docs/artifact-design-windows/screens/screen-03c-hoc-noi-dung-bai.html` | **Mới** — bài đọc dạng article, layout 2 cột |
+| `docs/artifact-design-windows/screens/screen-01-splash.html` | Sửa link cuối trang trỏ sang 02c |
+| `docs/artifact-design-windows/screens/screen-04-chi-tiet-tu.html` | Sửa link điều hướng trỏ về 03c |
+| `docs/artifact-design-windows/screens/screen-07-tu-dien-cua-toi.html` | Bỏ nhắc "6 chương" cứng |
+| `docs/artifact-design-windows/index.html` | Cập nhật/thêm thẻ màn hình, banner định hướng mới |
+| `docs/artifact-design-windows/styles.css` | Thêm class mới cho badge mạng, danh sách bài học, bài đọc article |
+| `docs/artifact-design-windows/assets/images/csb-slide-01/02/03.jpg` | **Mới** — copy từ `docs/artifact-design/assets/images/` |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — cùng các điểm mở đã ghi ở [IMPL-005]/[IMPL-009].
+Bộ mobile và Windows nay đồng bộ hoàn toàn về nội dung định hướng mới, chỉ
+khác khung layout theo đúng quy ước đã có của từng bộ.
+
+---
+
 ## [IMPL-009] 2026-07-18 — Thêm trạng thái "chưa tìm kiếm" cho màn Tra cứu (slide ảnh CSB)
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude
