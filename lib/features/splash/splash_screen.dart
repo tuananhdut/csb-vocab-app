@@ -134,17 +134,18 @@ class _SplashScreenState extends State<SplashScreen> {
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    height: 1.2,
-                  ),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: Colors.white,
+                        height: 1.2,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: Colors.white70),
                 ),
               ],
             ),

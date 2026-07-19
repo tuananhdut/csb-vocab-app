@@ -65,18 +65,20 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(word.word,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                              style: Theme.of(context).textTheme.headlineMedium),
                           if (word.phonetic.isNotEmpty)
                             Text(word.phonetic,
-                                style: TextStyle(
-                                    color: scheme.primary, fontSize: 16)),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: scheme.primary)),
                           const SizedBox(height: 20),
                           if (!_revealed)
                             Text('Chạm để xem nghĩa',
-                                style: TextStyle(color: scheme.outline))
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: scheme.outline))
                           else ...[
                             if (word.partOfSpeech.isNotEmpty)
                               Chip(

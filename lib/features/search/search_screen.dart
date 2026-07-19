@@ -41,7 +41,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         controller: _controller,
         autofocus: true,
         textInputAction: TextInputAction.search,
-        style: const TextStyle(fontSize: 13.5),
+        style: Theme.of(context).textTheme.bodyMedium,
         decoration: InputDecoration(
           hintText: 'Nhập từ tiếng Anh hoặc tiếng Việt…',
           prefixIcon: const Icon(Icons.search, size: 18),
@@ -226,18 +226,20 @@ class _PaneDetailEmpty extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               'Sẵn sàng tra cứu',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: scheme.primary,
-              ),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(color: scheme.primary),
             ),
             const SizedBox(height: 8),
             Text(
               'Nhập từ vựng vào thanh tìm kiếm hoặc chọn '
               'một từ từ danh sách kết quả để xem chi tiết.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: scheme.outline, fontSize: 13.5),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: scheme.outline),
             ),
           ],
         ),
@@ -281,11 +283,10 @@ class _SearchEmptyCarousel extends StatelessWidget {
                 child: Text(
                   'Tra cứu từ vựng chuyên ngành',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: scheme.primary,
-                  ),
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(color: scheme.primary),
                 ),
               ),
               const SizedBox(height: 4),
@@ -294,7 +295,10 @@ class _SearchEmptyCarousel extends StatelessWidget {
                 child: Text(
                   'Gõ từ tiếng Anh hoặc tiếng Việt để tìm',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: scheme.outline),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: scheme.outline),
                 ),
               ),
               const SizedBox(height: 20),

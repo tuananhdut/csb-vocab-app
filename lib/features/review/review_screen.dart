@@ -42,7 +42,10 @@ class _EmptyDue extends StatelessWidget {
             Text(
               'Đánh dấu "Đã học" ở màn Tra cứu / Học để thêm từ vào hàng đợi ôn tập.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: scheme.outline),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: scheme.outline),
             ),
           ],
         ),
@@ -89,7 +92,7 @@ class _DueQueue extends StatelessWidget {
               final item = items[i];
               return ListTile(
                 title: Text(item.word.word,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                    style: Theme.of(context).textTheme.bodyLarge),
                 subtitle: Text(item.word.meaningVi),
               );
             },

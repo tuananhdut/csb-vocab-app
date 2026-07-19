@@ -212,11 +212,9 @@ class _NavRailItem extends StatelessWidget {
                 Expanded(
                   child: Text(
                     label,
-                    style: TextStyle(
-                      color: selected ? AppColors.white : inactiveFg,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13.5,
-                    ),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: selected ? AppColors.white : inactiveFg,
+                        ),
                   ),
                 ),
               ],
@@ -248,13 +246,7 @@ class _PageHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
+          Text(title, style: Theme.of(context).textTheme.headlineSmall),
         ],
       ),
     );
@@ -290,11 +282,9 @@ class _NavRailConnectivityFooter extends ConsumerWidget {
             const SizedBox(width: 8),
             Text(
               isOnline ? 'Trực tuyến' : 'Ngoại tuyến',
-              style: TextStyle(
-                color: AppColors.white.withValues(alpha: 0.85),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppColors.white.withValues(alpha: 0.85),
+                  ),
             ),
           ],
         ),
@@ -326,11 +316,10 @@ class _ConnectivityAppBarBadge extends ConsumerWidget {
           const SizedBox(width: 5),
           Text(
             isOnline ? 'Online' : 'Offline',
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(color: color, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -365,22 +354,19 @@ class _NavRailBrand extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             AppConstants.appName,
-            style: TextStyle(
-              fontFamily: AppFonts.serif,
-              fontWeight: FontWeight.bold,
-              fontSize: 17,
-              color: AppColors.white,
-            ),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontFamily: AppFonts.serif,
+                  color: AppColors.white,
+                ),
           ),
           const SizedBox(height: 2),
           Text(
             'Cảnh sát biển VN',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.white.withValues(alpha: 0.7),
-            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.white.withValues(alpha: 0.7),
+                ),
           ),
         ],
       ),

@@ -25,11 +25,10 @@ class PosTag extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontFamily: AppFonts.mono,
-          fontSize: 10,
-          color: color,
-        ),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontFamily: AppFonts.mono,
+              color: color,
+            ),
       ),
     );
   }
@@ -59,6 +58,7 @@ class WordTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     const ipaColor = AppColors.brand;
 
     return Container(
@@ -85,24 +85,16 @@ class WordTile extends StatelessWidget {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Flexible(
-                    child: Text(
-                      word.word,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15.5,
-                      ),
-                    ),
+                    child: Text(word.word, style: textTheme.bodyLarge),
                   ),
                   if (word.phonetic.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
                         word.phonetic,
-                        style: TextStyle(
+                        style: textTheme.labelLarge?.copyWith(
                           fontFamily: AppFonts.serif,
                           color: ipaColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -115,9 +107,8 @@ class WordTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       word.meaningVi,
-                      style: TextStyle(
+                      style: textTheme.bodySmall?.copyWith(
                         color: scheme.outline,
-                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -133,8 +124,7 @@ class WordTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                         softWrap: false,
-                        style: TextStyle(
-                          fontSize: 10.5,
+                        style: textTheme.labelSmall?.copyWith(
                           color: scheme.outline.withValues(alpha: 0.7),
                         ),
                       ),
@@ -194,15 +184,10 @@ class WordDetailContent extends ConsumerWidget {
   final ScrollController? scrollController;
   final EdgeInsets padding;
 
-  static const _labelStyle = TextStyle(
-    fontSize: 11.5,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 0.6,
-  );
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     const ipaColor = AppColors.brand;
     const accentColor = AppColors.brand;
     final examples = ref.watch(wordExamplesProvider(word.id));
@@ -260,13 +245,7 @@ class WordDetailContent extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Text(
-                word.word,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 32,
-                ),
-              ),
+              child: Text(word.word, style: textTheme.headlineMedium),
             ),
             if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
           ],
@@ -277,15 +256,14 @@ class WordDetailContent extends ConsumerWidget {
             children: [
               Text(
                 word.phonetic,
-                style: TextStyle(
+                style: textTheme.bodyMedium?.copyWith(
                   fontFamily: AppFonts.mono,
-                  fontSize: 15,
                   color: ipaColor,
                 ),
               ),
               const SizedBox(width: 8),
               Text('UK',
-                  style: TextStyle(color: scheme.outline, fontSize: 12)),
+                  style: textTheme.bodySmall?.copyWith(color: scheme.outline)),
               const SizedBox(width: 6),
               IconButton(
                 onPressed: () => TtsService.instance.speak(word.word),
@@ -303,7 +281,7 @@ class WordDetailContent extends ConsumerWidget {
             Icon(Icons.translate, size: 14, color: scheme.outline),
             const SizedBox(width: 6),
             Text('NGHĨA TIẾNG VIỆT',
-                style: _labelStyle.copyWith(color: scheme.outline)),
+                style: textTheme.labelMedium?.copyWith(color: scheme.outline)),
           ],
         ),
         const SizedBox(height: 10),
@@ -316,7 +294,8 @@ class WordDetailContent extends ConsumerWidget {
             border: Border.all(color: AppColors.border),
           ),
           child: Text(word.meaningVi,
-              style: const TextStyle(fontSize: 18, height: 1.4)),
+              style: textTheme.bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.normal, height: 1.4)),
         ),
         if (word.chapterTitle.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -324,7 +303,8 @@ class WordDetailContent extends ConsumerWidget {
             Icon(Icons.menu_book, size: 15, color: scheme.outline),
             const SizedBox(width: 6),
             Text(word.chapterTitle,
-                style: TextStyle(color: scheme.outline, fontSize: 13)),
+                style:
+                    textTheme.bodySmall?.copyWith(color: scheme.outline)),
           ]),
         ],
         const SizedBox(height: 20),
@@ -341,7 +321,8 @@ class WordDetailContent extends ConsumerWidget {
                     Icon(Icons.format_quote, size: 14, color: scheme.outline),
                     const SizedBox(width: 6),
                     Text('VÍ DỤ THỰC TẾ',
-                        style: _labelStyle.copyWith(color: scheme.outline)),
+                        style: textTheme.labelMedium
+                            ?.copyWith(color: scheme.outline)),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -364,13 +345,12 @@ class WordDetailContent extends ConsumerWidget {
                       children: [
                         if (ex.en.isNotEmpty)
                           Text(ex.en,
-                              style: const TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 14.5)),
+                              style: textTheme.bodySmall
+                                  ?.copyWith(fontStyle: FontStyle.italic)),
                         if (ex.vi.isNotEmpty)
                           Text(ex.vi,
-                              style: TextStyle(
-                                  color: scheme.outline, fontSize: 13.5)),
+                              style: textTheme.bodySmall
+                                  ?.copyWith(color: scheme.outline)),
                       ],
                     ),
                   ),

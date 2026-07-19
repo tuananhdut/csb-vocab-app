@@ -71,9 +71,40 @@ class AppTheme {
 
     const radius = 8.0;
 
+    // Style/size/weight dùng chung toàn app — màu đặc thù theo ngữ cảnh
+    // (IPA màu brand, chữ phụ màu outline...) áp bằng `.copyWith(color: ...)`
+    // tại chỗ dùng, không cố định trong TextTheme.
+    const textTheme = TextTheme(
+      // Tên từ vựng lớn ở đầu pane/sheet chi tiết từ.
+      headlineMedium: TextStyle(fontWeight: FontWeight.w800, fontSize: 32),
+      // Tiêu đề trang (_PageHeader), tiêu đề carousel rỗng.
+      headlineSmall: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+      // Tiêu đề "Sẵn sàng tra cứu" và tương tự.
+      titleLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+      // Dòng thông báo trạng thái (vd "Không có từ cần ôn hôm nay").
+      titleMedium: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+      // Tên từ vựng trong danh sách kết quả (WordTile).
+      bodyLarge: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5),
+      // Nghĩa/mô tả phụ mức thường.
+      bodyMedium: TextStyle(fontSize: 14),
+      // Ví dụ, chú thích nhỏ.
+      bodySmall: TextStyle(fontSize: 13),
+      // Nhãn nav-rail, badge trạng thái mạng.
+      labelLarge: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+      // Nhãn viết hoa dạng section ("NGHĨA TIẾNG VIỆT", "VÍ DỤ THỰC TẾ").
+      labelMedium: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 11.5,
+        letterSpacing: 0.6,
+      ),
+      // PosTag, tên chương — chữ rất nhỏ.
+      labelSmall: TextStyle(fontSize: 10.5),
+    );
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      textTheme: textTheme,
       scaffoldBackgroundColor: AppColors.pageBg,
       dividerColor: AppColors.border,
       appBarTheme: const AppBarTheme(
