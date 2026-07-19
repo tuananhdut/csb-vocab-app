@@ -565,12 +565,20 @@ def extract_images_and_assign(
             # "indicator" deu co o ca Co dien lan Thong tin ra da - da
             # phat hien khi kiem tra sau lan chay full dau tien, xem lich
             # su hoi thoai task) - neu chi dung ten tu se bi ghi de nham.
-            filename = f"{slugify(first_word)}_p{candidate.source_page}.png"
+            # Luu JPEG thay vi PNG: anh minh hoa that trong PDF von da
+            # nen DCTDecode (JPEG) tu dau (xem khao sat get_images() -
+            # Image269 tr.7 la DCTDecode) - decode ra roi ep ve PNG
+            # khong nen lam phinh dung luong khong can thiet (~33MB cho
+            # 261 anh o muc PNG mac dinh). JPEG quality=85 giu chat
+            # luong gan nhu khong doi, giam dung luong dang ke.
+            filename = f"{slugify(first_word)}_p{candidate.source_page}.jpg"
             out_path = os.path.join(image_dir, filename)
             pix = fitz.Pixmap(doc, xref)
-            if pix.n - pix.alpha >= 4:  # CMYK -> chuyen ve RGB truoc khi luu PNG
+            if pix.alpha:  # JPEG khong ho tro kenh alpha, phai bo truoc
+                pix = fitz.Pixmap(pix, 0)
+            if pix.n - pix.alpha >= 4:  # CMYK -> chuyen ve RGB truoc khi luu
                 pix = fitz.Pixmap(fitz.csRGB, pix)
-            pix.save(out_path)
+            pix.save(out_path, jpg_quality=85)
             for r in group:
                 r.image_path = f"{IMAGE_PATH_PREFIX}/{filename}"
             assigned_count += 1
