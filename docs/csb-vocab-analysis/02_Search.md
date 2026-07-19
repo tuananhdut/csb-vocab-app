@@ -91,9 +91,13 @@ quả.
 
 - Không có debounce khi gõ — mỗi ký tự gõ vào kích hoạt truy vấn DB ngay.
   Chấp nhận được vì `vocab.db` cỡ ~2.450 từ, chạy local, độ trễ không đáng kể.
-- Không có lịch sử tra cứu (bảng `search_history` đã có schema trong
-  `user.db` — xem `lib/data/local/user_database.dart` — nhưng chưa được
-  đọc/ghi ở bất kỳ đâu).
+- Không có lịch sử tra cứu — bảng `search_history` (từng có schema trong
+  `user.db`, xem `lib/data/local/user_database.dart`) đã bị **bỏ hẳn**
+  khỏi thiết kế mới ([IMPL-016]): chưa từng được đọc/ghi ở bất kỳ đâu,
+  không mockup nào (kể cả `screen-02-tra-cuu.html`) thiết kế UI cho tính
+  năng này. Nếu sau này thực sự làm "lịch sử tra cứu gần đây", tạo lại
+  bảng bằng 1 migration khi đó — xem `91_DB-design-new-model.md` mục "Bỏ
+  hẳn bảng `review_logs`/`search_history`".
 
 > ⚠️ Mockup (`docs/artifact-design/screens/screen-02-tra-cuu.html`) đã thêm
 > nút "Thêm vào bộ" bên cạnh "Đã học" trong sheet chi tiết từ — tính năng bộ

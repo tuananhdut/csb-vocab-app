@@ -4,6 +4,111 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-016] 2026-07-19 — Bỏ hẳn bảng `review_logs` và `search_history`
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Trong lúc rà lại `docs/db/schema.sql` (bản SQL đối chiếu trực quan cho
+[IMPL-015]), phát hiện `review_logs` chỉ được `INSERT` trong code hiện
+tại (`review_repository.dart`), **không có bất kỳ `SELECT` nào đọc
+lại** — không màn hình, provider, hay thống kê nào từng dùng dữ liệu này.
+Áp dụng đúng nguyên tắc đã chốt ở [IMPL-015] cho cột `question_mode`
+("không giữ dữ liệu chưa ai dùng"), quyết định mở rộng thêm: bỏ **toàn
+bộ bảng** `review_logs`, không chỉ dừng ở việc từ chối thêm cột mới.
+
+Rà soát tiếp theo cùng nguyên tắc phát hiện `search_history` ở tình
+trạng tương tự (thậm chí rõ hơn): không có cả `INSERT` lẫn `SELECT`
+trong toàn bộ code, và `docs/csb-vocab-analysis/02_Search.md` đã ghi
+nhận từ trước đây là gap ("chưa được đọc/ghi ở bất kỳ đâu") — không
+mockup nào (kể cả `screen-02-tra-cuu.html`) thiết kế UI "lịch sử tra
+cứu" đi kèm. Quyết định: bỏ hẳn luôn bảng này, cùng đợt với
+`review_logs`.
+
+Phân biệt rõ với `learned_words` (**không** bỏ) — đó là bảng lưu trạng
+thái hiện tại của SM-2, được đọc liên tục để tính hàng đợi ôn tập; khác
+bản chất với `review_logs`/`search_history` vốn chỉ là audit trail lịch
+sử chưa từng có nhu cầu thống kê/hiển thị thật đi kèm. Hệ quả:
+`submitReview()` sau khi implement chỉ còn `UPDATE learned_words`, bỏ
+câu `INSERT INTO review_logs`.
+
+Nếu sau này thực sự cần audit trail ôn tập hoặc tính năng "lịch sử tra
+cứu gần đây", tạo lại bảng tương ứng khi đó bằng 1 migration đơn giản —
+chấp nhận đánh đổi mất dữ liệu lịch sử trong giai đoạn không ghi, đổi
+lấy việc không phải duy trì bảng không ai dùng trong lúc chờ.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/91_DB-design-new-model.md` | Bỏ `review_logs` khỏi sơ đồ tổng quan quan hệ, khỏi bước 5 migration dữ liệu ban đầu (sửa luôn câu ghi sai trước đó nhắc `search_history` có `word_id`); đổi mục "Không thêm cột `review_logs.question_mode`" thành "Bỏ hẳn bảng `review_logs`/`search_history`" (lý do đầy đủ cho cả 2 bảng + phân biệt với `learned_words`); cập nhật "Việc cần làm khi implement" — `submitReview()` bỏ `INSERT INTO review_logs` |
+| `docs/csb-vocab-analysis/02_Search.md` | Cập nhật mục "Giả định/hạn chế" — `search_history` từ "gap chưa làm" thành "đã bỏ hẳn khỏi thiết kế", trỏ sang [IMPL-016] |
+| `docs/db/schema.sql` | Xoá `CREATE TABLE review_logs` và `search_history` + index liên quan; ghi chú ở đầu file giải thích lý do bỏ từng bảng (khác với `chapter_words` — dời sang phase sau chứ không bỏ hẳn) |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh điểm mới — kế thừa các điểm chờ đã có ở [IMPL-014]/
+[IMPL-015].
+
+---
+
+## [IMPL-015] 2026-07-19 — Ôn tập khách quan (trắc nghiệm + gõ chữ), bỏ tự chấm, thêm nhãn "từ khó"
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Mở rộng quyết định "Ôn tập bằng trắc nghiệm" đã chốt trước đó (dựng lại
+từ 1 phiên phân tích trước, chưa từng ghi vào `spec_history.md`) thành 1
+task-analysis đầy đủ (`docs/csb-vocab-analysis/tasks/02-review-multi-
+mode/01-analysis.md`), sau khi xác nhận lại 6 điểm mở:
+
+1. **Bỏ hẳn** kiểu lật thẻ tự chấm chủ quan (`ReviewRating` 4 mức
+   Quên/Khó/Tốt/Dễ do người dùng tự bấm) — không giữ song song.
+2. **Thêm 2 kiểu câu hỏi khách quan trộn ngẫu nhiên đều 50/50** trong 1
+   phiên: **trắc nghiệm** (chọn 1/4 đáp án nghĩa tiếng Việt) và **gõ chữ**
+   (nhập lại từ tiếng Anh, so khớp `trim().toLowerCase()` tuyệt đối,
+   không fuzzy). Cả 2 đều tự động map Đúng→`q=4`, Sai→`q=1` vào
+   `SrsScheduler` (SM-2) hiện có, không đổi thuật toán.
+3. **Giới hạn 1 phiên tối đa 4 từ** — nếu hàng đợi hôm nay ít hơn 4 từ
+   đến hạn thì phiên chỉ gồm đúng số từ đó, không độn thêm.
+4. **"Từ khó"**: nhãn suy luận tự động, `ease_factor <= 1.5` (gần sàn
+   1.3 của SM-2) — **chỉ dùng để hiển thị/thống kê**, không đổi thứ tự
+   hàng đợi hay bất kỳ logic chọn từ nào (giữ nguyên nguyên tắc trước đó:
+   không thêm tầng ưu tiên chồng lên SM-2, tránh phạt trùng 1 sự kiện
+   sai 2 lần).
+5. Thêm màn **kết quả cuối phiên** (tổng đúng/sai), thay `SnackBar` đơn
+   giản hiện tại.
+6. Thêm cột `review_logs.question_mode` (`0=MULTIPLE_CHOICE`,
+   `1=TYPING`) vì nay giữ song song 2 kiểu câu hỏi, cần phân biệt nguồn
+   gốc mỗi lượt ôn khi thống kê sau này.
+
+Đã xác nhận **đợi migrate xong** sang schema mới (`dictionaries`/
+`word_dictionaries` N-N, [IMPL-014]) mới implement — `randomDistractors`
+viết theo `dictionary_id` mới, không viết tạm theo `chapter_id` cũ.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/91_DB-design-new-model.md` | Viết lại mục "Ôn tập bằng trắc nghiệm" thành "Ôn tập khách quan: trắc nghiệm + gõ chữ" — thêm kiểu gõ chữ, giới hạn 4 từ/phiên, nhãn "từ khó" (`ease_factor<=1.5`, chỉ hiển thị), cột `review_logs.question_mode`, màn kết quả cuối phiên |
+| `docs/csb-vocab-analysis/tasks/02-review-multi-mode/01-analysis.md` | Tạo mới — task-analysis đầy đủ (Requirement Summary, UI/Backend Gap, Risk Analysis), 6 Open Question đã chốt ghi trong mục "Quyết định đã chốt" |
+
+### Điểm chờ xác nhận còn mở
+
+- Chi tiết UI màn kết quả cuối phiên (bố cục, có hiện lại danh sách từ
+  sai không) — để quyết định ở bước `task-plan`.
+- Chi tiết UI kiểu gõ chữ ở trạng thái "đã submit" — mockup
+  `screen-07e-phien-on-tap-cau-go-chu.html` chỉ có CSS state
+  (`.type-input-row.correct/.wrong`, `.answer-reveal`) nhưng không có
+  khung hình minh hoạ trực quan, cần tự thiết kế thêm khi vào task-plan.
+- Kế thừa toàn bộ điểm chờ xác nhận của [IMPL-014] (Q-CSB-02, UX xoá từ
+  khỏi bộ cá nhân, cơ chế cập nhật seed data) — vẫn chưa chốt, độc lập
+  với thay đổi lần này.
+
+---
+
 ## [IMPL-014] 2026-07-18 — Bỏ ranh giới vocab.db/user.db, gộp 1 DB, thêm bộ "Chưa phân loại"
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude
