@@ -65,7 +65,9 @@ LAST_PAGE_IDX = 190  # trang in 191 (cuoi CANH SAT BIEN, truoc tr.192)
 # ca 2 nhom.
 IMAGE_MIN_SIZE_PX = 150
 
-# Ten heading trong PDF -> ten dictionary da seed trong docs/db/seed.sql
+# Ten heading trong PDF -> ten dictionary_name ghi vao CSV. load.py se
+# tu suy dictionaries tu chinh cac ten nay (khong con doc tu seed.sql
+# rieng - xem seed_dictionaries_from_csv() trong load.py).
 DICTIONARY_MAP = {
     "QUÂN SỰ CHUNG": "Quân sự chung",
     "HÀNG HẢI": "Hàng hải",

@@ -67,15 +67,23 @@ Pipeline 3 giai đoạn:
 [2. REVIEW]   words_import.csv (trung gian, người rà soát/sửa tay trong Excel/Sheets)
                   │  (script Python, đọc CSV đã duyệt)
                   ▼
-[3. LOAD]     INSERT vào words + examples (qua schema.sql/seed.sql hoặc thẳng vào DB thật)
+[3. LOAD]     INSERT vào words + dictionaries + examples (qua schema.sql, dictionaries suy từ CSV) hoặc thẳng vào DB thật
 ```
+
+> **Cập nhật sau khi implement** (khác thiết kế ban đầu ở đoạn trên): đã
+> bỏ hẳn `docs/db/seed.sql` — `dictionaries` không còn hardcode trong 1
+> file seed riêng, mà `load.py` tự suy ra từ chính cột `dictionary_name`
+> trong `words_import.final.csv` (xem hàm `seed_dictionaries_from_csv()`
+> trong `load.py`). Lý do: tránh 2 nguồn sự thật lệch nhau nếu sau này
+> CSV có thêm/đổi tên chuyên ngành mà quên cập nhật file seed riêng.
 
 ## Scope
 
 - Trích xuất đúng 6 nhóm chuyên ngành có trong PDF (Quân sự chung, Hàng
-  hải, Thông tin ra đa, Vũ khí, Cơ điện, Cảnh sát biển) — map thẳng vào
-  6 `dictionary_id` đã seed sẵn (`docs/db/seed.sql`), **không** tạo bộ
-  từ điển mới.
+  hải, Thông tin ra đa, Vũ khí, Cơ điện, Cảnh sát biển) — ghi vào cột
+  `dictionary_name` của CSV, `load.py` tự suy ra bảng `dictionaries`
+  tương ứng từ đó (không còn file `seed.sql` hardcode riêng — xem ghi
+  chú cập nhật ở trên), **không** tạo bộ từ điển mới ngoài các tên này.
 - Đảo chiều mục từ: `words.word` = thuật ngữ tiếng Anh, `words.meaning_vi`
   = đầu mục tiếng Việt gốc (đã chốt).
 - 1 đầu mục Việt có N thuật ngữ Anh tương đương → tách thành N dòng
@@ -148,11 +156,11 @@ Pipeline 3 giai đoạn:
 |---|---|
 | Nguồn vào | `docs/source-materials/TA_chuyen_nganh_2.pdf` (đọc bằng PyMuPDF `fitz`, không dùng `pdftotext` vì mất encoding tiếng Việt — đã xác nhận qua test) |
 | Artifact trung gian | `words_import.csv` — human-reviewable, KHÔNG insert thẳng vào DB |
-| Cột CSV | `source_page` (int, số trang PDF gốc để đối chiếu) · `dictionary_name` (text, 1 trong 6 tên bộ đã seed) · `word` (text, thuật ngữ tiếng Anh) · `phonetic` (text, có thể rỗng) · `part_of_speech_raw` (text, mã gốc từ PDF: `dt./đt./tt./trt./cụm gt.`) · `meaning_vi` (text, đầu mục tiếng Việt) · `is_subentry` (0/1) · `example_en` (text, có thể rỗng) · `example_vi` (text, có thể rỗng) · `reviewed` (0/1, mặc định 0 — script LOAD từ chối chạy nếu còn dòng `reviewed=0`) |
-| Đầu ra | DB thử nghiệm SQLite (dựng từ `docs/db/schema.sql` + `docs/db/seed.sql`) — **không phải** `user.db`/`vocab.db` thật của app |
-| Validation khi LOAD | `dictionary_name` phải khớp đúng 1 trong 6 tên đã seed (case-sensitive) · `part_of_speech_raw` phải map được sang 1 mã 0-4 theo bảng đã chốt (`dt.→0, đt.→1, tt.→2, trt.→3, cụm gt.→4`) · `word`/`meaning_vi` không được rỗng |
-| Lỗi nghiệp vụ | Dòng có `reviewed=0` → script LOAD dừng toàn bộ, in danh sách dòng chưa review, không insert phần nào (all-or-nothing cho từng lần chạy) |
-| Lỗi dữ liệu | `dictionary_name` không khớp → skip dòng đó, ghi log riêng `load_errors.csv` để xử lý tiếp, không dừng cả batch |
+| Cột CSV | `source_page` (int, số trang PDF gốc để đối chiếu) · `dictionary_name` (text, tên chuyên ngành — nguồn sự thật duy nhất cho bảng `dictionaries`, xem "Đầu ra") · `word` (text, thuật ngữ tiếng Anh) · `phonetic` (text, có thể rỗng) · `part_of_speech_raw` (text, mã gốc từ PDF: `dt./đt./tt./trt./cụm gt.`) · `meaning_vi` (text, đầu mục tiếng Việt) · `is_subentry` (0/1) · `example_en` (text, có thể rỗng) · `example_vi` (text, có thể rỗng) · `image_path` (text, có thể rỗng — đường dẫn asset ảnh minh hoạ) · `reviewed` (0/1) |
+| Đầu ra | DB thử nghiệm SQLite (dựng từ `docs/db/schema.sql`; bảng `dictionaries` **suy động** từ chính cột `dictionary_name` trong CSV thay vì đọc file seed riêng — xem hàm `seed_dictionaries_from_csv()` trong `load.py`) — **không phải** `user.db`/`vocab.db` thật của app |
+| Validation khi LOAD | `part_of_speech_raw` phải map được sang 1 mã 0-4 theo bảng đã chốt (`dt.→0, đt.→1, tt.→2, trt.→3, cụm gt.→4`), để trống nếu không map được · `word`/`meaning_vi` không được rỗng cho dòng sẽ insert |
+| Lỗi nghiệp vụ | Dòng có `reviewed=0` → **skip dòng đó** (không insert), in danh sách dòng bị skip để minh bạch, KHÔNG dừng cả batch — đã đổi từ "all-or-nothing" ban đầu vì 7 dòng `reviewed=0` còn lại sau AI review đều là mảnh vỡ trùng lặp vô hại (xem lịch sử hội thoại task) |
+| Lỗi dữ liệu | `dictionary_name` rỗng sau khi strip → không được đưa vào `seed_dictionaries_from_csv()`; nếu 1 dòng nào đó có `dictionary_id` không map được (an toàn phòng thủ, không nên xảy ra vì map suy từ chính `rows_to_load`) → skip dòng đó, ghi log ra stdout, không dừng cả batch |
 
 # Subtask Breakdown
 
@@ -177,7 +185,7 @@ Pipeline 3 giai đoạn:
 
 | Subtask ID | Title | Files/Modules | Description | Depends On | Risk |
 |---|---|---|---|---|---|
-| LOAD-01 | Viết script `load.py` | file mới, `docs/db/import/load.py` | Đọc CSV đã review, dựng DB thử nghiệm từ `docs/db/schema.sql`+`seed.sql`, `INSERT` vào `words` + `word_dictionaries` (link với `dictionary_id` tương ứng) + `examples` (nếu có câu ví dụ) trong 1 transaction | REV-02, `docs/db/schema.sql` đã có sẵn | Thấp |
+| LOAD-01 | Viết script `load.py` | file mới, `docs/db/import/load.py` | Đọc CSV đã review, dựng DB thử nghiệm từ `docs/db/schema.sql` (không còn `seed.sql`), suy bảng `dictionaries` động từ cột `dictionary_name` trong CSV (`seed_dictionaries_from_csv()`), `INSERT` vào `words` + `word_dictionaries` + `examples` (nếu có câu ví dụ) trong 1 transaction | REV-02, `docs/db/schema.sql` đã có sẵn | Thấp |
 | LOAD-02 | Chạy LOAD trên DB thử nghiệm, verify | DB tạm `.sqlite` | Đối chiếu số dòng insert = số dòng CSV đã review; query thử vài từ ngẫu nhiên so với PDF gốc để xác nhận đúng | LOAD-01 | Thấp |
 | LOAD-03 | Quyết định chiến lược dedup với nguồn cũ | — | **Chưa thực hiện trong task này** — chỉ ghi nhận: trước khi nạp vào DB thật của app (khác với DB thử nghiệm ở LOAD-02), cần xử lý khả năng trùng từ giữa 2 nguồn `.docx` và `.pdf` (xem Open Question) | LOAD-02 | Cao — chưa có quyết định |
 
@@ -255,16 +263,26 @@ viết EXT-02/EXT-03.
       script.
 - [ ] Mục từ không có câu ví dụ → `example_en`/`example_vi` rỗng, không
       tạo dòng `examples` rỗng khi LOAD.
-- [ ] Chạy `load.py` với CSV còn dòng `reviewed=0` → script từ chối chạy,
-      in rõ danh sách dòng chưa duyệt.
+- [x] Chạy `load.py` với CSV còn dòng `reviewed=0` → dòng đó bị **skip**
+      (không insert), in rõ danh sách dòng bị skip, các dòng `reviewed=1`
+      khác vẫn insert bình thường (đã đổi từ "từ chối chạy toàn bộ" ban
+      đầu — xem Data Contract đã cập nhật ở trên). Verify thực tế: 7
+      dòng skip đúng như dự kiến, 1406 dòng còn lại insert thành công.
+- [x] Bảng `dictionaries` được suy đúng từ CSV: 1 dòng "Chưa phân loại"
+      (`sort_order=0`, `is_deletable=0`) + 6 dòng chuyên ngành theo đúng
+      thứ tự `source_page` nhỏ nhất tăng dần, khớp thứ tự mục lục PDF
+      gốc (Quân sự chung → Hàng hải → Thông tin ra đa → Vũ khí → Cơ
+      điện → Cảnh sát biển).
 
 ## Regression
 
-- [ ] Sau LOAD vào DB thử nghiệm, `docs/db/seed.sql` (7 dòng
-      `dictionaries`) vẫn nguyên vẹn, không bị ghi đè.
-- [ ] Tổng số dòng `words` sau LOAD = số dòng cũ (nếu chạy nhiều lần) +
-      số dòng mới từ CSV — không có insert trùng nếu chạy `load.py` 2
-      lần trên cùng CSV (cần idempotency check).
+- [x] `docs/db/schema.sql` không đổi cấu trúc bảng nào sau khi bỏ
+      `seed.sql` — chỉ đổi nguồn dữ liệu khởi tạo `dictionaries`.
+- [ ] Tổng số dòng `words` sau LOAD = số dòng `reviewed=1` trong CSV tại
+      thời điểm chạy — **không phải** idempotency theo nghĩa cộng dồn:
+      `load.py` luôn xoá DB thử nghiệm cũ và dựng lại từ đầu mỗi lần
+      chạy (`build_fresh_db()`), nên chạy nhiều lần trên cùng CSV luôn
+      cho kết quả giống hệt nhau, không có insert trùng.
 
 # Risks / TODO
 
