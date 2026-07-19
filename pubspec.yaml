@@ -74,6 +74,7 @@ flutter:
     - assets/images/coast_guard/
     - assets/images/logo/
     - assets/images/illustrations/
+    - assets/images/words/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
