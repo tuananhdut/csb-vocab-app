@@ -99,8 +99,9 @@ class WordTile extends StatelessWidget {
                       child: Text(
                         word.phonetic,
                         style: TextStyle(
-                          fontFamily: AppFonts.mono,
+                          fontFamily: AppFonts.serif,
                           color: ipaColor,
+                          fontWeight: FontWeight.w600,
                           fontSize: 12,
                         ),
                       ),
@@ -114,7 +115,11 @@ class WordTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       word.meaningVi,
-                      style: TextStyle(color: scheme.outline, fontSize: 13),
+                      style: TextStyle(
+                        color: scheme.outline,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),

@@ -208,15 +208,39 @@ class _PaneDetailEmpty extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.menu_book_outlined,
-              size: 36, color: scheme.outline.withValues(alpha: 0.6)),
-          const SizedBox(height: 10),
-          Text('Chọn 1 từ để xem chi tiết',
-              style: TextStyle(color: scheme.outline, fontSize: 13.5)),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/illustrations/search-empty-state.png',
+              width: 260,
+              height: 260,
+              errorBuilder: (context, error, stackTrace) => Icon(
+                Icons.menu_book_outlined,
+                size: 36,
+                color: scheme.outline.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Sẵn sàng tra cứu',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: scheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Nhập từ vựng vào thanh tìm kiếm hoặc chọn '
+              'một từ từ danh sách kết quả để xem chi tiết.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: scheme.outline, fontSize: 13.5),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -352,11 +352,11 @@ class _NavRailBrand extends StatelessWidget {
         children: [
           Image.asset(
             'assets/images/logo/csb-logo.png',
-            width: 96,
-            height: 96,
+            width: 128,
+            height: 128,
             errorBuilder: (context, error, stackTrace) => Container(
-              width: 96,
-              height: 96,
+              width: 128,
+              height: 128,
               decoration: BoxDecoration(
                 color: AppColors.white,
                 borderRadius: BorderRadius.circular(20),
