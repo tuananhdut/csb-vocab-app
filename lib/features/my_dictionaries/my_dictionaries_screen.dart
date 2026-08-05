@@ -11,11 +11,41 @@ import 'learn_new_words_screen.dart';
 /// dạng card, kèm số liệu tổng/đã học/đến hạn ôn theo từng bộ.
 ///
 /// Xem docs/artifact-design/screens/screen-07-tu-dien-cua-toi.html. Phạm
-/// vi hiện tại: chỉ danh sách bộ — "Xem" (chi tiết bộ, SCR-07c), "Ôn tập
-/// ngay" (phiên ôn theo bộ, SCR-07d/e/f) và "Tạo bộ mới" (SCR-07b) chưa
-/// implement, để dành phase sau.
+/// vi hiện tại: chỉ danh sách bộ + tạo bộ mới — "Xem" (chi tiết bộ,
+/// SCR-07c) và "Ôn tập ngay theo từng bộ" (SCR-07d/e/f) chưa implement,
+/// để dành phase sau.
 class MyDictionariesScreen extends ConsumerWidget {
   const MyDictionariesScreen({super.key});
+
+  Future<void> _createDictionary(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Tạo bộ từ điển mới'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Tên bộ từ điển'),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Huỷ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Tạo'),
+          ),
+        ],
+      ),
+    );
+
+    final trimmedName = name?.trim();
+    if (trimmedName == null || trimmedName.isEmpty) return;
+    await createDictionary(ref, trimmedName);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,10 +64,43 @@ class MyDictionariesScreen extends ConsumerWidget {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
-            itemCount: list.length,
-            itemBuilder: (_, i) => _DictionaryCard(dictionary: list[i]),
+            itemCount: list.length + 1,
+            itemBuilder: (_, i) => i < list.length
+                ? _DictionaryCard(dictionary: list[i])
+                : _NewDictionaryCard(onTap: () => _createDictionary(context, ref)),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Thẻ "+ Tạo bộ mới" ở cuối lưới (khớp `.new-deck-card` trong mockup).
+class _NewDictionaryCard extends StatelessWidget {
+  const _NewDictionaryCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: AppColors.border, style: BorderStyle.solid),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_circle_outline, size: 32, color: scheme.outline),
+              const SizedBox(height: 8),
+              Text('Tạo bộ mới', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.outline)),
+            ],
+          ),
+        ),
       ),
     );
   }

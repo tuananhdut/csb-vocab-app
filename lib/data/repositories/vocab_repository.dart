@@ -219,4 +219,19 @@ class VocabRepository {
     );
     return rows.map((r) => r['meaning_vi'] as String).toList();
   }
+
+  /// Tạo 1 bộ từ điển cá nhân mới (rỗng, `is_default=0, is_deletable=1`)
+  /// — SCR-07 nút "Tạo bộ mới". Xếp cuối danh sách (`sort_order` lớn
+  /// nhất hiện có + 1).
+  int createDictionary(String name) {
+    final maxSortRow = _db.select('SELECT MAX(sort_order) AS m FROM dictionaries').first;
+    final nextSortOrder = (maxSortRow['m'] as int? ?? 0) + 1;
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    _db.execute(
+      'INSERT INTO dictionaries (name, is_default, is_deletable, sort_order, created_at) VALUES (?, 0, 1, ?, ?)',
+      [name, nextSortOrder, now],
+    );
+    return _db.lastInsertRowId;
+  }
 }

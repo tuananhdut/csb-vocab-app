@@ -114,3 +114,11 @@ Future<List<ReviewQuestion>> buildReviewSession(
   final repo = await ref.read(reviewRepositoryProvider.future);
   return repo.buildSession(dueItems);
 }
+
+/// Tạo 1 bộ từ điển cá nhân mới (SCR-07, nút "Tạo bộ mới") và làm mới
+/// danh sách bộ.
+Future<void> createDictionary(WidgetRef ref, String name) async {
+  final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+  vocabRepo.createDictionary(name);
+  ref.invalidate(myDictionariesProvider);
+}
