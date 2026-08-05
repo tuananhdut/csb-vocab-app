@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../domain/entities/dictionary.dart';
 import '../review/review_providers.dart';
 import '../review/review_screen.dart';
+import 'add_word_screen.dart';
 import 'learn_new_words_screen.dart';
 
 /// SCR-07 — Từ điển của tôi: danh sách bộ từ điển (mặc định + cá nhân)
@@ -129,6 +130,14 @@ class _DictionaryCard extends ConsumerWidget {
     );
   }
 
+  Future<void> _addWord(BuildContext context, WidgetRef ref) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AddWordScreen(dictionaryId: dictionary.id, dictionaryName: dictionary.name),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final color = _cardColors[dictionary.id % _cardColors.length];
@@ -157,6 +166,15 @@ class _DictionaryCard extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (dictionary.isDeletable)
+                  IconButton(
+                    onPressed: () => _addWord(context, ref),
+                    icon: const Icon(Icons.add, size: 18),
+                    tooltip: 'Tự thêm từ mới vào bộ này',
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(),
+                    padding: EdgeInsets.zero,
+                  ),
               ],
             ),
             const SizedBox(height: 2),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/services/tts_service.dart';
 import '../../domain/entities/review.dart';
@@ -192,18 +191,7 @@ class _WordIntroCardState extends State<_WordIntroCard> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  word.imagePath ?? AppConstants.defaultWordImage,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => Image.asset(
-                    AppConstants.defaultWordImage,
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                  ),
-                ),
+                child: WordImage(imagePath: word.imagePath, height: 160),
               ),
               const SizedBox(height: 20),
               Row(

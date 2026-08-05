@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/entities/review.dart';
+import '../vocab/word_widgets.dart';
 
 /// Câu hỏi trắc nghiệm: hiện từ tiếng Anh, chọn 1/4 nghĩa tiếng Việt
 /// (khớp mockup screen-07f-phien-on-tap-cau-trac-nghiem.html) — dùng
@@ -50,18 +50,7 @@ class _MultipleChoiceCardState extends State<MultipleChoiceCard> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        word.imagePath ?? AppConstants.defaultWordImage,
-                        height: 120,
-                        width: double.infinity,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => Image.asset(
-                          AppConstants.defaultWordImage,
-                          height: 120,
-                          width: double.infinity,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+                      child: WordImage(imagePath: word.imagePath, height: 120),
                     ),
                     const SizedBox(height: 16),
                     Text(word.word, style: Theme.of(context).textTheme.headlineMedium),

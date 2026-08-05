@@ -40,6 +40,10 @@ class VocabRepository {
   ''';
 
   /// Tra cứu 2 chiều: khớp từ tiếng Anh HOẶC nghĩa tiếng Việt.
+  ///
+  /// Loại trừ `source=2` (MANUAL — từ tự thêm ở SCR-07b): theo đúng
+  /// mockup "Từ tự thêm chỉ hiển thị trong bộ từ điển cá nhân — không
+  /// xuất hiện khi Tra cứu trong giáo trình gốc".
   List<VocabWord> search(String query, {int limit = 50}) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
@@ -47,7 +51,7 @@ class VocabRepository {
     final prefix = '$q%';
     final rows = _db.select(
       '''$_selectWord
-         WHERE w.word_lower LIKE ? OR lower(w.meaning_vi) LIKE ?
+         WHERE w.source != 2 AND (w.word_lower LIKE ? OR lower(w.meaning_vi) LIKE ?)
          ORDER BY
            CASE WHEN w.word_lower = ? THEN 0
                 WHEN w.word_lower LIKE ? THEN 1 ELSE 2 END,
@@ -233,5 +237,35 @@ class VocabRepository {
       [name, nextSortOrder, now],
     );
     return _db.lastInsertRowId;
+  }
+
+  /// Thêm 1 từ tự nhập tay (SCR-07b, `source=2` MANUAL — không có trong
+  /// giáo trình gốc), gán thẳng vào [dictionaryId]. [phonetic]/
+  /// [partOfSpeechCode]/[imagePath] để `null` nếu người dùng bỏ trống
+  /// (tuỳ chọn). [imagePath] là đường dẫn tuyệt đối đã copy vào thư mục
+  /// lưu trữ của app (xem `AddWordScreen._pickImage`), khác đường dẫn
+  /// asset tương đối (`assets/images/words/...`) của từ có sẵn.
+  int insertManualWord({
+    required String word,
+    required String meaningVi,
+    required int dictionaryId,
+    String? phonetic,
+    int? partOfSpeechCode,
+    String? imagePath,
+  }) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    _db.execute(
+      '''INSERT INTO words (word, word_lower, phonetic, meaning_vi,
+                             part_of_speech, is_subentry, image_path, source, created_at)
+         VALUES (?, ?, ?, ?, ?, 0, ?, 2, ?)''',
+      [word, word.toLowerCase(), phonetic, meaningVi, partOfSpeechCode, imagePath, now],
+    );
+    final wordId = _db.lastInsertRowId;
+
+    _db.execute(
+      'INSERT INTO word_dictionaries (word_id, dictionary_id, added_at) VALUES (?, ?, ?)',
+      [wordId, dictionaryId, now],
+    );
+    return wordId;
   }
 }

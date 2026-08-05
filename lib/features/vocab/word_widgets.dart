@@ -1,11 +1,52 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../data/services/tts_service.dart';
 import '../../domain/entities/word.dart';
 import '../review/review_providers.dart';
+
+/// Ảnh minh hoạ 1 từ vựng — tự nhận diện nguồn: [imagePath] tuyệt đối
+/// (từ tự thêm, ảnh do user upload, xem `AddWordScreen`) dùng
+/// [Image.file]; đường dẫn tương đối `assets/...` (từ có sẵn trong
+/// giáo trình) dùng [Image.asset]; `null`/lỗi -> [AppConstants.defaultWordImage].
+class WordImage extends StatelessWidget {
+  const WordImage({super.key, required this.imagePath, required this.height, this.fit = BoxFit.contain});
+
+  final String? imagePath;
+  final double height;
+  final BoxFit fit;
+
+  bool get _isAbsoluteFile => imagePath != null && p.isAbsolute(imagePath!);
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Image.asset(AppConstants.defaultWordImage, height: height, width: double.infinity, fit: fit);
+    if (imagePath == null || imagePath!.isEmpty) return fallback;
+
+    if (_isAbsoluteFile) {
+      return Image.file(
+        File(imagePath!),
+        height: height,
+        width: double.infinity,
+        fit: fit,
+        errorBuilder: (_, _, _) => fallback,
+      );
+    }
+    return Image.asset(
+      imagePath!,
+      height: height,
+      width: double.infinity,
+      fit: fit,
+      errorBuilder: (_, _, _) => fallback,
+    );
+  }
+}
 
 /// Nhãn loại từ (dt/đt/tt...) kiểu viền bo góc nhỏ, monospace — khớp
 /// `.pos-tag` trong mockup (`docs/artifact-design-windows/styles.css`).

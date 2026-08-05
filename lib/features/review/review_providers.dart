@@ -122,3 +122,26 @@ Future<void> createDictionary(WidgetRef ref, String name) async {
   vocabRepo.createDictionary(name);
   ref.invalidate(myDictionariesProvider);
 }
+
+/// Thêm 1 từ tự nhập tay vào [dictionaryId] (SCR-07b "Tự thêm từ mới")
+/// và làm mới danh sách bộ (đổi `wordCount`).
+Future<void> addManualWord(
+  WidgetRef ref, {
+  required String word,
+  required String meaningVi,
+  required int dictionaryId,
+  String? phonetic,
+  int? partOfSpeechCode,
+  String? imagePath,
+}) async {
+  final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+  vocabRepo.insertManualWord(
+    word: word,
+    meaningVi: meaningVi,
+    dictionaryId: dictionaryId,
+    phonetic: (phonetic == null || phonetic.trim().isEmpty) ? null : phonetic.trim(),
+    partOfSpeechCode: partOfSpeechCode,
+    imagePath: imagePath,
+  );
+  ref.invalidate(myDictionariesProvider);
+}

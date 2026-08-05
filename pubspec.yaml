@@ -46,6 +46,7 @@ dependencies:
   sqlite3: ^3.3.4
   connectivity_plus: ^7.3.0
   flutter_markdown_plus: ^1.0.12
+  file_selector: ^1.1.0
 
 dev_dependencies:
   flutter_test:
