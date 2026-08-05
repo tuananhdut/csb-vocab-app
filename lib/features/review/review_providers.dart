@@ -119,6 +119,19 @@ Future<void> createDictionary(WidgetRef ref, String name) async {
   ref.invalidate(myDictionariesProvider);
 }
 
+/// Xoá 1 bộ từ điển cá nhân (SCR-07, nút "Xoá bộ") — dọn luôn trạng
+/// thái ôn tập ở `user.db` cho các từ bị xoá hẳn theo bộ rồi làm mới
+/// danh sách bộ.
+Future<void> deleteDictionary(WidgetRef ref, int dictionaryId) async {
+  final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+  final userDb = await ref.read(userDbProvider.future);
+  final deletedWordIds = vocabRepo.deleteDictionary(dictionaryId);
+  for (final wordId in deletedWordIds) {
+    userDb.raw.execute('DELETE FROM learned_words WHERE word_id = ?', [wordId]);
+  }
+  ref.invalidate(myDictionariesProvider);
+}
+
 /// Thêm 1 từ tự nhập tay vào [dictionaryId] (SCR-07b "Tự thêm từ mới")
 /// và làm mới danh sách bộ (đổi `wordCount`).
 Future<void> addManualWord(

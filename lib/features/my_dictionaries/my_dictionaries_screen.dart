@@ -139,6 +139,37 @@ class _DictionaryCard extends ConsumerWidget {
     );
   }
 
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xoá bộ từ điển này?'),
+        content: Text(
+          'Bộ "${dictionary.name}" cùng toàn bộ ${dictionary.wordCount} từ bên trong sẽ bị xoá. '
+          'Hành động này không thể hoàn tác.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Huỷ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.signalRed),
+            child: const Text('Xoá'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await deleteDictionary(ref, dictionary.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Đã xoá bộ "${dictionary.name}".')),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final color = _cardColors[dictionary.id % _cardColors.length];
@@ -168,13 +199,38 @@ class _DictionaryCard extends ConsumerWidget {
                   ),
                 ),
                 if (dictionary.isDeletable)
-                  IconButton(
-                    onPressed: () => _addWord(context, ref),
-                    icon: const Icon(Icons.add, size: 18),
-                    tooltip: 'Tự thêm từ mới vào bộ này',
-                    visualDensity: VisualDensity.compact,
-                    constraints: const BoxConstraints(),
+                  PopupMenuButton<_DictionaryCardAction>(
+                    icon: Icon(Icons.more_vert, size: 18, color: Theme.of(context).colorScheme.outline),
+                    tooltip: 'Tuỳ chọn',
                     padding: EdgeInsets.zero,
+                    onSelected: (action) {
+                      switch (action) {
+                        case _DictionaryCardAction.addWord:
+                          _addWord(context, ref);
+                        case _DictionaryCardAction.delete:
+                          _delete(context, ref);
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: _DictionaryCardAction.addWord,
+                        child: ListTile(
+                          leading: Icon(Icons.add),
+                          title: Text('Thêm từ mới'),
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: _DictionaryCardAction.delete,
+                        child: ListTile(
+                          leading: Icon(Icons.delete_outline, color: AppColors.signalRed),
+                          title: Text('Xoá bộ', style: TextStyle(color: AppColors.signalRed)),
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
                   ),
               ],
             ),
@@ -255,3 +311,5 @@ class _DictionaryCard extends ConsumerWidget {
     );
   }
 }
+
+enum _DictionaryCardAction { addWord, delete }

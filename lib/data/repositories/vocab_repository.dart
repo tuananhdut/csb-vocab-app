@@ -240,6 +240,34 @@ class VocabRepository {
     return _db.lastInsertRowId;
   }
 
+  /// Xoá 1 bộ từ điển cá nhân (SCR-07, nút "Xoá bộ") — gọi từ UI đã
+  /// kiểm tra `Dictionary.isDeletable` trước đó nên không lọc lại điều
+  /// kiện này ở đây. Xoá luôn các từ CHỈ thuộc bộ này (không thuộc bộ
+  /// nào khác) vì `word_dictionaries` yêu cầu mọi từ có >=1 bộ (xem
+  /// `docs/db/schema.sql`) — hiện tại từ tự thêm luôn gán đúng 1 bộ lúc
+  /// tạo ([insertManualWord]) nên trong thực tế xoá bộ = xoá sạch từ
+  /// trong bộ đó. Trả về `word_id` của các từ đã xoá hẳn để tầng gọi
+  /// dọn thêm `learned_words` bên `user.db` (2 file SQLite riêng,
+  /// không xoá chéo được ở đây).
+  List<int> deleteDictionary(int dictionaryId) {
+    final orphanRows = _db.select(
+      '''SELECT word_id FROM word_dictionaries WHERE dictionary_id = ?
+         AND word_id NOT IN (
+           SELECT word_id FROM word_dictionaries WHERE dictionary_id != ?
+         )''',
+      [dictionaryId, dictionaryId],
+    );
+    final orphanWordIds = orphanRows.map((r) => r['word_id'] as int).toList();
+
+    _db.execute('DELETE FROM word_dictionaries WHERE dictionary_id = ?', [dictionaryId]);
+    for (final wordId in orphanWordIds) {
+      _db.execute('DELETE FROM examples WHERE word_id = ?', [wordId]);
+      _db.execute('DELETE FROM words WHERE id = ?', [wordId]);
+    }
+    _db.execute('DELETE FROM dictionaries WHERE id = ?', [dictionaryId]);
+    return orphanWordIds;
+  }
+
   /// Thêm 1 từ tự nhập tay (SCR-07b, `source=2` MANUAL — không có trong
   /// giáo trình gốc), gán thẳng vào [dictionaryId]. [phonetic]/
   /// [partOfSpeechCode]/[imagePath] để `null` nếu người dùng bỏ trống
