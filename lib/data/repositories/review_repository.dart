@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:sqlite3/sqlite3.dart';
 
 import '../../domain/entities/review.dart';
@@ -110,5 +112,23 @@ class SqliteReviewRepository implements domain.ReviewRepository {
       [_endOfTodayMillis()],
     );
     return rows.first['cnt'] as int? ?? 0;
+  }
+
+  @override
+  List<ReviewQuestion> buildSession(List<DueReviewItem> dueItems) {
+    final random = Random();
+    final limited = dueItems.take(4);
+
+    return limited.map((item) {
+      final mode = random.nextBool() ? QuestionMode.multipleChoice : QuestionMode.typing;
+      if (mode == QuestionMode.typing) {
+        return ReviewQuestion(word: item.word, mode: mode);
+      }
+
+      final dictionaryId = _vocabRepository.primaryDictionaryId(item.word.id);
+      final distractors = _vocabRepository.randomDistractors(item.word.id, dictionaryId);
+      final choices = [item.word.meaningVi, ...distractors]..shuffle(random);
+      return ReviewQuestion(word: item.word, mode: mode, choices: choices);
+    }).toList();
   }
 }

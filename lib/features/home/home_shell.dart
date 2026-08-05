@@ -6,12 +6,12 @@ import '../../core/theme/app_theme.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/notification_service.dart';
 import '../lessons/lessons_screen.dart';
+import '../my_dictionaries/my_dictionaries_screen.dart';
 import '../review/review_providers.dart';
-import '../review/review_screen.dart';
 import '../search/search_screen.dart';
 import '../translate/translate_screen.dart';
 
-const _reviewDestinationIndex = 3;
+const _myDictionariesDestinationIndex = 3;
 
 /// Khung chính sau splash. Điều hướng adaptive:
 /// - Desktop (cửa sổ rộng, Windows): [NavigationRail] bên trái.
@@ -31,7 +31,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     _Destination('Tra cứu', Icons.explore_outlined, SearchScreen()),
     _Destination('Học', Icons.menu_book_outlined, LessonsScreen()),
     _Destination('Dịch', Icons.waves_outlined, TranslateScreen()),
-    _Destination('Ôn tập', Icons.radar, ReviewScreen()),
+    _Destination('Từ điển của tôi', Icons.collections_bookmark_outlined, MyDictionariesScreen()),
   ];
 
   @override
@@ -127,7 +127,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 
   Widget _destinationIcon(IconData icon, int index, int dueCount) {
-    if (index != _reviewDestinationIndex || dueCount <= 0) {
+    if (index != _myDictionariesDestinationIndex || dueCount <= 0) {
       return Icon(icon);
     }
     return Badge(label: Text('$dueCount'), child: Icon(icon));

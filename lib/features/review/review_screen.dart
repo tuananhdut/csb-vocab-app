@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/review.dart';
+import '../../domain/srs/srs_scheduler.dart';
 import 'review_providers.dart';
 import 'review_session_screen.dart';
 
@@ -54,12 +55,20 @@ class _EmptyDue extends StatelessWidget {
   }
 }
 
-class _DueQueue extends StatelessWidget {
+class _DueQueue extends ConsumerWidget {
   const _DueQueue({required this.items});
   final List<DueReviewItem> items;
 
+  Future<void> _startSession(BuildContext context, WidgetRef ref) async {
+    final questions = await buildReviewSession(ref, items);
+    if (!context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReviewSessionScreen(questions: questions)),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       children: [
         Padding(
@@ -73,11 +82,7 @@ class _DueQueue extends StatelessWidget {
                 ),
               ),
               FilledButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ReviewSessionScreen(items: items),
-                  ),
-                ),
+                onPressed: () => _startSession(context, ref),
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('Bắt đầu ôn tập'),
               ),
@@ -94,6 +99,13 @@ class _DueQueue extends StatelessWidget {
                 title: Text(item.word.word,
                     style: Theme.of(context).textTheme.bodyLarge),
                 subtitle: Text(item.word.meaningVi),
+                trailing: isDifficult(item.state)
+                    ? Chip(
+                        label: const Text('Từ khó'),
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                      )
+                    : null,
               );
             },
           ),

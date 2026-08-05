@@ -1,8 +1,12 @@
-"""Nap words_import.final.csv (da AI review) vao 1 DB thu nghiem SQLite.
+"""Nap words_import.final.csv + chapters_import.csv (da review) vao 1 DB
+thu nghiem SQLite.
 
 Xem docs/csb-vocab-analysis/tasks/03-import-tu-dien-hai-quan/03-plan.md
-(LOAD-01/LOAD-02) va Data Contract trong cung file de biet boi canh day
-du. Day la buoc LOAD cuoi cung cua pipeline Extract -> Review -> Load.
+(LOAD-01/LOAD-02, cho words/dictionaries/examples) va
+docs/csb-vocab-analysis/tasks/04-seed-noi-dung-bai-doc/04-plan.md
+(LOAD-01/LOAD-02, cho sections/chapters - ham load_chapters() ben duoi)
+de biet boi canh day du. Day la buoc LOAD cuoi cung cua 2 pipeline
+Extract -> Review -> Load (dung chung 1 DB thu nghiem, 1 lan build).
 
 QUAN TRONG - dung theo Data Contract da dieu chinh (xem lich su hoi
 thoai task, khac ban dau trong 03-plan.md):
@@ -46,8 +50,19 @@ import sys
 import time
 
 CSV_PATH = "docs/db/import/words_import.final.csv"
+CHAPTERS_CSV_PATH = "docs/db/import/chapters_import.csv"
 SCHEMA_PATH = "docs/db/schema.sql"
 DB_PATH = "docs/db/import/review.sqlite"
+
+# Thu tu CHAPTER cha trong docx TA_chuyen_nganh.docx (da chot o
+# 04-plan.md Open Questions) - dung de suy sort_order cho bang
+# `sections`, KHONG doc tu source_page nhu seed_dictionaries_from_csv()
+# vi chapters_import.csv khong co cot source_page (nguon la .docx,
+# khac PDF co so trang).
+SECTION_SORT_ORDER = {
+    "General Military English": 1,
+    "Specialized English for the Vietnam Coast Guard": 2,
+}
 
 # Windows console mac dinh dung cp1252, khong encode duoc tieng Viet co
 # dau - bat buoc ep stdout/stderr sang UTF-8 truoc khi print bat ky
@@ -121,6 +136,75 @@ def seed_dictionaries_from_csv(conn: sqlite3.Connection, rows: list[dict], now: 
 
     conn.commit()
     return dict_map
+
+
+def load_chapters(conn: sqlite3.Connection) -> None:
+    """Doc chapters_import.csv (da review o task 04), INSERT vao
+    sections + chapters. Xem docs/csb-vocab-analysis/tasks/
+    04-seed-noi-dung-bai-doc/04-plan.md (LOAD-01/LOAD-02).
+
+    Cung nguyen tac voi seed_dictionaries_from_csv(): sections KHONG
+    hardcode rieng, suy dong tu cot section_name distinct trong CSV -
+    nhung sort_order lay tu SECTION_SORT_ORDER (thu tu CHAPTER I/II
+    trong docx) vi khong co cot source_page de tu suy nhu ben words.
+
+    Dong reviewed=0 bi SKIP (khong insert), in danh sach de minh bach -
+    nhat quan hanh vi da co trong main() cho words_import.final.csv.
+    """
+    with open(CHAPTERS_CSV_PATH, encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
+    print(f"\nRead {len(rows)} rows from {CHAPTERS_CSV_PATH}")
+
+    unreviewed = [r for r in rows if r["reviewed"] != "1"]
+    rows_to_load = [r for r in rows if r["reviewed"] == "1"]
+    if unreviewed:
+        print(f"\nSKIPPING {len(unreviewed)} chapter rows with reviewed=0 (not inserted):")
+        for r in unreviewed:
+            print(f"  section={r['section_name']!r}  chapter_title={r['chapter_title']!r}")
+
+    print(f"\nLoading {len(rows_to_load)} chapter rows (reviewed=1)")
+
+    section_names = sorted(
+        {r["section_name"].strip() for r in rows_to_load if r["section_name"].strip()},
+        key=lambda n: SECTION_SORT_ORDER.get(n, 999),
+    )
+
+    cur = conn.cursor()
+    section_map: dict[str, int] = {}
+    for name in section_names:
+        cur.execute(
+            "INSERT INTO sections (name, sort_order) VALUES (?, ?)",
+            (name, SECTION_SORT_ORDER.get(name, 999)),
+        )
+        section_map[name] = cur.lastrowid
+
+    print(f"\nSeeded {len(section_map)} sections from CSV:")
+    for name, id_ in sorted(section_map.items(), key=lambda kv: kv[1]):
+        print(f"  id={id_}  {name!r}")
+
+    inserted_chapters = 0
+    skipped_no_section = []
+
+    for r in rows_to_load:
+        section_name = r["section_name"].strip()
+        section_id = section_map.get(section_name)
+        if section_id is None:
+            # An toan phong thu, tuong tu skipped_no_dictionary o words -
+            # khong nen xay ra vi section_map suy tu chinh rows_to_load.
+            skipped_no_section.append(r)
+            continue
+
+        cur.execute(
+            "INSERT INTO chapters (section_id, title, sort_order, content) VALUES (?, ?, ?, ?)",
+            (section_id, r["chapter_title"], int(r["sort_order"]), r["content_md"]),
+        )
+        inserted_chapters += 1
+
+    print(f"\nInserted: sections={len(section_map)}  chapters={inserted_chapters}")
+    if skipped_no_section:
+        print(f"\nSKIPPED {len(skipped_no_section)} chapter rows (section_name khong khop):")
+        for r in skipped_no_section:
+            print(f"  section_name={r['section_name']!r}  chapter_title={r['chapter_title']!r}")
 
 
 def main() -> None:
@@ -204,6 +288,8 @@ def main() -> None:
                     (word_id, r["example_en"], r["example_vi"]),
                 )
                 inserted_examples += 1
+
+        load_chapters(conn)
 
         conn.commit()
     except Exception:

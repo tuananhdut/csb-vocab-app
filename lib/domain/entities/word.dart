@@ -1,18 +1,4 @@
-// Các thực thể miền cho dữ liệu từ vựng (đọc từ vocab.db).
-
-class Chapter {
-  const Chapter({
-    required this.id,
-    required this.chapterNo,
-    required this.title,
-    required this.wordCount,
-  });
-
-  final int id;
-  final int chapterNo;
-  final String title;
-  final int wordCount;
-}
+// Các thực thể miền cho từ vựng (đọc từ vocab.db).
 
 class WordExample {
   const WordExample({required this.en, required this.vi});

@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
-import '../../domain/entities/vocab.dart';
+import '../../domain/entities/word.dart';
 import '../vocab/word_widgets.dart';
 
 /// FR-2 — Tra cứu từ vựng (offline, 2 chiều Anh↔Việt trong phạm vi giáo trình).

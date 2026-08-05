@@ -1,9 +1,13 @@
 // Các thực thể miền cho ôn tập từ vựng (SM-2, FR-5).
 
-import 'vocab.dart';
+import 'word.dart';
 
 /// Mức đánh giá trí nhớ khi ôn 1 từ (theo thang SM-2 gốc: q = 0..5).
-/// Dùng 4 nút theo plan 04: Quên / Khó / Tốt / Dễ.
+/// Từ khi đổi sang câu hỏi khách quan (trắc nghiệm/gõ chữ, xem
+/// `docs/csb-vocab-analysis/tasks/02-review-multi-mode/`), hệ thống tự
+/// chấm và chỉ dùng 2 giá trị: `forgot` (sai) / `good` (đúng) — `hard`/
+/// `easy` giữ lại trong enum (không xoá) vì không ảnh hưởng hành vi mới,
+/// chỉ đơn giản không còn đường gọi tới.
 enum ReviewRating {
   forgot(1, 'Quên'),
   hard(3, 'Khó'),
@@ -15,6 +19,22 @@ enum ReviewRating {
   /// Giá trị q truyền vào công thức SM-2.
   final int quality;
   final String label;
+}
+
+/// Kiểu câu hỏi trong 1 phiên ôn tập khách quan — chỉ dùng ở runtime để
+/// UI biết render đúng dạng, KHÔNG có cột DB tương ứng (đã chốt không
+/// thêm `review_logs.question_mode`, xem OQ-6 ở `01-analysis.md`).
+enum QuestionMode { multipleChoice, typing }
+
+/// 1 câu hỏi đã "chuẩn bị sẵn" cho phiên ôn — [choices] có 4 phần tử
+/// (1 đúng + 3 nhiễu, đã xáo trộn vị trí) khi [mode] là
+/// [QuestionMode.multipleChoice], `null` khi [QuestionMode.typing].
+class ReviewQuestion {
+  const ReviewQuestion({required this.word, required this.mode, this.choices});
+
+  final VocabWord word;
+  final QuestionMode mode;
+  final List<String>? choices;
 }
 
 /// Trạng thái SRS của một từ đã đánh dấu học (bảng `learned_words`).

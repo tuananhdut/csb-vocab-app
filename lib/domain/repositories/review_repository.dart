@@ -14,4 +14,10 @@ abstract class ReviewRepository {
   Future<List<DueReviewItem>> dueToday();
 
   Future<int> dueCount();
+
+  /// Chuẩn bị 1 phiên ôn tập khách quan từ hàng đợi đến hạn: cắt tối đa
+  /// 4 từ (không độn thêm nếu hàng đợi ít hơn), random 50/50 kiểu câu
+  /// hỏi (trắc nghiệm/gõ chữ) cho mỗi từ. Xem `docs/csb-vocab-analysis/
+  /// tasks/02-review-multi-mode/03-plan.md` (BE-05, OQ-4).
+  List<ReviewQuestion> buildSession(List<DueReviewItem> dueItems);
 }

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../data/services/tts_service.dart';
-import '../../domain/entities/vocab.dart';
+import '../../domain/entities/word.dart';
 import '../review/review_providers.dart';
 
 /// Nhãn loại từ (dt/đt/tt...) kiểu viền bo góc nhỏ, monospace — khớp
