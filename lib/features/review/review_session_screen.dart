@@ -13,8 +13,13 @@ import 'review_result_screen.dart';
 /// chuẩn bị sẵn qua [buildReviewSession]), hệ thống tự chấm đúng/sai và
 /// gọi `submitReview` — không cần người dùng tự đánh giá cảm nhận.
 class ReviewSessionScreen extends ConsumerStatefulWidget {
-  const ReviewSessionScreen({super.key, required this.questions});
+  const ReviewSessionScreen({super.key, required this.questions, this.dictionaryId});
   final List<ReviewQuestion> questions;
+
+  /// Bộ từ điển đang ôn (SCR-07 "Ôn tập" theo từng bộ) — `null` khi mở
+  /// từ hàng đợi due chung (chưa có lối vào nào khác ngoài per-bộ, giữ
+  /// tham số optional để không phải sửa signature nếu sau này có thêm).
+  final int? dictionaryId;
 
   @override
   ConsumerState<ReviewSessionScreen> createState() => _ReviewSessionScreenState();
@@ -30,6 +35,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
       ref,
       word.id,
       isCorrect ? ReviewRating.good : ReviewRating.forgot,
+      dictionaryId: widget.dictionaryId,
     );
     if (!mounted) return;
 

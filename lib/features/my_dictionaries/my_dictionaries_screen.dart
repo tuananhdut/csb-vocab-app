@@ -6,15 +6,16 @@ import '../../domain/entities/dictionary.dart';
 import '../review/review_providers.dart';
 import '../review/review_screen.dart';
 import 'add_word_screen.dart';
+import 'dictionary_detail_screen.dart';
 import 'learn_new_words_screen.dart';
 
 /// SCR-07 — Từ điển của tôi: danh sách bộ từ điển (mặc định + cá nhân)
 /// dạng card, kèm số liệu tổng/đã học/đến hạn ôn theo từng bộ.
 ///
-/// Xem docs/artifact-design/screens/screen-07-tu-dien-cua-toi.html. Phạm
-/// vi hiện tại: chỉ danh sách bộ + tạo bộ mới — "Xem" (chi tiết bộ,
-/// SCR-07c) và "Ôn tập ngay theo từng bộ" (SCR-07d/e/f) chưa implement,
-/// để dành phase sau.
+/// Xem docs/artifact-design/screens/screen-07-tu-dien-cua-toi.html.
+/// Nút "Ôn tập" mở [ReviewScreen] đã lọc theo đúng [Dictionary.id] của
+/// card (SCR-07d/e/f) — chỉ ôn từ thuộc bộ đó, xem
+/// [dueReviewsForDictionaryProvider].
 class MyDictionariesScreen extends ConsumerWidget {
   const MyDictionariesScreen({super.key});
 
@@ -220,15 +221,12 @@ class _DictionaryCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    // Mo thang ReviewScreen toan cuc (hang doi due chung,
-                    // KHONG loc theo bo nay) - phien on theo tung bo
-                    // (SCR-07d/e/f) chua implement, xem module doc.
                     onPressed: dictionary.dueCount > 0
                         ? () => Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => Scaffold(
-                                  appBar: AppBar(title: const Text('Ôn tập')),
-                                  body: const ReviewScreen(),
+                                  appBar: AppBar(title: Text('Ôn tập · ${dictionary.name}')),
+                                  body: ReviewScreen(dictionaryId: dictionary.id),
                                 ),
                               ),
                             )
@@ -239,8 +237,13 @@ class _DictionaryCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton(
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chi tiết bộ từ điển chưa implement.')),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DictionaryDetailScreen(
+                        dictionaryId: dictionary.id,
+                        dictionaryName: dictionary.name,
+                      ),
+                    ),
                   ),
                   child: const Text('Xem'),
                 ),

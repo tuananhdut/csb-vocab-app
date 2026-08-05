@@ -7,18 +7,27 @@ import 'review_providers.dart';
 import 'review_session_screen.dart';
 
 /// FR-5 — Ôn tập từ vựng: hàng đợi "ôn hôm nay" theo thuật toán SM-2.
+///
+/// Truyền [dictionaryId] để chỉ ôn từ thuộc 1 bộ từ điển cụ thể (SCR-07,
+/// nút "Ôn tập" trên từng card) — bỏ trống thì dùng hàng đợi due chung
+/// (toàn bộ từ đã học, không phân biệt bộ).
 class ReviewScreen extends ConsumerWidget {
-  const ReviewScreen({super.key});
+  const ReviewScreen({super.key, this.dictionaryId});
+
+  final int? dictionaryId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final due = ref.watch(dueReviewsProvider);
+    final due = dictionaryId == null
+        ? ref.watch(dueReviewsProvider)
+        : ref.watch(dueReviewsForDictionaryProvider(dictionaryId!));
 
     return due.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Lỗi: $e')),
-      data: (items) =>
-          items.isEmpty ? const _EmptyDue() : _DueQueue(items: items),
+      data: (items) => items.isEmpty
+          ? const _EmptyDue()
+          : _DueQueue(items: items, dictionaryId: dictionaryId),
     );
   }
 }
@@ -56,14 +65,17 @@ class _EmptyDue extends StatelessWidget {
 }
 
 class _DueQueue extends ConsumerWidget {
-  const _DueQueue({required this.items});
+  const _DueQueue({required this.items, this.dictionaryId});
   final List<DueReviewItem> items;
+  final int? dictionaryId;
 
   Future<void> _startSession(BuildContext context, WidgetRef ref) async {
     final questions = await buildReviewSession(ref, items);
     if (!context.mounted) return;
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ReviewSessionScreen(questions: questions)),
+      MaterialPageRoute(
+        builder: (_) => ReviewSessionScreen(questions: questions, dictionaryId: dictionaryId),
+      ),
     );
   }
 

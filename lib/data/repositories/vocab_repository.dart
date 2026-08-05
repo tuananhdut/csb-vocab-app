@@ -23,6 +23,7 @@ class VocabRepository {
         chapterTitle: r['chapter_title'] as String? ?? '',
         imagePath: r['image_path'] as String?,
         isSubentry: (r['is_subentry'] as int? ?? 0) == 1,
+        isManual: (r['source'] as int? ?? 0) == 2,
       );
 
   // "chapter_title" o day la ten bo tu dien (dictionaries) - giu ten
@@ -31,7 +32,7 @@ class VocabRepository {
   // hien thi 1 nhan -> lay bo dau tien theo dictionary_id tang dan.
   static const _selectWord = '''
     SELECT w.id, w.word, w.phonetic, w.part_of_speech, w.meaning_vi,
-           w.image_path, w.is_subentry,
+           w.image_path, w.is_subentry, w.source,
            (SELECT d.name FROM word_dictionaries wd
               JOIN dictionaries d ON d.id = wd.dictionary_id
               WHERE wd.word_id = w.id
@@ -267,5 +268,34 @@ class VocabRepository {
       [wordId, dictionaryId, now],
     );
     return wordId;
+  }
+
+  /// Sửa 1 từ tự thêm (SCR-07c "Sửa từ") — chỉ áp dụng cho `source=2`,
+  /// gọi từ UI đã kiểm tra [VocabWord.isManual] trước đó nên không lọc
+  /// lại điều kiện `source` ở đây.
+  void updateManualWord({
+    required int wordId,
+    required String word,
+    required String meaningVi,
+    String? phonetic,
+    int? partOfSpeechCode,
+    String? imagePath,
+  }) {
+    _db.execute(
+      '''UPDATE words SET word = ?, word_lower = ?, phonetic = ?, meaning_vi = ?,
+                           part_of_speech = ?, image_path = ?
+         WHERE id = ?''',
+      [word, word.toLowerCase(), phonetic, meaningVi, partOfSpeechCode, imagePath, wordId],
+    );
+  }
+
+  /// Xoá hẳn 1 từ tự thêm (SCR-07c "Xoá từ") khỏi `words`, kèm dọn các
+  /// bảng phụ thuộc thủ công — `VocabDatabase.open()` không bật
+  /// `PRAGMA foreign_keys`, nên `ON DELETE CASCADE` khai báo trong
+  /// `docs/db/schema.sql` không tự chạy ở runtime.
+  void deleteWord(int wordId) {
+    _db.execute('DELETE FROM word_dictionaries WHERE word_id = ?', [wordId]);
+    _db.execute('DELETE FROM examples WHERE word_id = ?', [wordId]);
+    _db.execute('DELETE FROM words WHERE id = ?', [wordId]);
   }
 }

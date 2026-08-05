@@ -115,6 +115,15 @@ class SqliteReviewRepository implements domain.ReviewRepository {
   }
 
   @override
+  Future<List<DueReviewItem>> dueTodayForDictionary(int dictionaryId) async {
+    final wordIds = _vocabRepository.wordsByChapter(dictionaryId).map((w) => w.id).toSet();
+    if (wordIds.isEmpty) return const [];
+
+    final all = await dueToday();
+    return all.where((item) => wordIds.contains(item.word.id)).toList();
+  }
+
+  @override
   List<ReviewQuestion> buildSession(List<DueReviewItem> dueItems) {
     final random = Random();
     final limited = dueItems.take(4);

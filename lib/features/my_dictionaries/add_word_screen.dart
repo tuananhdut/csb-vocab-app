@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../domain/entities/word.dart';
 import '../review/review_providers.dart';
 
 /// Nhãn đầy đủ cho dropdown "Loại từ" — mã số khớp `part_of_speech` (xem
@@ -19,17 +20,34 @@ const _partOfSpeechOptions = {
   4: 'Giới từ (gt)',
 };
 
-/// SCR-07b — Tự thêm từ mới: nhập tay 1 từ không có trong giáo trình,
+/// Chiều ngược lại của `VocabRepository._posLabels` (viết tắt hiển thị
+/// trên [VocabWord.partOfSpeech] -> mã số) — dùng để chọn sẵn mục đúng
+/// trong dropdown khi mở form ở chế độ sửa.
+const _posCodeByAbbreviation = {'dt': 0, 'đt': 1, 'tt': 2, 'trt': 3, 'gt': 4};
+
+/// SCR-07b — Tự thêm/sửa từ: nhập tay 1 từ không có trong giáo trình,
 /// kèm ảnh minh hoạ tuỳ chọn. Bộ từ điển đích không hỏi lại — màn này
 /// luôn mở từ card của đúng bộ đó (SCR-07), nên [dictionaryId] cố định.
 /// Chỉ 2 trường bắt buộc (từ + nghĩa); phiên âm/loại từ/ảnh tuỳ chọn vì
 /// người dùng không phải chuyên gia ngôn ngữ. Xem
 /// docs/artifact-design/screens/screen-07b-tu-them-tu-moi.html.
+///
+/// Truyền [existingWord] để chuyển sang chế độ sửa (SCR-07c, mở từ
+/// [DictionaryDetailScreen]) — form dùng lại nguyên vẹn, chỉ đổi tiêu
+/// đề/nút và gọi [editWord] thay vì [addManualWord] lúc lưu.
 class AddWordScreen extends ConsumerStatefulWidget {
-  const AddWordScreen({super.key, required this.dictionaryId, required this.dictionaryName});
+  const AddWordScreen({
+    super.key,
+    required this.dictionaryId,
+    required this.dictionaryName,
+    this.existingWord,
+  });
 
   final int dictionaryId;
   final String dictionaryName;
+  final VocabWord? existingWord;
+
+  bool get isEditing => existingWord != null;
 
   @override
   ConsumerState<AddWordScreen> createState() => _AddWordScreenState();
@@ -37,12 +55,25 @@ class AddWordScreen extends ConsumerStatefulWidget {
 
 class _AddWordScreenState extends ConsumerState<AddWordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _wordController = TextEditingController();
-  final _meaningController = TextEditingController();
-  final _phoneticController = TextEditingController();
+  late final _wordController = TextEditingController(text: widget.existingWord?.word);
+  late final _meaningController = TextEditingController(text: widget.existingWord?.meaningVi);
+  late final _phoneticController = TextEditingController(text: widget.existingWord?.phonetic);
   int? _partOfSpeechCode;
   File? _pickedImage;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existingWord;
+    if (existing != null) {
+      _partOfSpeechCode = _posCodeByAbbreviation[existing.partOfSpeech];
+      final imagePath = existing.imagePath;
+      if (imagePath != null && imagePath.isNotEmpty && p.isAbsolute(imagePath)) {
+        _pickedImage = File(imagePath);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -64,9 +95,13 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
   /// Copy ảnh đã chọn vào thư mục lưu trữ riêng của app (bền vững qua
   /// các lần chạy, không phụ thuộc đường dẫn gốc user có thể xoá/di
   /// chuyển) — trả về đường dẫn tuyệt đối để lưu vào `words.image_path`.
+  /// Nếu ảnh đang chọn đã nằm sẵn trong thư mục này (ảnh cũ của
+  /// [widget.existingWord] khi sửa, người dùng không đổi) thì giữ
+  /// nguyên đường dẫn, khỏi copy trùng thêm 1 bản.
   Future<String?> _persistPickedImage() async {
     if (_pickedImage == null) return null;
     final wordsDir = Directory(p.join((await getApplicationSupportDirectory()).path, 'word_images'));
+    if (p.equals(p.dirname(_pickedImage!.path), wordsDir.path)) return _pickedImage!.path;
     await wordsDir.create(recursive: true);
     final fileName = '${DateTime.now().microsecondsSinceEpoch}${p.extension(_pickedImage!.path)}';
     final savedFile = await _pickedImage!.copy(p.join(wordsDir.path, fileName));
@@ -77,19 +112,39 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final imagePath = await _persistPickedImage();
-    await addManualWord(
-      ref,
-      word: _wordController.text.trim(),
-      meaningVi: _meaningController.text.trim(),
-      dictionaryId: widget.dictionaryId,
-      phonetic: _phoneticController.text,
-      partOfSpeechCode: _partOfSpeechCode,
-      imagePath: imagePath,
-    );
+    final word = _wordController.text.trim();
+    if (widget.isEditing) {
+      await editWord(
+        ref,
+        wordId: widget.existingWord!.id,
+        dictionaryId: widget.dictionaryId,
+        word: word,
+        meaningVi: _meaningController.text.trim(),
+        phonetic: _phoneticController.text,
+        partOfSpeechCode: _partOfSpeechCode,
+        imagePath: imagePath,
+      );
+    } else {
+      await addManualWord(
+        ref,
+        word: word,
+        meaningVi: _meaningController.text.trim(),
+        dictionaryId: widget.dictionaryId,
+        phonetic: _phoneticController.text,
+        partOfSpeechCode: _partOfSpeechCode,
+        imagePath: imagePath,
+      );
+    }
     if (!mounted) return;
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã thêm "${_wordController.text.trim()}" vào ${widget.dictionaryName}.')),
+      SnackBar(
+        content: Text(
+          widget.isEditing
+              ? 'Đã lưu thay đổi cho "$word".'
+              : 'Đã thêm "$word" vào ${widget.dictionaryName}.',
+        ),
+      ),
     );
   }
 
@@ -97,7 +152,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Tự thêm từ mới')),
+      appBar: AppBar(title: Text(widget.isEditing ? 'Sửa từ' : 'Tự thêm từ mới')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -200,7 +255,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
                                 child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white),
                               )
                             : const Icon(Icons.check),
-                        label: const Text('Lưu từ mới'),
+                        label: Text(widget.isEditing ? 'Lưu thay đổi' : 'Lưu từ mới'),
                         style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                       ),
                     ),

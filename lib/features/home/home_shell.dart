@@ -130,7 +130,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     if (index != _myDictionariesDestinationIndex || dueCount <= 0) {
       return Icon(icon);
     }
-    return Badge(label: Text('$dueCount'), child: Icon(icon));
+    return Badge(
+      label: Text(dueCount > 99 ? '99+' : '$dueCount'),
+      backgroundColor: AppColors.signalRed,
+      offset: const Offset(10, -8),
+      child: Icon(icon),
+    );
   }
 
   void _onSelect(int i) => setState(() => _index = i);

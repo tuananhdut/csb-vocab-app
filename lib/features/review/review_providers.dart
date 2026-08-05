@@ -37,21 +37,13 @@ final dueReviewCountProvider = FutureProvider<int>((ref) async {
   return repo.dueCount();
 });
 
-/// Từ [wordId] đã được đánh dấu học chưa (hiển thị trạng thái nút).
-final learnedStatusProvider =
-    FutureProvider.family<bool, int>((ref, wordId) async {
+/// Hàng đợi "ôn hôm nay" CHỈ tính từ thuộc 1 bộ từ điển — dùng cho nút
+/// "Ôn tập" trên từng card ở SCR-07 (thay cho hàng đợi due chung).
+final dueReviewsForDictionaryProvider =
+    FutureProvider.family<List<DueReviewItem>, int>((ref, dictionaryId) async {
   final repo = await ref.watch(reviewRepositoryProvider.future);
-  return repo.isLearned(wordId);
+  return repo.dueTodayForDictionary(dictionaryId);
 });
-
-/// Đánh dấu 1 từ đã học và làm mới các provider phụ thuộc.
-Future<void> markWordLearned(WidgetRef ref, int wordId) async {
-  final repo = await ref.read(reviewRepositoryProvider.future);
-  await repo.markLearned(wordId);
-  ref.invalidate(learnedStatusProvider(wordId));
-  ref.invalidate(dueReviewsProvider);
-  ref.invalidate(dueReviewCountProvider);
-}
 
 /// Danh sách bộ từ điển kèm số liệu ôn tập (SCR-07 "Từ điển của tôi") —
 /// ghép `vocab.db` (dictionaries) với `user.db` (learned_words), xem
@@ -92,16 +84,20 @@ Future<List<ReviewQuestion>> buildQuickQuiz(WidgetRef ref, List<VocabWord> words
   return MyDictionariesRepository(vocabRepo, userDb.raw).multipleChoiceQuestionsFor(words);
 }
 
-/// Ghi nhận 1 lượt ôn và làm mới hàng đợi + badge.
+/// Ghi nhận 1 lượt ôn và làm mới hàng đợi + badge. Truyền [dictionaryId]
+/// khi phiên ôn đang mở từ 1 bộ cụ thể (SCR-07) để làm mới đúng hàng đợi
+/// riêng của bộ đó ([dueReviewsForDictionaryProvider]).
 Future<void> submitWordReview(
   WidgetRef ref,
   int wordId,
-  ReviewRating rating,
-) async {
+  ReviewRating rating, {
+  int? dictionaryId,
+}) async {
   final repo = await ref.read(reviewRepositoryProvider.future);
   await repo.submitReview(wordId, rating);
   ref.invalidate(dueReviewsProvider);
   ref.invalidate(dueReviewCountProvider);
+  if (dictionaryId != null) ref.invalidate(dueReviewsForDictionaryProvider(dictionaryId));
 }
 
 /// Chuẩn bị phiên ôn tập khách quan (tối đa 4 câu, trộn 50/50 trắc
@@ -143,5 +139,42 @@ Future<void> addManualWord(
     partOfSpeechCode: partOfSpeechCode,
     imagePath: imagePath,
   );
+  ref.invalidate(myDictionariesProvider);
+}
+
+/// Sửa 1 từ tự thêm (SCR-07c) và làm mới danh sách từ + bộ (đổi
+/// `word`/`meaningVi` hiển thị trên card).
+Future<void> editWord(
+  WidgetRef ref, {
+  required int wordId,
+  required int dictionaryId,
+  required String word,
+  required String meaningVi,
+  String? phonetic,
+  int? partOfSpeechCode,
+  String? imagePath,
+}) async {
+  final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+  vocabRepo.updateManualWord(
+    wordId: wordId,
+    word: word,
+    meaningVi: meaningVi,
+    phonetic: (phonetic == null || phonetic.trim().isEmpty) ? null : phonetic.trim(),
+    partOfSpeechCode: partOfSpeechCode,
+    imagePath: imagePath,
+  );
+  ref.invalidate(chapterWordsProvider(dictionaryId));
+  ref.invalidate(myDictionariesProvider);
+}
+
+/// Xoá 1 từ tự thêm (SCR-07c) khỏi bộ [dictionaryId] — dọn luôn trạng
+/// thái ôn tập ở `user.db` (nếu từ đã từng được đánh dấu học) rồi làm
+/// mới danh sách từ + bộ.
+Future<void> deleteWord(WidgetRef ref, {required int wordId, required int dictionaryId}) async {
+  final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+  final userDb = await ref.read(userDbProvider.future);
+  vocabRepo.deleteWord(wordId);
+  userDb.raw.execute('DELETE FROM learned_words WHERE word_id = ?', [wordId]);
+  ref.invalidate(chapterWordsProvider(dictionaryId));
   ref.invalidate(myDictionariesProvider);
 }
