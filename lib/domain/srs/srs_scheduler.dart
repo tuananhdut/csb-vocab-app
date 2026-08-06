@@ -47,3 +47,9 @@ class SrsScheduler {
     );
   }
 }
+
+/// "Từ khó" — chỉ dùng để hiển thị/ưu tiên nổi bật trong hàng đợi, KHÔNG
+/// ảnh hưởng `ORDER BY`/lịch ôn (SM-2 tự lo qua `due_date`, xem OQ-3 ở
+/// `docs/csb-vocab-analysis/tasks/02-review-multi-mode/01-analysis.md`).
+/// Ngưỡng 1.5 nằm gần sàn cứng 1.3 của `easeFactor`.
+bool isDifficult(SrsCardState state) => state.easeFactor <= 1.5;

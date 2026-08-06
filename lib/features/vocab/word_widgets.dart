@@ -1,11 +1,65 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../data/services/tts_service.dart';
-import '../../domain/entities/vocab.dart';
-import '../review/review_providers.dart';
+import '../../domain/entities/word.dart';
+
+/// Ảnh minh hoạ 1 từ vựng — tự nhận diện nguồn: [imagePath] tuyệt đối
+/// (từ tự thêm, ảnh do user upload, xem `AddWordScreen`) dùng
+/// [Image.file]; đường dẫn tương đối `assets/...` (từ có sẵn trong
+/// giáo trình) dùng [Image.asset]; `null`/lỗi -> [AppConstants.defaultWordImage].
+///
+/// Mặc định ép `width: double.infinity` (lấp đầy chiều ngang, dùng
+/// [fit] để crop/scale) — phù hợp ảnh minh hoạ nhỏ trong thẻ ôn tập.
+/// Truyền [naturalSize] = true để bỏ ép kích thước, hiện ảnh đúng tỉ lệ
+/// gốc (chỉ giới hạn `height` tối đa), dùng ở màn chi tiết từ
+/// ([WordDetailContent]) nơi không muốn ảnh bị crop.
+class WordImage extends StatelessWidget {
+  const WordImage({
+    super.key,
+    required this.imagePath,
+    required this.height,
+    this.fit = BoxFit.contain,
+    this.naturalSize = false,
+  });
+
+  final String? imagePath;
+  final double height;
+  final BoxFit fit;
+  final bool naturalSize;
+
+  bool get _isAbsoluteFile => imagePath != null && p.isAbsolute(imagePath!);
+
+  @override
+  Widget build(BuildContext context) {
+    final width = naturalSize ? null : double.infinity;
+    final fallback = Image.asset(AppConstants.defaultWordImage, height: height, width: width, fit: fit);
+    if (imagePath == null || imagePath!.isEmpty) return fallback;
+
+    if (_isAbsoluteFile) {
+      return Image.file(
+        File(imagePath!),
+        height: height,
+        width: width,
+        fit: fit,
+        errorBuilder: (_, _, _) => fallback,
+      );
+    }
+    return Image.asset(
+      imagePath!,
+      height: height,
+      width: width,
+      fit: fit,
+      errorBuilder: (_, _, _) => fallback,
+    );
+  }
+}
 
 /// Nhãn loại từ (dt/đt/tt...) kiểu viền bo góc nhỏ, monospace — khớp
 /// `.pos-tag` trong mockup (`docs/artifact-design-windows/styles.css`).
@@ -48,12 +102,19 @@ class WordTile extends StatelessWidget {
     this.showChapter = false,
     this.onTap,
     this.selected = false,
+    this.trailing,
   });
 
   final VocabWord word;
   final bool showChapter;
   final VoidCallback? onTap;
   final bool selected;
+
+  /// Widget tuỳ chọn đặt bên phải, giữa chiều cao dòng — dùng cho menu
+  /// sửa/xoá của từ tự thêm (xem `_ManagedWordTile` trong
+  /// `dictionary_detail_screen.dart`). Đặt ở cấp Row ngoài cùng (không
+  /// chồng đè lên chữ) để nghĩa tiếng Việt vẫn co giãn/ellipsis đúng.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -75,63 +136,70 @@ class WordTile extends StatelessWidget {
         onTap: onTap ?? () => showWordDetail(context, word),
         hoverColor: AppColors.pageBg,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 3,
+          padding: EdgeInsets.only(left: 13, right: trailing != null ? 4 : 13, top: 11, bottom: 11),
+          child: Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Flexible(
-                    child: Text(word.word, style: textTheme.bodyLarge),
-                  ),
-                  if (word.phonetic.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        word.phonetic,
-                        style: textTheme.labelLarge?.copyWith(
-                          fontFamily: AppFonts.serif,
-                          color: ipaColor,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 3,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Flexible(
+                          child: Text(word.word, style: textTheme.bodyLarge),
                         ),
-                      ),
+                        if (word.phonetic.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              word.phonetic,
+                              style: textTheme.labelLarge?.copyWith(
+                                fontFamily: AppFonts.serif,
+                                color: ipaColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
+                        Expanded(
+                          child: Text(
+                            word.meaningVi,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: scheme.outline,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (showChapter && word.chapterTitle.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 96),
+                            child: Text(
+                              word.chapterTitle,
+                              textAlign: TextAlign.right,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: textTheme.labelSmall?.copyWith(
+                                color: scheme.outline.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
-                ],
+                ),
               ),
-              Row(
-                children: [
-                  if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
-                  Expanded(
-                    child: Text(
-                      word.meaningVi,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: scheme.outline,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (showChapter && word.chapterTitle.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 96),
-                      child: Text(
-                        word.chapterTitle,
-                        textAlign: TextAlign.right,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        softWrap: false,
-                        style: textTheme.labelSmall?.copyWith(
-                          color: scheme.outline.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+              ?trailing,
             ],
           ),
         ),
@@ -178,69 +246,33 @@ class WordDetailContent extends ConsumerWidget {
     required this.word,
     this.scrollController,
     this.padding = const EdgeInsets.all(20),
+    this.leadingAction,
   });
 
   final VocabWord word;
   final ScrollController? scrollController;
   final EdgeInsets padding;
 
+  /// Widget tuỳ chọn hiện ở góc trên bên phải (hàng riêng, canh phải) —
+  /// dùng cho nút sửa/xoá của từ tự thêm ở pane chi tiết desktop, xem
+  /// `_DesktopWordDetail` trong `dictionary_detail_screen.dart`.
+  final Widget? leadingAction;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     const ipaColor = AppColors.brand;
-    const accentColor = AppColors.brand;
     final examples = ref.watch(wordExamplesProvider(word.id));
-    final learned = ref.watch(learnedStatusProvider(word.id));
 
     return ListView(
       controller: scrollController,
       padding: padding,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            OutlinedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.playlist_add, size: 16),
-              label: const Text('Add to deck'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: accentColor,
-                side: BorderSide(color: accentColor, width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            learned.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(8),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-              error: (_, _) => const SizedBox.shrink(),
-              data: (isLearned) => FilledButton.icon(
-                onPressed:
-                    isLearned ? null : () => markWordLearned(ref, word.id),
-                icon: Icon(isLearned
-                    ? Icons.check_circle
-                    : Icons.bookmark_add_outlined),
-                label: Text(isLearned ? 'Learned' : 'Mark as learned'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.brandDeep,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
+        if (leadingAction != null) ...[
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [leadingAction!]),
+          const SizedBox(height: 20),
+        ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -275,6 +307,13 @@ class WordDetailContent extends ConsumerWidget {
             ],
           ),
         ],
+        const SizedBox(height: 16),
+        Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: WordImage(imagePath: word.imagePath, height: 220, naturalSize: true),
+          ),
+        ),
         const SizedBox(height: 20),
         Row(
           children: [

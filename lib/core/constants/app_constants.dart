@@ -14,4 +14,9 @@ class AppConstants {
 
   /// Breakpoint phân biệt desktop (rộng) và mobile (hẹp).
   static const double desktopBreakpoint = 700;
+
+  /// Ảnh minh hoạ mặc định khi từ vựng không có `image_path` riêng (hầu
+  /// hết các từ hiện tại, vì `vocab.db` chưa có dữ liệu ảnh) — dùng ở
+  /// card giới thiệu/trắc nghiệm từ mới thay vì để trống.
+  static const String defaultWordImage = 'assets/images/default.png';
 }

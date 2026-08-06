@@ -1,18 +1,4 @@
-// Các thực thể miền cho dữ liệu từ vựng (đọc từ vocab.db).
-
-class Chapter {
-  const Chapter({
-    required this.id,
-    required this.chapterNo,
-    required this.title,
-    required this.wordCount,
-  });
-
-  final int id;
-  final int chapterNo;
-  final String title;
-  final int wordCount;
-}
+// Các thực thể miền cho từ vựng (đọc từ vocab.db).
 
 class WordExample {
   const WordExample({required this.en, required this.vi});
@@ -30,6 +16,7 @@ class VocabWord {
     required this.chapterTitle,
     this.imagePath,
     this.isSubentry = false,
+    this.isManual = false,
     this.examples = const [],
   });
 
@@ -41,5 +28,11 @@ class VocabWord {
   final String chapterTitle;
   final String? imagePath;
   final bool isSubentry;
+
+  /// `true` nếu từ do người dùng tự thêm (`source=2`, xem
+  /// `VocabRepository.insertManualWord`) — chỉ những từ này mới cho
+  /// sửa/xoá trong [DictionaryDetailScreen], từ có sẵn trong giáo trình
+  /// gốc là dữ liệu chung, không cho chỉnh sửa.
+  final bool isManual;
   final List<WordExample> examples;
 }
