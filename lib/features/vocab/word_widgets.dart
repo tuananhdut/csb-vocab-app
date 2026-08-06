@@ -14,25 +14,39 @@ import '../../domain/entities/word.dart';
 /// (từ tự thêm, ảnh do user upload, xem `AddWordScreen`) dùng
 /// [Image.file]; đường dẫn tương đối `assets/...` (từ có sẵn trong
 /// giáo trình) dùng [Image.asset]; `null`/lỗi -> [AppConstants.defaultWordImage].
+///
+/// Mặc định ép `width: double.infinity` (lấp đầy chiều ngang, dùng
+/// [fit] để crop/scale) — phù hợp ảnh minh hoạ nhỏ trong thẻ ôn tập.
+/// Truyền [naturalSize] = true để bỏ ép kích thước, hiện ảnh đúng tỉ lệ
+/// gốc (chỉ giới hạn `height` tối đa), dùng ở màn chi tiết từ
+/// ([WordDetailContent]) nơi không muốn ảnh bị crop.
 class WordImage extends StatelessWidget {
-  const WordImage({super.key, required this.imagePath, required this.height, this.fit = BoxFit.contain});
+  const WordImage({
+    super.key,
+    required this.imagePath,
+    required this.height,
+    this.fit = BoxFit.contain,
+    this.naturalSize = false,
+  });
 
   final String? imagePath;
   final double height;
   final BoxFit fit;
+  final bool naturalSize;
 
   bool get _isAbsoluteFile => imagePath != null && p.isAbsolute(imagePath!);
 
   @override
   Widget build(BuildContext context) {
-    final fallback = Image.asset(AppConstants.defaultWordImage, height: height, width: double.infinity, fit: fit);
+    final width = naturalSize ? null : double.infinity;
+    final fallback = Image.asset(AppConstants.defaultWordImage, height: height, width: width, fit: fit);
     if (imagePath == null || imagePath!.isEmpty) return fallback;
 
     if (_isAbsoluteFile) {
       return Image.file(
         File(imagePath!),
         height: height,
-        width: double.infinity,
+        width: width,
         fit: fit,
         errorBuilder: (_, _, _) => fallback,
       );
@@ -40,7 +54,7 @@ class WordImage extends StatelessWidget {
     return Image.asset(
       imagePath!,
       height: height,
-      width: double.infinity,
+      width: width,
       fit: fit,
       errorBuilder: (_, _, _) => fallback,
     );
@@ -293,6 +307,13 @@ class WordDetailContent extends ConsumerWidget {
             ],
           ),
         ],
+        const SizedBox(height: 16),
+        Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: WordImage(imagePath: word.imagePath, height: 220, naturalSize: true),
+          ),
+        ),
         const SizedBox(height: 20),
         Row(
           children: [
