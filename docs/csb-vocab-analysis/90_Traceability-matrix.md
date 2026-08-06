@@ -14,7 +14,7 @@ Truy vết FR ↔ màn hình ↔ file code chính. Cập nhật khi thêm/sửa 
 | FR-1 | Splash — giới thiệu ứng dụng | SCR-01 | ✅ Xong | `lib/features/splash/splash_screen.dart` |
 | FR-2 | Tra cứu song ngữ Anh⇄Việt | SCR-02 | ✅ Xong | `lib/features/search/search_screen.dart`, `lib/features/vocab/word_widgets.dart` |
 | FR-3 | Học theo chương | SCR-03 | ✅ Xong | `lib/features/lessons/lessons_screen.dart` |
-| FR-4 | Dịch Anh⇄Việt (ghép từ/cụm offline) | SCR-04 | ⏳ Placeholder, chưa code logic | `lib/features/translate/translate_screen.dart` |
+| FR-4 | Dịch Anh⇄Việt (máy dịch neural on-device, tải model theo yêu cầu — [IMPL-017]) | SCR-04 | ✅ Xong | `lib/features/translate/translate_screen.dart`, `lib/data/services/translation_service.dart`, `lib/data/services/model_download_service.dart` |
 | FR-5 | Ôn tập theo SM-2 (đánh dấu học, hàng đợi, phiên ôn tập, nhắc nhở) | SCR-05 | ✅ Xong (1 kiểu ôn) | `lib/features/review/*.dart`, `lib/domain/srs/srs_scheduler.dart` |
 | *(không có FR-6 trong code — xem Q-CSB-01)* | | | | |
 | FR-7 | Cài đặt (giao diện Sáng/Tối) | SCR-06 | ✅ Xong (rút gọn) | `lib/features/settings/*.dart` |
@@ -44,6 +44,6 @@ và `../../lib/data/local/user_database.dart`.
 | Tab "Từ điển của tôi" thay cho tab "Ôn tập" riêng | `docs/artifact-design/index.html` | ❌ Chưa — `HomeShell` vẫn có 5 tab cũ |
 | Danh sách từ theo chương sắp A-Z (không qua bước lật thẻ) | `docs/artifact-design/screens/screen-03b-*.html` | ✅ Khớp — `ChapterWordsScreen` đã làm đúng vậy |
 | Title bar tuỳ biến kiểu Windows (nút minimize/maximize/close) | `docs/artifact-design-windows/` | ❌ Chưa — code dùng `AppBar` Material chuẩn |
-| Dịch 2 chiều với chip từ đã ghép nghĩa | `docs/artifact-design/screens/screen-06-dich-nhanh.html` | ❌ Chưa — SCR-04 là placeholder |
+| Dịch 2 chiều với chip từ đã ghép nghĩa | `docs/artifact-design/screens/screen-06-dich-nhanh.html` | ⚠️ Đổi hướng — giữ layout 2 khung + nút đảo chiều, bỏ chip ghép nghĩa (không hợp với máy dịch neural), xem [IMPL-017] |
 | Tra cứu có trạng thái Online (gọi thêm API từ điển ngoài) | *(chưa có ở mockup, mới chốt ở [IMPL-005])* | ❌ Chưa — SCR-02 chỉ có chế độ Offline, xem `02_Search.md` |
 | Section chứa nhiều Chapter, Chapter hiển thị dạng bài báo | *(chưa có ở mockup, mới chốt ở [IMPL-005])* | ❌ Chưa — SCR-03 vẫn là mô hình "chương = nhóm từ" cũ, xem `03_Lessons-by-chapter.md` |

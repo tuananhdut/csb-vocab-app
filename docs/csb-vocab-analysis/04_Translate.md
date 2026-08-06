@@ -1,42 +1,59 @@
 # SCR-04 — Dịch Anh ⇄ Việt
 
-**FR:** FR-4 · **Trạng thái:** ⏳ Placeholder — chưa code logic · **Nguồn:** `lib/features/translate/translate_screen.dart`
+**FR:** FR-4 · **Trạng thái:** ✅ Đã code — máy dịch neural on-device ·
+**Nguồn:** `lib/features/translate/translate_screen.dart`
 
-## Mục đích (theo comment trong code)
+## Cơ chế (đã đổi hướng, xem `docs/spec_history.md` [IMPL-017])
 
-Dịch Anh ⇄ Việt offline bằng cách tra ghép từ/cụm từ có sẵn trong DB (không
-phải máy dịch câu/AI) — giống kiểu Google Translate về giao diện nhưng cơ chế
-dịch hoàn toàn dựa trên từ điển nội bộ.
+Thiết kế ban đầu (tra ghép từ/cụm offline trong `vocab.db`, ghi ở phiên
+bản trước của tài liệu này) **chưa từng được code** và đã bị thay bằng
+**máy dịch neural chạy hoàn toàn on-device**:
 
-## Hiện trạng thật
+- Model: Helsinki-NLP/opus-mt-en-vi (chiều Anh→Việt) và opus-mt-vi-en
+  (chiều Việt→Anh), kiến trúc MarianMT, license Apache-2.0.
+- Chạy qua ONNX Runtime (`flutter_onnxruntime`), model đã convert +
+  quantize INT8 (xem `tools/onnx-model-conversion/`).
+- **Tải model sau khi cài đặt**, không đóng gói sẵn trong app — mỗi
+  chiều ~130-140MB (nén zip), tải độc lập theo yêu cầu người dùng (2
+  nút tải riêng cho En→Vi và Vi→En). Host trên GitHub Releases của repo
+  này (tag `mt-models-v1`).
+- Sau khi tải xong: dịch hoàn toàn offline, không gửi văn bản ra ngoài.
 
-Toàn bộ màn hình chỉ là `FeaturePlaceholder` dùng chung
-(`lib/core/widgets/feature_placeholder.dart`) — icon + tiêu đề + tag "FR-4" +
-mô tả tĩnh:
+## Kiến trúc code
 
-> *"Giao diện kiểu Google Translate, dịch offline bằng tra từ/cụm từ. Sẽ hoàn
-> thiện ở Giai đoạn 3."*
-
-**Không có bất kỳ logic dịch, ô nhập liệu, hay truy vấn DB nào được cài đặt.**
+- `lib/domain/entities/translation_direction.dart` — enum
+  `TranslationDirection` (en→vi, vi→en).
+- `lib/data/services/model_download_service.dart` — tải + verify
+  SHA-256 + giải nén model (singleton, theo pattern `NotificationService`).
+- `lib/data/services/translation_service.dart` — nạp ONNX session
+  (encoder/decoder/decoder_with_past) theo từng chiều, vòng lặp decode
+  autoregressive (greedy, dùng KV-cache). Đọc `config.json` động cho mỗi
+  chiều (token đặc biệt khác nhau giữa 2 chiều, không hardcode).
+- `lib/data/repositories/translation_providers.dart` — `ModelDownloadState`
+  (sealed class), `modelDownloadStateProvider` (`StateProvider.family`),
+  `translateProvider` (`FutureProvider.family`).
+- `lib/features/translate/translate_screen.dart` +
+  `widgets/model_download_prompt.dart` + `widgets/translate_panels.dart`
+  — UI: chọn/đảo chiều dịch, state machine tải model, 2 khung nguồn/kết
+  quả (debounce 500ms trước khi gọi inference).
 
 ## So với mockup
 
-Mockup (`docs/artifact-design/screens/screen-06-dich-nhanh.html`) đã thiết kế
-đầy đủ UI: 2 khung nguồn/kết quả, chip hiển thị từng cặp từ đã ghép nghĩa
-(vd: `buoy → phao`), ghi chú "Ghép nghĩa offline từ N mục từ điển". Đây là
-**thiết kế UI**, chưa có code Dart tương ứng.
+Mockup gốc (`docs/artifact-design/screens/screen-06-dich-nhanh.html`)
+vẫn là cơ sở cho layout 2 khung nguồn/kết quả + nút đảo chiều — giữ
+nguyên phần này. **Bỏ** `.chip-row` (hiển thị từng cặp từ đã ghép nghĩa,
+vd `buoy → phao`) và ghi chú "Ghép nghĩa offline từ N mục từ điển" —
+không còn đúng với cơ chế NMT (không có alignment từ-đối-từ rõ ràng như
+tra từ điển). Thay bằng ghi chú ngắn về cơ chế dịch bằng AI offline.
 
-## Việc cần làm khi triển khai
+## Hạn chế đã biết
 
-- Quyết định thuật toán ghép từ/cụm (tokenize câu → tra từng từ/cụm trong
-  `words` → ghép lại theo thứ tự, xử lý cụm nhiều từ trước từ đơn).
-- Xử lý chiều Việt → Anh (tra ngược `meaning_vi`) — phức tạp hơn vì
-  `meaning_vi` không unique/chuẩn hoá như `word_lower`.
-- Quyết định UI khi có từ không tìm thấy trong DB (giữ nguyên từ gốc? đánh
-  dấu highlight?).
-
-## Giả định / hạn chế
-
-> ⚠️ Chưa có quyết định kỹ thuật nào được chốt cho việc parse câu — cần
-> phân tích riêng (task-analysis) trước khi implement, vì đây là phần phức
-> tạp nhất trong 4 chức năng tra cứu/học/ôn tập/dịch.
+- Model tổng quát, không fine-tune riêng cho thuật ngữ quân sự/hàng hải
+  — câu thường dịch tốt, thuật ngữ chuyên ngành riêng (cấp bậc, loại
+  tàu...) có thể không chính xác.
+- Greedy decoding kết hợp suy luận CPU đa luồng: cùng 1 câu có thể cho
+  kết quả khác nhau nhẹ (vẫn đúng ngữ pháp) giữa các lần dịch, khi có 2
+  lựa chọn từ gần ngang xác suất — xem chi tiết `docs/spec_history.md`
+  [IMPL-017]. Chấp nhận cho MVP.
+- Chưa hỗ trợ resume tải dở dang — mất mạng giữa chừng thì tải lại từ
+  đầu (đánh đổi có chủ đích cho v1).
