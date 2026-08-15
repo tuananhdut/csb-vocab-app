@@ -70,15 +70,16 @@ class VocabRepository {
     return _wordFromRow(rows.first);
   }
 
-  /// Danh sách bộ từ điển giáo trình gốc (`is_default=1`) — bỏ "Chưa
-  /// phân loại" (`is_deletable=0`) vì màn "Học" hiện tại chỉ duyệt các
-  /// bộ chuyên ngành, không có khái niệm từ mồ côi.
+  /// Danh sách bộ từ điển giáo trình gốc — bỏ "Chưa phân loại" (id cố
+  /// định = 1, luôn là dòng đầu tiên insert khi seed/migrate DB) vì màn
+  /// "Học" hiện tại chỉ duyệt các bộ chuyên ngành, không có khái niệm
+  /// từ mồ côi.
   List<Chapter> chapters() {
     final rows = _db.select('''
       SELECT d.id, d.sort_order, d.name,
              (SELECT COUNT(*) FROM word_dictionaries wd WHERE wd.dictionary_id = d.id) AS cnt
       FROM dictionaries d
-      WHERE d.is_deletable = 1
+      WHERE d.id != 1
       ORDER BY d.sort_order
     ''');
     return rows
@@ -166,10 +167,10 @@ class VocabRepository {
   /// `word_id` — dùng để ghép với `learned_words` ở `user.db` (2 file
   /// SQLite riêng, không JOIN được bằng SQL, phải ghép ở tầng Dart, xem
   /// [MyDictionariesRepository]).
-  List<({int id, String name, bool isDefault, bool isDeletable, List<int> wordIds})>
+  List<({int id, String name, bool isDefault, List<int> wordIds})>
       dictionariesWithWordIds() {
     final dictRows = _db.select(
-      'SELECT id, name, is_default, is_deletable FROM dictionaries ORDER BY sort_order',
+      'SELECT id, name, is_default FROM dictionaries ORDER BY sort_order',
     );
     return dictRows.map((d) {
       final dictionaryId = d['id'] as int;
@@ -181,7 +182,6 @@ class VocabRepository {
         id: dictionaryId,
         name: d['name'] as String? ?? '',
         isDefault: (d['is_default'] as int? ?? 0) == 1,
-        isDeletable: (d['is_deletable'] as int? ?? 0) == 1,
         wordIds: wordRows.map((w) => w['word_id'] as int).toList(),
       );
     }).toList();
@@ -224,16 +224,16 @@ class VocabRepository {
     return rows.map((r) => r['meaning_vi'] as String).toList();
   }
 
-  /// Tạo 1 bộ từ điển cá nhân mới (rỗng, `is_default=0, is_deletable=1`)
-  /// — SCR-07 nút "Tạo bộ mới". Xếp cuối danh sách (`sort_order` lớn
-  /// nhất hiện có + 1).
+  /// Tạo 1 bộ từ điển cá nhân mới (rỗng, `is_default=0` — xoá được) —
+  /// SCR-07 nút "Tạo bộ mới". Xếp cuối danh sách (`sort_order` lớn nhất
+  /// hiện có + 1).
   int createDictionary(String name) {
     final maxSortRow = _db.select('SELECT MAX(sort_order) AS m FROM dictionaries').first;
     final nextSortOrder = (maxSortRow['m'] as int? ?? 0) + 1;
     final now = DateTime.now().millisecondsSinceEpoch;
 
     _db.execute(
-      'INSERT INTO dictionaries (name, is_default, is_deletable, sort_order, created_at) VALUES (?, 0, 1, ?, ?)',
+      'INSERT INTO dictionaries (name, is_default, sort_order, created_at) VALUES (?, 0, ?, ?)',
       [name, nextSortOrder, now],
     );
     return _db.lastInsertRowId;

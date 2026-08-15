@@ -9,9 +9,11 @@ review.sqlite thu nghiem).
 Nguyen tac migrate (KHONG mat du lieu that dang co):
 - Bang `chapters` CU (6 dong: chapter_no/title, dung nhu "bo chuyen
   nganh") duoc doi ten y nghia thanh `dictionaries` moi (is_default=1,
-  is_deletable=1, sort_order=chapter_no) + them 1 dong "Chua phan loai"
-  cu dinh (id nho nhat, is_deletable=0) - dung nguyen tac #2 trong
-  91_DB-design-new-model.md.
+  sort_order=chapter_no) + them 1 dong "Chua phan loai" cu dinh (id nho
+  nhat) - dung nguyen tac #2 trong 91_DB-design-new-model.md. Ca hai
+  deu is_default=1 (khong cho xoa) - chi bo user tu tao (is_default=0)
+  moi xoa duoc; phan biet "Chua phan loai" voi cac bo giao trinh khac
+  o tang code bang id co dinh (=1), khong can cot rieng.
 - `words.chapter_id` (1-N cu) duoc chuyen thanh 1 dong `word_dictionaries`
   (N-N moi) tuong ung cho moi word - khong word nao bi mat lien ket.
 - `words.part_of_speech` TEXT cu ('dt'/'dt'/'tt'/'prep') duoc map sang
@@ -84,7 +86,7 @@ def migrate_words_and_dictionaries(old: sqlite3.Connection, new: sqlite3.Connect
     new_cur = new.cursor()
 
     new_cur.execute(
-        "INSERT INTO dictionaries (name, is_default, is_deletable, sort_order, created_at) VALUES (?, 1, 0, 0, ?)",
+        "INSERT INTO dictionaries (name, is_default, sort_order, created_at) VALUES (?, 1, 0, ?)",
         ("Chưa phân loại", now),
     )
     unclassified_id = new_cur.lastrowid
@@ -93,7 +95,7 @@ def migrate_words_and_dictionaries(old: sqlite3.Connection, new: sqlite3.Connect
     old_chapters = old_cur.execute("SELECT id, chapter_no, title FROM chapters ORDER BY chapter_no").fetchall()
     for old_id, chapter_no, title in old_chapters:
         new_cur.execute(
-            "INSERT INTO dictionaries (name, is_default, is_deletable, sort_order, created_at) VALUES (?, 1, 1, ?, ?)",
+            "INSERT INTO dictionaries (name, is_default, sort_order, created_at) VALUES (?, 1, ?, ?)",
             (title, chapter_no, now),
         )
         dictionary_id_map[old_id] = new_cur.lastrowid

@@ -80,13 +80,11 @@ CREATE INDEX IF NOT EXISTS idx_words_word_lower ON words(word_lower);
 CREATE TABLE IF NOT EXISTS dictionaries (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   name          TEXT    NOT NULL,
-  is_default    INTEGER NOT NULL DEFAULT 0,   -- 1 = đóng gói sẵn/hệ thống tạo, 0 = user tự tạo
-  is_deletable  INTEGER NOT NULL DEFAULT 1,   -- 0 riêng cho "Chưa phân loại" (không cho xoá)
+  is_default    INTEGER NOT NULL DEFAULT 0,   -- 1 = đóng gói sẵn/hệ thống tạo (không cho xoá), 0 = user tự tạo (xoá được)
   sort_order    INTEGER NOT NULL DEFAULT 0,
   created_at    INTEGER NOT NULL,
 
-  CHECK (is_default IN (0, 1)),
-  CHECK (is_deletable IN (0, 1))
+  CHECK (is_default IN (0, 1))
 );
 
 -- ----------------------------------------------------------------------------

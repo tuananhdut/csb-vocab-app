@@ -26,7 +26,6 @@ class Dictionary {
     required this.id,
     required this.name,
     required this.isDefault,
-    required this.isDeletable,
     required this.wordCount,
     required this.learnedCount,
     required this.dueCount,
@@ -35,8 +34,10 @@ class Dictionary {
 
   final int id;
   final String name;
+
+  /// 1 = bộ đóng gói sẵn/hệ thống tạo (giáo trình gốc, "Chưa phân
+  /// loại") — không cho xoá. 0 = bộ user tự tạo — xoá được.
   final bool isDefault;
-  final bool isDeletable;
   final int wordCount;
   final int learnedCount;
   final int dueCount;
@@ -44,4 +45,6 @@ class Dictionary {
   /// Số từ trong bộ CHƯA có trong `learned_words` — dùng cho nút "Học
   /// từ mới" (SCR-07, phiên giới thiệu từ theo lô).
   final int newWordsCount;
+
+  bool get isDeletable => !isDefault;
 }
