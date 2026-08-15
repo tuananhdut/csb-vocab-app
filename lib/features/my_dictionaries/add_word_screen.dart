@@ -221,10 +221,17 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
                               const SizedBox(height: 6),
                               DropdownButtonFormField<int?>(
                                 initialValue: _partOfSpeechCode,
+                                isExpanded: true,
                                 items: [
-                                  const DropdownMenuItem(value: null, child: Text('Chưa xác định')),
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('Chưa xác định', overflow: TextOverflow.ellipsis),
+                                  ),
                                   for (final entry in _partOfSpeechOptions.entries)
-                                    DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+                                    DropdownMenuItem(
+                                      value: entry.key,
+                                      child: Text(entry.value, overflow: TextOverflow.ellipsis),
+                                    ),
                                 ],
                                 onChanged: (value) => setState(() => _partOfSpeechCode = value),
                               ),

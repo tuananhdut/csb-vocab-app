@@ -62,7 +62,7 @@ class MyDictionariesScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
-              mainAxisExtent: 208,
+              mainAxisExtent: 256,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
