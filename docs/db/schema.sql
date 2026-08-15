@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS chapters (
   section_id  INTEGER NOT NULL,
   title       TEXT    NOT NULL,
   sort_order  INTEGER NOT NULL DEFAULT 0,
-  content     TEXT,                          -- văn bản có cấu trúc (Markdown/HTML rút gọn); placeholder tối thiểu
+  pdf_path    TEXT,                          -- asset PDF bài đọc gốc (assets/pdf/section-{id}-unit-{n}.pdf)
 
   FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
 );

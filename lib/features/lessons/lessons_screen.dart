@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pdfx/pdfx.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
@@ -205,10 +206,11 @@ class _ChapterTile extends StatelessWidget {
   }
 }
 
-/// SCR-03c — Học: nội dung bài đọc (Markdown thô, không highlight từ
-/// vựng — cách liên kết từ ↔ vị trí trong bài chưa chốt, xem
-/// docs/artifact-design/screens/screen-03c-hoc-noi-dung-bai.html và
-/// docs/csb-vocab-analysis/tasks/04-seed-noi-dung-bai-doc/).
+/// SCR-03c — Học: nội dung bài đọc, hiển thị PDF gốc (tách thủ công từ
+/// `TA_chuyen_nganh.docx`, giữ nguyên ảnh/heading/căn giữa của bản Word).
+///
+/// Xem docs/artifact-design/screens/screen-03c-hoc-noi-dung-bai.html và
+/// docs/csb-vocab-analysis/tasks/04-seed-noi-dung-bai-doc/.
 class ChapterContentScreen extends ConsumerWidget {
   const ChapterContentScreen({super.key, required this.chapterId});
   final int chapterId;
@@ -223,63 +225,82 @@ class ChapterContentScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Lỗi: $e')),
         data: (c) {
           if (c == null) return const Center(child: Text('Không tìm thấy bài đọc.'));
-          return Markdown(
-            data: _breakIntoParagraphs(c.content ?? ''),
-            padding: const EdgeInsets.all(20),
-          );
+          if (c.pdfPath == null) {
+            return const Center(child: Text('Chưa có nội dung cho bài này.'));
+          }
+          return _ChapterPdfBody(pdfPath: c.pdfPath!);
         },
       ),
     );
   }
 }
 
-/// `content_md` là 1 khối text liên tục không có dấu ngắt đoạn "\n\n"
-/// (đúng scope "Markdown thô gộp khối" đã chốt ở task 04 — script
-/// extract không tự thêm dấu ngắt). `flutter_markdown_plus` render mỗi
-/// đoạn bằng 1 `Wrap` chứa 1 `Text.rich` duy nhất khi đoạn không có
-/// định dạng riêng — `Wrap` đo kích thước "muốn" của `Text.rich` theo
-/// intrinsic width (không bị giới hạn theo widget cha), nên 1 đoạn dài
-/// không dấu ngắt render tràn ngang thay vì xuống dòng. Chèn "\n\n" sau
-/// mỗi câu và trước các heading UNIT đã biết để buộc mỗi đoạn ngắn lại
-/// — chỉ ở tầng hiển thị, không sửa dữ liệu DB/CSV gốc.
-String _breakIntoParagraphs(String text) {
-  // Chi ngat sau dau cham/hoi/than khi truoc do la 1 CAU thuc su (ky tu
-  // thuong/so/dong mo don ngay truoc dau cham) - tranh cat nham so La
-  // Ma/de muc ngan kieu "I." "1." "IV." theo sau boi chu hoa dau cau ke.
-  var result = text.replaceAllMapped(
-    RegExp(r'(?<=[a-z0-9\)])([.?!])\s+(?=[A-Z])'),
-    (m) => '${m[1]}\n\n',
-  );
-  result = result.replaceAllMapped(
-    RegExp(r'(UNIT\s*\d+\s*:|I\.\s*INTRODUCTION|II\.\s*TEXT|III\.\s*GRAMMAR|IV\.\s*VOCABULARY|Exercise\s*\d+)'),
-    (m) => '\n\n${m[1]}',
-  );
-  // Nhieu doan (lich trinh, danh sach gach dau dong noi bang "-"/":")
-  // khong co dau cham cau nen khong duoc ngat o buoc tren, van con qua
-  // dai gay trang ngang (da xac nhan: 14/14 chapter co it nhat 1 doan
-  // >400 ky tu). Lop phong ve cuoi: voi tung doan (tach theo "\n\n" da
-  // co), neu van dai hon 200 ky tu, chen them "\n\n" tai khoang trang
-  // gan nhat sau moi 200 ky tu.
-  return result.split('\n\n').map(_hardWrapLongParagraph).join('\n\n');
+/// Thử mở PDF asset; nếu file chưa tồn tại (chưa tách xong từ docx),
+/// hiện thông báo thay vì crash/màn trắng.
+class _ChapterPdfBody extends StatefulWidget {
+  const _ChapterPdfBody({required this.pdfPath});
+  final String pdfPath;
+
+  @override
+  State<_ChapterPdfBody> createState() => _ChapterPdfBodyState();
 }
 
-String _hardWrapLongParagraph(String paragraph) {
-  const maxLen = 200;
-  if (paragraph.length <= maxLen) return paragraph;
+class _ChapterPdfBodyState extends State<_ChapterPdfBody> {
+  late final Future<bool> _assetExists = _checkAssetExists(widget.pdfPath);
 
-  final buffer = StringBuffer();
-  var start = 0;
-  while (start < paragraph.length) {
-    var end = start + maxLen;
-    if (end >= paragraph.length) {
-      buffer.write(paragraph.substring(start));
-      break;
+  static Future<bool> _checkAssetExists(String path) async {
+    try {
+      await rootBundle.load(path);
+      return true;
+    } catch (_) {
+      return false;
     }
-    final breakAt = paragraph.lastIndexOf(' ', end);
-    end = (breakAt > start) ? breakAt : end;
-    buffer.write(paragraph.substring(start, end));
-    buffer.write('\n\n');
-    start = end + 1;
   }
-  return buffer.toString();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _assetExists,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.data != true) {
+          return const Center(child: Text('Chưa có nội dung cho bài này.'));
+        }
+        return _PdfAssetView(assetPath: widget.pdfPath);
+      },
+    );
+  }
+}
+
+class _PdfAssetView extends StatefulWidget {
+  const _PdfAssetView({required this.assetPath});
+  final String assetPath;
+
+  @override
+  State<_PdfAssetView> createState() => _PdfAssetViewState();
+}
+
+class _PdfAssetViewState extends State<_PdfAssetView> {
+  late final PdfControllerPinch _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PdfControllerPinch(
+      document: PdfDocument.openAsset(widget.assetPath),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PdfViewPinch(controller: _controller);
+  }
 }

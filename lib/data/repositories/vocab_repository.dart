@@ -128,12 +128,10 @@ class VocabRepository {
         .toList();
   }
 
-  /// Danh sách bài đọc (SCR-03b) của 1 Section, KHÔNG kèm `content` đầy
-  /// đủ (danh sách chỉ cần tiêu đề) — dùng [articleChapterById] khi mở
-  /// bài đọc cụ thể.
+  /// Danh sách bài đọc (SCR-03b) của 1 Section.
   List<ArticleChapter> articleChaptersBySection(int sectionId) {
     final rows = _db.select(
-      'SELECT id, section_id, title, sort_order FROM chapters WHERE section_id = ? ORDER BY sort_order',
+      'SELECT id, section_id, title, sort_order, pdf_path FROM chapters WHERE section_id = ? ORDER BY sort_order',
       [sectionId],
     );
     return rows
@@ -142,14 +140,15 @@ class VocabRepository {
               sectionId: r['section_id'] as int,
               title: r['title'] as String? ?? '',
               sortOrder: r['sort_order'] as int? ?? 0,
+              pdfPath: r['pdf_path'] as String?,
             ))
         .toList();
   }
 
-  /// 1 bài đọc đầy đủ (SCR-03c), kèm `content` Markdown thô.
+  /// 1 bài đọc đầy đủ (SCR-03c), kèm `pdf_path`.
   ArticleChapter? articleChapterById(int id) {
     final rows = _db.select(
-      'SELECT id, section_id, title, sort_order, content FROM chapters WHERE id = ?',
+      'SELECT id, section_id, title, sort_order, pdf_path FROM chapters WHERE id = ?',
       [id],
     );
     if (rows.isEmpty) return null;
@@ -159,7 +158,7 @@ class VocabRepository {
       sectionId: r['section_id'] as int,
       title: r['title'] as String? ?? '',
       sortOrder: r['sort_order'] as int? ?? 0,
-      content: r['content'] as String?,
+      pdfPath: r['pdf_path'] as String?,
     );
   }
 

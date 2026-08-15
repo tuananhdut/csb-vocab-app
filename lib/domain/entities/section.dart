@@ -20,12 +20,16 @@ class ArticleChapter {
     required this.sectionId,
     required this.title,
     required this.sortOrder,
-    this.content,
+    this.pdfPath,
   });
 
   final int id;
   final int sectionId;
   final String title;
   final int sortOrder;
-  final String? content;
+
+  /// Đường dẫn asset PDF của bài đọc (`assets/pdf/section-{id}-unit-{n}.pdf`)
+  /// — tách thủ công từ `docs/source-materials/TA_chuyen_nganh.docx`, giữ
+  /// nguyên định dạng gốc (ảnh, heading, căn giữa).
+  final String? pdfPath;
 }
