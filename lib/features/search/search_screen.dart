@@ -39,7 +39,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       padding: const EdgeInsets.all(14),
       child: TextField(
         controller: _controller,
-        autofocus: true,
         textInputAction: TextInputAction.search,
         style: Theme.of(context).textTheme.bodyMedium,
         decoration: InputDecoration(
@@ -70,28 +69,32 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     if (isDesktop) return _buildTwoPane(results);
 
-    return Column(
-      children: [
-        _buildSearchField(),
-        Expanded(
-          child: _query.trim().isEmpty
-              ? const _SearchEmptyCarousel()
-              : results.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Lỗi: $e')),
-                  data: (words) {
-                    if (words.isEmpty) {
-                      return Center(
-                        child: Text('Không tìm thấy "$_query"',
-                            style: Theme.of(context).textTheme.bodyLarge),
-                      );
-                    }
-                    return _buildSingleColumn(words);
-                  },
-                ),
-        ),
-      ],
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.translucent,
+      child: Column(
+        children: [
+          _buildSearchField(),
+          Expanded(
+            child: _query.trim().isEmpty
+                ? const _SearchEmptyCarousel()
+                : results.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Lỗi: $e')),
+                    data: (words) {
+                      if (words.isEmpty) {
+                        return Center(
+                          child: Text('Không tìm thấy "$_query"',
+                              style: Theme.of(context).textTheme.bodyLarge),
+                        );
+                      }
+                      return _buildSingleColumn(words);
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
