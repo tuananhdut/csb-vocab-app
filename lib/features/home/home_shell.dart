@@ -112,16 +112,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           : body,
       bottomNavigationBar: isDesktop
           ? null
-          : NavigationBar(
+          : _BottomNavBar(
               selectedIndex: _index,
-              onDestinationSelected: _onSelect,
-              destinations: [
-                for (final (i, d) in _destinations.indexed)
-                  NavigationDestination(
-                    icon: _destinationIcon(d.icon, i, dueCount),
-                    label: d.label,
-                  ),
-              ],
+              onSelect: _onSelect,
+              destinations: _destinations,
+              iconBuilder: _destinationIcon,
+              dueCount: dueCount,
             ),
     );
   }
@@ -146,6 +142,100 @@ class _Destination {
   final String label;
   final IconData icon;
   final Widget screen;
+}
+
+/// Bottom nav mobile tự dựng thay cho [NavigationBar] mặc định — mỗi tab là
+/// 1 khối icon+label gộp chung, đổ nền navy full-khối khi active (khác
+/// `NavigationBar` M3 mặc định chỉ tô pill quanh icon).
+class _BottomNavBar extends StatelessWidget {
+  const _BottomNavBar({
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.destinations,
+    required this.iconBuilder,
+    required this.dueCount,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+  final List<_Destination> destinations;
+  final Widget Function(IconData icon, int index, int dueCount) iconBuilder;
+  final int dueCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.panel,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            for (final (i, d) in destinations.indexed)
+              Expanded(
+                child: _BottomNavItem(
+                  label: d.label,
+                  icon: iconBuilder(d.icon, i, dueCount),
+                  selected: i == selectedIndex,
+                  onTap: () => onSelect(i),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomNavItem extends StatelessWidget {
+  const _BottomNavItem({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final Widget icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? AppColors.brand : AppColors.inkSoft;
+
+    return Material(
+      color: selected
+          ? AppColors.brand.withValues(alpha: 0.12)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(4, 10, 4, 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconTheme(
+                data: IconThemeData(color: fg, size: 22),
+                child: icon,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: fg,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Logo Cảnh sát biển in mờ phía sau nội dung mỗi tab chính — hiệu ứng

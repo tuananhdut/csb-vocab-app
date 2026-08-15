@@ -129,23 +129,71 @@ class _DownloadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 220,
-          child: LinearProgressIndicator(value: totalBytes > 0 ? progress : null),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          totalBytes > 0
-              ? '${_formatMb(receivedBytes)} / ${_formatMb(totalBytes)}'
-              : 'Đang chuẩn bị tải…',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        const SizedBox(height: 16),
-        TextButton(onPressed: onCancel, child: const Text('Huỷ')),
-      ],
+    final scheme = Theme.of(context).colorScheme;
+    final indeterminate = totalBytes <= 0;
+    final percentLabel = indeterminate ? '' : '${(progress * 100).round()}%';
+
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 64,
+            height: 64,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: CircularProgressIndicator(
+                    value: indeterminate ? null : progress,
+                    strokeWidth: 4,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: scheme.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                ),
+                if (!indeterminate)
+                  Text(
+                    percentLabel,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  )
+                else
+                  Icon(Icons.download_rounded, size: 22, color: scheme.primary),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Đang tải model dịch…',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            indeterminate
+                ? 'Đang chuẩn bị tải…'
+                : '${_formatMb(receivedBytes)} / ${_formatMb(totalBytes)}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: onCancel,
+              child: const Text('Huỷ'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

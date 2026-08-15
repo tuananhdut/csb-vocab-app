@@ -114,16 +114,6 @@ class AppTheme {
         centerTitle: false,
         elevation: 0,
       ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.panel,
-        indicatorColor: AppColors.brand,
-        iconTheme: WidgetStateProperty.resolveWith((states) {
-          final selected = states.contains(WidgetState.selected);
-          return IconThemeData(
-            color: selected ? AppColors.white : scheme.outline,
-          );
-        }),
-      ),
       cardTheme: CardThemeData(
         color: AppColors.panel,
         surfaceTintColor: Colors.transparent,
