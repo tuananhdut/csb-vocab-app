@@ -224,13 +224,10 @@ class WordDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.5,
-      maxChildSize: 0.9,
-      builder: (context, controller) => WordDetailContent(
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * 0.7,
+      child: WordDetailContent(
         word: word,
-        scrollController: controller,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       ),
     );
