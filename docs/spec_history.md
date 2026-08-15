@@ -4,6 +4,103 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-017] 2026-08-06 — Đổi hướng Dịch (FR-4): máy dịch neural on-device thay vì ghép từ/cụm
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Đảo ngược thiết kế đã ghi ở `04_Translate.md` (dịch bằng tra ghép từ/cụm
+offline trong `vocab.db`, chưa từng code) sang **máy dịch neural chạy
+on-device** — ONNX Runtime + Helsinki-NLP/opus-mt-en-vi và opus-mt-vi-en
+(Apache-2.0), quantize INT8, tải model về máy **sau khi cài đặt** (không
+đóng gói sẵn trong app — giữ kích thước cài đặt như hiện tại ~30-40MB,
+model ~130-140MB/chiều tải riêng khi user bật tính năng dịch).
+
+Bối cảnh quyết định: khảo sát các phương án model dịch nhẹ cho mobile/
+desktop trước khi chốt hướng — Google ML Kit bị loại vì không chạy được
+trên Windows (nền tảng ưu tiên #1 theo `00_Overview.md`); NLLB-200 bị
+loại vì license CC-BY-NC cấm dùng thương mại. Helsinki-NLP/opus-mt được
+chọn vì Apache-2.0 rõ ràng, kích thước chấp nhận được sau quantize, và
+có thể tự convert/kiểm soát toàn bộ pipeline.
+
+Quyết định chốt (theo đúng thứ tự triển khai):
+
+1. **Tải model sau khi cài, không bundle sẵn** — giữ app nhẹ, chỉ user
+   thực sự bật tính năng dịch mới tải thêm.
+2. **Cả 2 chiều En→Vi và Vi→En ngay từ đầu, tải độc lập từng chiều** (2
+   nút tải riêng) — ai chỉ cần 1 chiều không phải tải cả 2.
+3. **Tự convert ONNX từ checkpoint gốc Helsinki-NLP** bằng `optimum-cli`
+   (không dùng bản convert cộng đồng nhỏ, không rõ quy trình) — đảm bảo
+   license Apache-2.0 rõ ràng và kiểm soát chất lượng quantize. Script
+   convert + hướng dẫn đầy đủ tại `tools/onnx-model-conversion/`.
+4. **POC Windows bắt buộc là bước đầu tiên** trước khi code phần còn
+   lại — đã chạy, **PASS**: `flutter_onnxruntime` build/link đúng trên
+   Windows với kiến trúc MarianMT (encoder/decoder + KV-cache đầy đủ 24
+   tensor past-key-value); kết quả dịch khớp 100% với inference bằng
+   `transformers`/PyTorch gốc cho câu test tiếng Anh chuyên ngành hàng
+   hải/quân sự.
+5. **Model host trên GitHub Releases của chính repo này**, tag
+   `mt-models-v1`: <https://github.com/tuananhdut/csb-vocab-app/releases/tag/mt-models-v1>
+   — `en-vi-v1.zip` (136.7MB) + `vi-en-v1.zip` (133.3MB), kèm
+   `*.manifest.json` (size + SHA-256) để app verify integrity lúc tải.
+
+Phát hiện kỹ thuật quan trọng trong lúc implement (ghi vào
+`tools/onnx-model-conversion/README.md` để không lặp lại sai lầm khi
+convert lại/mở rộng thêm chiều dịch khác sau này):
+
+- **Marian/opus-mt dùng bảng `vocab.json` riêng** để map piece↔id,
+  **khác hoàn toàn** thứ tự id nội bộ trong file `.spm` gốc — dùng
+  thư viện SentencePiece thuần chỉ để segment câu thành piece, không
+  dùng id thô của thư viện đó (đã thử, cho kết quả dịch hoàn toàn sai/
+  rác dù model đúng).
+- Quantize graph MarianMT bằng `onnxruntime.quantization.quantize_dynamic`
+  trực tiếp (không dùng `optimum.onnxruntime.ORTQuantizer.quantize()`,
+  API đó lỗi trên graph MarianMT) + `extra_options={'DefaultTensorType': 1}`,
+  **không** chạy `quant_pre_process` trước (graph nhiều nhánh past-KV
+  khiến symbolic shape inference lỗi).
+- Sau khi lên production với model đã tải qua mạng: kết quả dịch **đúng
+  ngữ pháp nhưng có thể khác nhau nhẹ giữa các lần chạy cùng 1 câu** —
+  đã điều tra kỹ (so khớp checksum SHA-256 của cả 3 file model giữa 2
+  lần build khác nhau, khớp tuyệt đối — loại trừ lỗi data/code). Nguyên
+  nhân: ONNX Runtime CPU đa luồng không đảm bảo bit-exact reproducibility
+  giữa các lần chạy khác tiến trình; ở một vài bước decode, 2 token có
+  logit rất gần nhau (chênh lệch ~0.03-0.4), sai số floating-point tích
+  luỹ đủ để đảo thứ hạng argmax — hạn chế cố hữu của **greedy decoding**
+  kết hợp suy luận đa luồng, không phải bug. **Chấp nhận cho MVP**,
+  không ép single-thread hay nâng cấp beam search ở giai đoạn này.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/04_Translate.md` | Viết lại — cơ chế neural on-device tải theo yêu cầu, thay "tra ghép từ/cụm" |
+| `docs/csb-vocab-analysis/90_Traceability-matrix.md` | Cập nhật dòng FR-4: trạng thái, mô tả cơ chế, cột "So với mockup" |
+| `tools/onnx-model-conversion/README.md`, `convert.py`, `package.py`, `requirements.txt` | Mới — pipeline convert/quantize/đóng gói model, đã test end-to-end |
+| `pubspec.yaml` | Thêm `flutter_onnxruntime`, `dart_sentencepiece_tokenizer`, `dio`, `crypto`, `archive` |
+
+Code Dart mới: `lib/domain/entities/translation_direction.dart`,
+`lib/data/services/model_download_service.dart`,
+`lib/data/services/translation_service.dart`,
+`lib/data/repositories/translation_providers.dart`,
+`lib/features/translate/translate_screen.dart` (viết lại),
+`lib/features/translate/widgets/model_download_prompt.dart`,
+`lib/features/translate/widgets/translate_panels.dart`.
+
+### Điểm chờ xác nhận còn mở
+
+- Chưa test chiều Vi→En end-to-end trên UI thật (chỉ tự động test
+  chiều En→Vi khi debug) — nên tự thử tay trước khi coi FR-4 là hoàn
+  thiện đầy đủ cả 2 chiều.
+- Resumable download bị hoãn sang v2 (mất mạng giữa chừng thì tải lại
+  từ đầu) — nếu feedback thực tế cho thấy cần thiết, làm lại thành điểm
+  chờ xác nhận riêng.
+- Chất lượng dịch thuật ngữ chuyên ngành (cấp bậc, loại tàu, thuật ngữ
+  quân sự/hàng hải riêng) chưa được đánh giá có hệ thống — model gốc là
+  model tổng quát, không fine-tune riêng cho domain này.
+
+---
+
 ## [IMPL-016] 2026-07-19 — Bỏ hẳn bảng `review_logs` và `search_history`
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude

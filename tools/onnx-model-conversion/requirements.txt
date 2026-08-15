@@ -1,0 +1,6 @@
+optimum==2.1.0
+optimum-onnx==0.1.0
+onnxruntime==1.28.0
+sentencepiece==0.2.2
+torch==2.13.0+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
