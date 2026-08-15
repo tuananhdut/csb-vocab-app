@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../domain/entities/section.dart';
 
-/// SCR-03 — Học: danh sách Section (chủ đề lớn của giáo trình).
+/// SCR-03 — Học: danh sách Section (chủ đề lớn của giáo trình), mỗi
+/// Section xổ ra danh sách Chapter ngay bên dưới dạng accordion.
 ///
 /// Xem docs/artifact-design/screens/screen-03-hoc-danh-sach-section.html.
 /// Duyệt từ vựng theo bộ (giáo trình = bộ mặc định) nằm ở tab "Từ điển
@@ -20,53 +22,183 @@ class LessonsScreen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Lỗi: $e')),
       data: (list) => ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         itemCount: list.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (_, i) {
-          final section = list[i];
-          return ListTile(
-            leading: CircleAvatar(child: Text('${section.sortOrder}')),
-            title: Text(section.name),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => ChapterListScreen(section: section)),
-            ),
-          );
-        },
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (_, i) => _SectionCard(section: list[i]),
       ),
     );
   }
 }
 
-/// SCR-03b — Học: danh sách Chapter (bài đọc) của 1 Section.
-///
-/// Xem docs/artifact-design/screens/screen-03b-hoc-danh-sach-chapter.html.
-class ChapterListScreen extends ConsumerWidget {
-  const ChapterListScreen({super.key, required this.section});
+/// 1 Section = 1 Card riêng biệt (nền trắng đục, che watermark phía sau)
+/// — số thứ tự trong ô vuông bo góc màu brand để phân biệt cấp bậc với
+/// Chapter con (số trong vòng tròn nhỏ, nhạt hơn, thụt lề).
+class _SectionCard extends StatefulWidget {
+  const _SectionCard({required this.section});
   final Section section;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final chapters = ref.watch(articleChaptersProvider(section.id));
-    return Scaffold(
-      appBar: AppBar(title: Text(section.name)),
-      body: chapters.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Lỗi: $e')),
-        data: (list) => ListView.separated(
-          itemCount: list.length,
-          separatorBuilder: (_, _) => const Divider(height: 1),
-          itemBuilder: (_, i) {
-            final chapter = list[i];
-            return ListTile(
-              leading: CircleAvatar(child: Text('${chapter.sortOrder}')),
-              title: Text(chapter.title),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => ChapterContentScreen(chapterId: chapter.id)),
+  State<_SectionCard> createState() => _SectionCardState();
+}
+
+class _SectionCardState extends State<_SectionCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  _SectionBadge(number: widget.section.sortOrder),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      widget.section.name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.inkSoft.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: _ChapterList(sectionId: widget.section.id),
+            crossFadeState:
+                _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+            sizeCurve: Curves.easeInOut,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionBadge extends StatelessWidget {
+  const _SectionBadge({required this.number});
+  final int number;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.brand,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        '$number',
+        style: const TextStyle(
+          color: AppColors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 15,
+        ),
+      ),
+    );
+  }
+}
+
+class _ChapterList extends ConsumerWidget {
+  const _ChapterList({required this.sectionId});
+  final int sectionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final chapters = ref.watch(articleChaptersProvider(sectionId));
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.panel2,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+      ),
+      child: chapters.when(
+        loading: () => const Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text('Lỗi: $e', style: Theme.of(context).textTheme.bodySmall),
+        ),
+        data: (list) => Column(
+          children: [
+            for (final (i, chapter) in list.indexed) ...[
+              if (i > 0)
+                Divider(
+                  height: 1,
+                  indent: 56,
+                  color: Theme.of(context).dividerColor,
+                ),
+              _ChapterTile(chapter: chapter),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChapterTile extends StatelessWidget {
+  const _ChapterTile({required this.chapter});
+  final ArticleChapter chapter;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ChapterContentScreen(chapterId: chapter.id)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 26,
+              height: 26,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '${chapter.sortOrder}',
+                style: const TextStyle(
+                  color: AppColors.brand,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(chapter.title, style: Theme.of(context).textTheme.bodyMedium),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: AppColors.inkSoft.withValues(alpha: 0.5),
+            ),
+          ],
         ),
       ),
     );
