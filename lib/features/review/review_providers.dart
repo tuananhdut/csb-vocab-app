@@ -111,12 +111,12 @@ Future<List<ReviewQuestion>> buildQuickQuiz(
 /// riêng của bộ đó ([dueReviewsForDictionaryProvider]).
 Future<void> submitWordReview(
   WidgetRef ref,
-  int wordId,
-  ReviewRating rating, {
+  int wordId, {
+  required bool isCorrect,
   int? dictionaryId,
 }) async {
   final repo = await ref.read(reviewRepositoryProvider.future);
-  await repo.submitReview(wordId, rating);
+  await repo.submitReview(wordId, isCorrect: isCorrect);
   ref.invalidate(dueReviewsProvider);
   ref.invalidate(dueReviewCountProvider);
   if (dictionaryId != null) {

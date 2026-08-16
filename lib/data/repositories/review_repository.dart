@@ -7,6 +7,15 @@ import '../../domain/repositories/review_repository.dart' as domain;
 import '../../domain/srs/srs_scheduler.dart';
 import 'vocab_repository.dart';
 
+/// Số lần đúng liên tiếp (qua các phiên khác nhau, không chỉ trong 1
+/// phiên — [SrsCardState.repetitions] reset về 0 ngay khi có 1 lần sai)
+/// để coi 1 từ là "đã nhớ ổn định": từ mốc này trở đi, đúng thêm lần nữa
+/// được chấm `easy` thay vì `good` để [SrsScheduler] cho phép `easeFactor`
+/// tăng trở lại (SM-2 gốc: q=5 mới có delta dương). Không áp cho lần đúng
+/// đầu tiên hay chỉ vài lần — tránh tăng ease quá sớm khi từ chưa thật sự
+/// vào trí nhớ dài hạn.
+const _stableStreakThreshold = 3;
+
 /// Implementation SQLite của [domain.ReviewRepository], dùng `user.db`
 /// (bảng `learned_words`) ghép với `vocab.db` qua [VocabRepository].
 class SqliteReviewRepository implements domain.ReviewRepository {
@@ -52,7 +61,7 @@ class SqliteReviewRepository implements domain.ReviewRepository {
   }
 
   @override
-  Future<void> submitReview(int wordId, ReviewRating rating) async {
+  Future<void> submitReview(int wordId, {required bool isCorrect}) async {
     final rows = _userDb.select(
       'SELECT * FROM learned_words WHERE word_id = ?',
       [wordId],
@@ -60,6 +69,9 @@ class SqliteReviewRepository implements domain.ReviewRepository {
     if (rows.isEmpty) return;
 
     final current = _stateFromRow(rows.first);
+    final rating = !isCorrect
+        ? ReviewRating.forgot
+        : (current.repetitions >= _stableStreakThreshold ? ReviewRating.easy : ReviewRating.good);
     final updated = _scheduler.review(current, rating);
 
     _userDb.execute(

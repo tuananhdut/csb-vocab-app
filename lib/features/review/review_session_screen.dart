@@ -34,7 +34,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
     await submitWordReview(
       ref,
       word.id,
-      isCorrect ? ReviewRating.good : ReviewRating.forgot,
+      isCorrect: isCorrect,
       dictionaryId: widget.dictionaryId,
     );
     if (!mounted) return;

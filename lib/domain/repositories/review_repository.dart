@@ -7,8 +7,10 @@ abstract class ReviewRepository {
 
   Future<bool> isLearned(int wordId);
 
-  /// Ghi nhận 1 lượt ôn và tính lại lịch ôn tiếp theo theo SM-2.
-  Future<void> submitReview(int wordId, ReviewRating rating);
+  /// Ghi nhận 1 lượt ôn và tính lại lịch ôn tiếp theo theo SM-2. Tự suy ra
+  /// [ReviewRating] từ [isCorrect] + số lần đúng liên tiếp đã tích luỹ qua
+  /// các phiên trước ([SrsCardState.repetitions]) — xem impl.
+  Future<void> submitReview(int wordId, {required bool isCorrect});
 
   /// Các từ đến hạn ôn tính đến cuối ngày hôm nay, sắp theo hạn ôn gần nhất.
   Future<List<DueReviewItem>> dueToday();

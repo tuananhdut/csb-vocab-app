@@ -5,9 +5,11 @@ import 'word.dart';
 /// Mức đánh giá trí nhớ khi ôn 1 từ (theo thang SM-2 gốc: q = 0..5).
 /// Từ khi đổi sang câu hỏi khách quan (trắc nghiệm/gõ chữ, xem
 /// `docs/csb-vocab-analysis/tasks/02-review-multi-mode/`), hệ thống tự
-/// chấm và chỉ dùng 2 giá trị: `forgot` (sai) / `good` (đúng) — `hard`/
-/// `easy` giữ lại trong enum (không xoá) vì không ảnh hưởng hành vi mới,
-/// chỉ đơn giản không còn đường gọi tới.
+/// chấm sai → `forgot`; đúng → `good` hoặc `easy` tuỳ đã đúng liên tiếp
+/// ổn định qua nhiều phiên hay chưa (xem `_stableStreakThreshold` ở
+/// `SqliteReviewRepository.submitReview`) — `hard` giữ lại trong enum
+/// (không xoá) vì không ảnh hưởng hành vi hiện tại, chỉ đơn giản không
+/// còn đường gọi tới.
 enum ReviewRating {
   forgot(1, 'Quên'),
   hard(3, 'Khó'),
