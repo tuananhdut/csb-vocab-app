@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
+import '../../data/repositories/vocab_repository.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../domain/entities/word.dart';
 import '../review/review_providers.dart';
@@ -161,17 +162,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
           phonetic: localMatch.phonetic,
           partOfSpeechAbbreviation: localMatch.partOfSpeech,
         );
-        // Chỉ ghi nhớ id để [_save] liên kết (thay vì tạo từ MANUAL mới)
-        // nếu CẢ 5 trường (từ/nghĩa/phiên âm/loại từ/ví dụ) trong form
-        // SAU KHI autofill khớp y hệt bản ghi gốc — nếu user đã tự gõ
-        // trước 1 trong các ô đó khác với dữ liệu gốc, [_applyAutofill]
-        // giữ nguyên giá trị đó (không ghi đè ô đã có chữ), nên form và
-        // bản ghi gốc có thể lệch nhau dù vẫn "khớp" ở bước tìm kiếm
-        // ban đầu. Ví dụ user gõ mà không lưu được khi link (form chỉ
-        // hỗ trợ 1-1, `linkExistingWord` không đụng bảng `examples`)
-        // là mất dữ liệu — an toàn hơn là bắt tạo mới trong trường hợp đó.
-        final existingExamples = vocabRepo.examplesFor(localMatch.id);
-        if (_formMatchesRecord(localMatch, existingExamples)) {
+        if (_recordMatchesForm(vocabRepo, localMatch)) {
           setState(() => _linkedWordId = localMatch.id);
         }
         return;
@@ -227,6 +218,15 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
       final code = _posCodeByAbbreviation[partOfSpeechAbbreviation];
       if (code != null) _partOfSpeechCode = code;
     });
+  }
+
+  /// Nạp ví dụ có sẵn của [record] rồi so khớp với form qua
+  /// [_formMatchesRecord] — dùng chung cho cả [_autofill] (sau khi vừa
+  /// tự điền) và [_save] (khi user gõ tay trùng 1 bản ghi có sẵn mà
+  /// không bấm "Tự điền").
+  bool _recordMatchesForm(VocabRepository vocabRepo, VocabWord record) {
+    final existingExamples = vocabRepo.examplesFor(record.id);
+    return _formMatchesRecord(record, existingExamples);
   }
 
   /// So khớp CẢ 5 trường (từ, nghĩa, phiên âm, loại từ, ví dụ) đang hiển
@@ -308,6 +308,24 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
     return savedFile.path;
   }
 
+  /// Dò xem [word] đã trùng khớp y hệt (cả 5 trường, qua
+  /// [_recordMatchesForm]) với 1 bản ghi local có sẵn chưa — dùng khi
+  /// lưu mà user chưa từng bấm "Tự điền" (chỉ tra local, không gọi
+  /// Online, vì đây là bước an toàn ngầm lúc lưu chứ không phải tự điền
+  /// chủ động). Trả `null` nếu không có từ để tra, không tìm thấy, hoặc
+  /// tìm thấy nhưng nội dung form lệch với bản ghi gốc (khi đó vẫn phải
+  /// tạo bản ghi MANUAL mới — ví dụ cùng 1 từ nhưng nghĩa khác).
+  Future<int?> _findLinkableMatch(String word) async {
+    if (word.isEmpty) return null;
+    final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+    final localMatch = vocabRepo.findExactMatch(
+      word,
+      direction: SearchDirection.enToVi,
+    );
+    if (localMatch == null) return null;
+    return _recordMatchesForm(vocabRepo, localMatch) ? localMatch.id : null;
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
@@ -326,27 +344,34 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
         exampleEn: _exampleEnController.text,
         exampleVi: _exampleViController.text,
       );
-    } else if (_linkedWordId != null) {
+    } else {
       // Tự điền vừa khớp trúng 1 bản ghi có sẵn (chưa bị user sửa tay
       // sau đó, xem [_clearLinkedWordIfUserEdited]) — liên kết thay vì
-      // tạo bản ghi MANUAL mới trùng nội dung.
-      await linkExistingWord(
-        ref,
-        wordId: _linkedWordId!,
-        dictionaryId: widget.dictionaryId,
-      );
-    } else {
-      await addManualWord(
-        ref,
-        word: word,
-        meaningVi: _meaningController.text.trim(),
-        dictionaryId: widget.dictionaryId,
-        phonetic: _phoneticController.text,
-        partOfSpeechCode: _partOfSpeechCode,
-        imagePath: imagePath,
-        exampleEn: _exampleEnController.text,
-        exampleVi: _exampleViController.text,
-      );
+      // tạo bản ghi MANUAL mới trùng nội dung. Nếu user gõ tay mà chưa
+      // từng bấm "Tự điền" (nên `_linkedWordId` vẫn `null`), tự dò lại
+      // ngay đây bằng chính nội dung form — tránh tạo bản ghi trùng
+      // lặp âm thầm khi user vô tình gõ y hệt 1 từ đã có sẵn.
+      final linkedWordId = _linkedWordId ?? await _findLinkableMatch(word);
+      if (linkedWordId != null) {
+        await linkExistingWord(
+          ref,
+          wordId: linkedWordId,
+          dictionaryId: widget.dictionaryId,
+        );
+      } else {
+        await addManualWord(
+          ref,
+          word: word,
+          meaningVi: _meaningController.text.trim(),
+          dictionaryId: widget.dictionaryId,
+          phonetic: _phoneticController.text,
+          partOfSpeechCode: _partOfSpeechCode,
+          imagePath: imagePath,
+          exampleEn: _exampleEnController.text,
+          exampleVi: _exampleViController.text,
+        );
+      }
+      _linkedWordId = linkedWordId;
     }
     if (!mounted) return;
     final wasLinked = !widget.isEditing && _linkedWordId != null;

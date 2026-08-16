@@ -92,10 +92,14 @@ class VocabRepository {
   }
 
   /// Khớp CHÍNH XÁC (không phải `LIKE` gần đúng) 1 từ theo [direction] —
-  /// dùng cho tự điền form thêm từ (SCR-07b "Tự điền từ dữ liệu"), nơi
-  /// điền nhầm dữ liệu của 1 từ khác gần giống là hành vi tệ hơn nhiều
-  /// so với không tìm thấy gì. Trả về từ đầu tiên khớp (ưu tiên
-  /// `sort_order`/`id` tăng dần) nếu có nhiều bản ghi trùng.
+  /// dùng cho tự điền form thêm từ (SCR-07b "Tự điền từ dữ liệu") và dò
+  /// trùng lặp lúc lưu, nơi điền/link nhầm dữ liệu của 1 từ khác gần
+  /// giống là hành vi tệ hơn nhiều so với không tìm thấy gì. KHÔNG loại
+  /// trừ `source=2` (MANUAL) như [search] — mục đích ở đây là chống tạo
+  /// bản ghi trùng lặp (kể cả trùng với từ MANUAL user đã tự thêm trước
+  /// đó), khác với Tra cứu giáo trình chỉ muốn thấy từ gốc. Trả về từ
+  /// đầu tiên khớp (ưu tiên `sort_order`/`id` tăng dần) nếu có nhiều bản
+  /// ghi trùng.
   VocabWord? findExactMatch(
     String query, {
     required SearchDirection direction,
@@ -110,7 +114,7 @@ class VocabRepository {
 
     final rows = _db.select(
       '''$_selectWord
-         WHERE w.source != 2 AND $matchColumn
+         WHERE $matchColumn
          ORDER BY w.id
          LIMIT 1''',
       [q],
@@ -533,12 +537,18 @@ class VocabRepository {
   /// nhiều bộ cùng lúc (xem [insertOnlineWord]) — xoá ở 1 bộ không được
   /// làm mất từ đó ở các bộ khác đang dùng chung dòng `words`.
   ///
+  /// KHÔNG chặn `source=0` (SEED) như [updateManualWord] — "xoá" ở đây
+  /// chỉ gỡ liên kết khỏi 1 bộ, không xoá nội dung từ dùng chung; từ
+  /// SEED luôn còn liên kết ở bộ giáo trình gốc nên `DELETE FROM words
+  /// ... AND source != 0` phía dưới không bao giờ xoá hẳn được nó (điều
+  /// kiện đó chỉ có tác dụng với `source=1`/`2`), khớp đúng comment ở
+  /// `DictionaryDetailScreen` (nút Xoá luôn khả dụng, bất kể nguồn từ).
+  ///
   /// Trả về `true` nếu từ đã bị xoá HẲN (không còn bộ nào tham chiếu) —
   /// tầng gọi dùng giá trị này để quyết định có dọn `learned_words` ở
   /// `user.db` hay không (chỉ dọn khi từ thực sự không còn tồn tại ở
   /// bất kỳ bộ nào, xem `review_providers.dart` `deleteWord`).
   bool deleteWord(int wordId, {required int dictionaryId}) {
-    _assertNotSeedWord(wordId, action: 'xoá');
     _db.execute(
       'DELETE FROM word_dictionaries WHERE word_id = ? AND dictionary_id = ?',
       [wordId, dictionaryId],

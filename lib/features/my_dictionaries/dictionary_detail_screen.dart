@@ -76,12 +76,25 @@ class _DictionaryDetailScreenState
   }
 
   Future<void> _deleteWord(VocabWord word) async {
+    // Cùng 1 từ có thể thuộc nhiều bộ ([VocabRepository.deleteWord] chỉ
+    // gỡ liên kết đúng [widget.dictionaryId], chỉ xoá hẳn record khi
+    // không còn bộ nào khác tham chiếu) — báo trước đúng hệ quả thay vì
+    // luôn cảnh báo "không thể hoàn tác" dù nhiều lúc từ vẫn còn an
+    // toàn ở bộ khác, tránh gây hiểu lầm mất dữ liệu.
+    final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+    final otherDictionaryCount =
+        vocabRepo.dictionaryIdsContaining(word.id).length - 1;
+    final willFullyDelete = otherDictionaryCount <= 0;
+    if (!mounted) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Xoá từ này?'),
         content: Text(
-          '"${word.word}" sẽ bị xoá khỏi ${widget.dictionaryName}. Hành động này không thể hoàn tác.',
+          willFullyDelete
+              ? '"${word.word}" sẽ bị xoá hẳn khỏi hệ thống (không còn thuộc bộ nào khác). Hành động này không thể hoàn tác.'
+              : '"${word.word}" sẽ được gỡ khỏi ${widget.dictionaryName}. Từ này vẫn còn ở $otherDictionaryCount bộ khác nên sẽ không bị xoá hẳn.',
         ),
         actions: [
           TextButton(
