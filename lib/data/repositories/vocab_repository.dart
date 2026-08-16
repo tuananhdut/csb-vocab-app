@@ -9,22 +9,28 @@ import '../../domain/entities/word.dart';
 /// khi chuẩn hoá sang mã số lúc migrate).
 const _posLabels = {0: 'dt', 1: 'đt', 2: 'tt', 3: 'trt', 4: 'gt'};
 
+/// Chiều ngược lại của [_posLabels] — dùng khi lưu từ tra Online
+/// ([VocabRepository.insertOnlineWord]), nơi UI chỉ có sẵn nhãn viết
+/// tắt (từ `DictionaryApiService`/`VocabWord.partOfSpeech`), chưa có
+/// mã số.
+const _posCodeByLabel = {'dt': 0, 'đt': 1, 'tt': 2, 'trt': 3, 'gt': 4};
+
 /// Truy vấn dữ liệu từ vựng (read-only) từ vocab.db.
 class VocabRepository {
   VocabRepository(this._db);
   final Database _db;
 
   VocabWord _wordFromRow(Row r) => VocabWord(
-        id: r['id'] as int,
-        word: r['word'] as String? ?? '',
-        phonetic: r['phonetic'] as String? ?? '',
-        partOfSpeech: _posLabels[r['part_of_speech'] as int?] ?? '',
-        meaningVi: r['meaning_vi'] as String? ?? '',
-        chapterTitle: r['chapter_title'] as String? ?? '',
-        imagePath: r['image_path'] as String?,
-        isSubentry: (r['is_subentry'] as int? ?? 0) == 1,
-        isManual: (r['source'] as int? ?? 0) == 2,
-      );
+    id: r['id'] as int,
+    word: r['word'] as String? ?? '',
+    phonetic: r['phonetic'] as String? ?? '',
+    partOfSpeech: _posLabels[r['part_of_speech'] as int?] ?? '',
+    meaningVi: r['meaning_vi'] as String? ?? '',
+    chapterTitle: r['chapter_title'] as String? ?? '',
+    imagePath: r['image_path'] as String?,
+    isSubentry: (r['is_subentry'] as int? ?? 0) == 1,
+    isManual: (r['source'] as int? ?? 0) == 2,
+  );
 
   // "chapter_title" o day la ten bo tu dien (dictionaries) - giu ten
   // cot alias cu de khong phai sua VocabWord/word_widgets.dart hien co.
@@ -45,20 +51,35 @@ class VocabRepository {
   /// Loại trừ `source=2` (MANUAL — từ tự thêm ở SCR-07b): theo đúng
   /// mockup "Từ tự thêm chỉ hiển thị trong bộ từ điển cá nhân — không
   /// xuất hiện khi Tra cứu trong giáo trình gốc".
-  List<VocabWord> search(String query, {int limit = 50}) {
+  ///
+  /// [direction] BẮT BUỘC (không có mặc định đoán tự động) — user chủ
+  /// động chọn qua dropdown ở [SearchScreen], chỉ so khớp đúng 1 cột
+  /// theo đúng hướng đã chọn, tránh nhầm lẫn từ trùng cả 2 ngôn ngữ.
+  List<VocabWord> search(
+    String query, {
+    required SearchDirection direction,
+    int limit = 50,
+  }) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
     final like = '%$q%';
     final prefix = '$q%';
+
+    final matchColumn = switch (direction) {
+      SearchDirection.enToVi => 'w.word_lower LIKE ?',
+      SearchDirection.viToEn => 'lower(w.meaning_vi) LIKE ?',
+    };
+    final matchParams = [like];
+
     final rows = _db.select(
       '''$_selectWord
-         WHERE w.source != 2 AND (w.word_lower LIKE ? OR lower(w.meaning_vi) LIKE ?)
+         WHERE w.source != 2 AND $matchColumn
          ORDER BY
            CASE WHEN w.word_lower = ? THEN 0
                 WHEN w.word_lower LIKE ? THEN 1 ELSE 2 END,
            length(w.word), w.word_lower
          LIMIT ?''',
-      [like, like, q, prefix, limit],
+      [...matchParams, q, prefix, limit],
     );
     return rows.map(_wordFromRow).toList();
   }
@@ -83,12 +104,14 @@ class VocabRepository {
       ORDER BY d.sort_order
     ''');
     return rows
-        .map((r) => Chapter(
-              id: r['id'] as int,
-              chapterNo: r['sort_order'] as int? ?? 0,
-              title: r['name'] as String? ?? '',
-              wordCount: r['cnt'] as int? ?? 0,
-            ))
+        .map(
+          (r) => Chapter(
+            id: r['id'] as int,
+            chapterNo: r['sort_order'] as int? ?? 0,
+            title: r['name'] as String? ?? '',
+            wordCount: r['cnt'] as int? ?? 0,
+          ),
+        )
         .toList();
   }
 
@@ -109,23 +132,29 @@ class VocabRepository {
       [wordId],
     );
     return rows
-        .map((r) => WordExample(
-              en: r['example_en'] as String? ?? '',
-              vi: r['example_vi'] as String? ?? '',
-            ))
+        .map(
+          (r) => WordExample(
+            en: r['example_en'] as String? ?? '',
+            vi: r['example_vi'] as String? ?? '',
+          ),
+        )
         .toList();
   }
 
   /// Danh sách Section (SCR-03) — chủ đề lớn của giáo trình, chứa các
   /// bài đọc (`ArticleChapter`). Xem `docs/db/schema.sql`.
   List<Section> sections() {
-    final rows = _db.select('SELECT id, name, sort_order FROM sections ORDER BY sort_order');
+    final rows = _db.select(
+      'SELECT id, name, sort_order FROM sections ORDER BY sort_order',
+    );
     return rows
-        .map((r) => Section(
-              id: r['id'] as int,
-              name: r['name'] as String? ?? '',
-              sortOrder: r['sort_order'] as int? ?? 0,
-            ))
+        .map(
+          (r) => Section(
+            id: r['id'] as int,
+            name: r['name'] as String? ?? '',
+            sortOrder: r['sort_order'] as int? ?? 0,
+          ),
+        )
         .toList();
   }
 
@@ -136,13 +165,15 @@ class VocabRepository {
       [sectionId],
     );
     return rows
-        .map((r) => ArticleChapter(
-              id: r['id'] as int,
-              sectionId: r['section_id'] as int,
-              title: r['title'] as String? ?? '',
-              sortOrder: r['sort_order'] as int? ?? 0,
-              pdfPath: r['pdf_path'] as String?,
-            ))
+        .map(
+          (r) => ArticleChapter(
+            id: r['id'] as int,
+            sectionId: r['section_id'] as int,
+            title: r['title'] as String? ?? '',
+            sortOrder: r['sort_order'] as int? ?? 0,
+            pdfPath: r['pdf_path'] as String?,
+          ),
+        )
         .toList();
   }
 
@@ -168,7 +199,7 @@ class VocabRepository {
   /// SQLite riêng, không JOIN được bằng SQL, phải ghép ở tầng Dart, xem
   /// [MyDictionariesRepository]).
   List<({int id, String name, bool isDefault, List<int> wordIds})>
-      dictionariesWithWordIds() {
+  dictionariesWithWordIds() {
     final dictRows = _db.select(
       'SELECT id, name, is_default FROM dictionaries ORDER BY sort_order',
     );
@@ -204,7 +235,11 @@ class VocabRepository {
   /// 02-review-multi-mode/03-plan.md` BE-04). Ưu tiên lấy trong cùng
   /// [dictionaryId] để đáp án nhiễu cùng chủ đề; nếu không đủ [count] từ
   /// khác trong bộ đó, fallback lấy ngẫu nhiên trên toàn bộ `words`.
-  List<String> randomDistractors(int wordId, int? dictionaryId, {int count = 3}) {
+  List<String> randomDistractors(
+    int wordId,
+    int? dictionaryId, {
+    int count = 3,
+  }) {
     if (dictionaryId != null) {
       final rows = _db.select(
         '''SELECT DISTINCT w.meaning_vi FROM words w
@@ -228,7 +263,9 @@ class VocabRepository {
   /// SCR-07 nút "Tạo bộ mới". Xếp cuối danh sách (`sort_order` lớn nhất
   /// hiện có + 1).
   int createDictionary(String name) {
-    final maxSortRow = _db.select('SELECT MAX(sort_order) AS m FROM dictionaries').first;
+    final maxSortRow = _db
+        .select('SELECT MAX(sort_order) AS m FROM dictionaries')
+        .first;
     final nextSortOrder = (maxSortRow['m'] as int? ?? 0) + 1;
     final now = DateTime.now().millisecondsSinceEpoch;
 
@@ -258,7 +295,9 @@ class VocabRepository {
     );
     final orphanWordIds = orphanRows.map((r) => r['word_id'] as int).toList();
 
-    _db.execute('DELETE FROM word_dictionaries WHERE dictionary_id = ?', [dictionaryId]);
+    _db.execute('DELETE FROM word_dictionaries WHERE dictionary_id = ?', [
+      dictionaryId,
+    ]);
     for (final wordId in orphanWordIds) {
       _db.execute('DELETE FROM examples WHERE word_id = ?', [wordId]);
       _db.execute('DELETE FROM words WHERE id = ?', [wordId]);
@@ -288,7 +327,15 @@ class VocabRepository {
       '''INSERT INTO words (word, word_lower, phonetic, meaning_vi,
                              part_of_speech, is_subentry, image_path, source, created_at)
          VALUES (?, ?, ?, ?, ?, 0, ?, 2, ?)''',
-      [word, word.toLowerCase(), phonetic, meaningVi, partOfSpeechCode, imagePath, now],
+      [
+        word,
+        word.toLowerCase(),
+        phonetic,
+        meaningVi,
+        partOfSpeechCode,
+        imagePath,
+        now,
+      ],
     );
     final wordId = _db.lastInsertRowId;
 
@@ -347,6 +394,8 @@ class VocabRepository {
     required String word,
     required String meaningVi,
     required List<int> dictionaryIds,
+    String? phonetic,
+    String? partOfSpeech,
   }) {
     final now = DateTime.now().millisecondsSinceEpoch;
     final existingWordId = findOnlineWordId(word);
@@ -355,11 +404,14 @@ class VocabRepository {
     if (existingWordId != null) {
       wordId = existingWordId;
     } else {
+      final partOfSpeechCode = partOfSpeech == null
+          ? null
+          : _posCodeByLabel[partOfSpeech];
       _db.execute(
         '''INSERT INTO words (word, word_lower, phonetic, meaning_vi,
                                part_of_speech, is_subentry, image_path, source, created_at)
-           VALUES (?, ?, NULL, ?, NULL, 0, NULL, 1, ?)''',
-        [word, word.toLowerCase(), meaningVi, now],
+           VALUES (?, ?, ?, ?, ?, 0, NULL, 1, ?)''',
+        [word, word.toLowerCase(), phonetic, meaningVi, partOfSpeechCode, now],
       );
       wordId = _db.lastInsertRowId;
     }
@@ -398,7 +450,15 @@ class VocabRepository {
       '''UPDATE words SET word = ?, word_lower = ?, phonetic = ?, meaning_vi = ?,
                            part_of_speech = ?, image_path = ?
          WHERE id = ? AND source = 2''',
-      [word, word.toLowerCase(), phonetic, meaningVi, partOfSpeechCode, imagePath, wordId],
+      [
+        word,
+        word.toLowerCase(),
+        phonetic,
+        meaningVi,
+        partOfSpeechCode,
+        imagePath,
+        wordId,
+      ],
     );
 
     // Form chỉ hỗ trợ đúng 1 cặp ví dụ EN/VI cho từ tự thêm -> xoá hết
@@ -433,7 +493,9 @@ class VocabRepository {
     if (rows.isEmpty) return;
     final source = rows.first['source'] as int? ?? 0;
     if (source != 2) {
-      throw StateError('Không thể $action từ mặc định (id=$wordId, source=$source).');
+      throw StateError(
+        'Không thể $action từ mặc định (id=$wordId, source=$source).',
+      );
     }
   }
 }

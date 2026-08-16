@@ -140,9 +140,17 @@ Future<void> addOnlineWord(
   required String word,
   required String meaningVi,
   required List<int> dictionaryIds,
+  String? phonetic,
+  String? partOfSpeech,
 }) async {
   final vocabRepo = await ref.read(vocabRepositoryProvider.future);
-  vocabRepo.insertOnlineWord(word: word, meaningVi: meaningVi, dictionaryIds: dictionaryIds);
+  vocabRepo.insertOnlineWord(
+    word: word,
+    meaningVi: meaningVi,
+    dictionaryIds: dictionaryIds,
+    phonetic: (phonetic == null || phonetic.trim().isEmpty) ? null : phonetic.trim(),
+    partOfSpeech: (partOfSpeech == null || partOfSpeech.trim().isEmpty) ? null : partOfSpeech.trim(),
+  );
   ref.invalidate(myDictionariesProvider);
   for (final dictionaryId in dictionaryIds) {
     ref.invalidate(chapterWordsProvider(dictionaryId));

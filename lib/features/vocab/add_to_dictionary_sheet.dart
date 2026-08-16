@@ -20,12 +20,19 @@ Future<void> showAddToDictionarySheet(
   BuildContext context, {
   required String word,
   required String meaningVi,
+  String? phonetic,
+  String? partOfSpeech,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => AddToDictionarySheet(word: word, meaningVi: meaningVi),
+    builder: (_) => AddToDictionarySheet(
+      word: word,
+      meaningVi: meaningVi,
+      phonetic: phonetic,
+      partOfSpeech: partOfSpeech,
+    ),
   );
 }
 
@@ -34,10 +41,19 @@ class AddToDictionarySheet extends ConsumerStatefulWidget {
     super.key,
     required this.word,
     required this.meaningVi,
+    this.phonetic,
+    this.partOfSpeech,
   });
 
   final String word;
   final String meaningVi;
+
+  /// Phiên âm/loại từ (viết tắt "dt"/"đt"...) đã lấy sẵn từ Free
+  /// Dictionary API lúc tra (xem `DictionaryApiService`, chỉ có khi
+  /// query gốc là tiếng Anh) — truyền kèm để lưu cùng lúc với
+  /// [addOnlineWord], không cần tra lại lần 2.
+  final String? phonetic;
+  final String? partOfSpeech;
 
   @override
   ConsumerState<AddToDictionarySheet> createState() =>
@@ -123,6 +139,8 @@ class _AddToDictionarySheetState extends ConsumerState<AddToDictionarySheet> {
       word: widget.word,
       meaningVi: widget.meaningVi,
       dictionaryIds: _selectedIds.toList(),
+      phonetic: widget.phonetic,
+      partOfSpeech: widget.partOfSpeech,
     );
     if (!mounted) return;
     Navigator.of(context).pop();

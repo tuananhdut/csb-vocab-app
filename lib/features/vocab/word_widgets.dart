@@ -397,6 +397,8 @@ class WordDetailContent extends ConsumerWidget {
                 context,
                 word: word.word,
                 meaningVi: word.meaningVi,
+                phonetic: word.phonetic.isEmpty ? null : word.phonetic,
+                partOfSpeech: word.partOfSpeech.isEmpty ? null : word.partOfSpeech,
               ),
               icon: const Icon(Icons.bookmark_add_outlined),
               label: const Text('Thêm vào bộ'),

@@ -50,3 +50,19 @@ class VocabWord {
   final bool isOnline;
   final List<WordExample> examples;
 }
+
+/// Chiều tra cứu ở màn Search (SCR-02) — user BẮT BUỘC chọn thủ công
+/// qua dropdown (không có lựa chọn "Tự động" đoán bằng ký tự tiếng
+/// Việt — dễ đoán sai với từ mượn/tên riêng không dấu, và người dùng
+/// luôn biết rõ mình đang gõ tiếng gì hơn app đoán). Ảnh hưởng cả tra
+/// cứu local (`VocabRepository.search`, chỉ so khớp đúng 1 cột) lẫn
+/// tra Online (`DictionaryApiService.lookup`, quyết định hướng dịch
+/// gọi MyMemory + có tra thêm Free Dictionary API cho phiên âm/loại từ
+/// hay không).
+enum SearchDirection {
+  enToVi(label: 'Anh → Việt'),
+  viToEn(label: 'Việt → Anh');
+
+  const SearchDirection({required this.label});
+  final String label;
+}

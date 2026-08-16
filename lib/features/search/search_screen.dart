@@ -19,6 +19,7 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   String _query = '';
+  SearchDirection _direction = SearchDirection.enToVi;
   VocabWord? _selected;
 
   @override
@@ -34,36 +35,61 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  void _setDirection(SearchDirection direction) {
+    setState(() => _direction = direction);
+  }
+
   Widget _buildSearchField() {
     return Padding(
       padding: const EdgeInsets.all(14),
-      child: TextField(
-        controller: _controller,
-        textInputAction: TextInputAction.search,
-        style: Theme.of(context).textTheme.bodyMedium,
-        decoration: InputDecoration(
-          hintText: 'Nhập từ tiếng Anh hoặc tiếng Việt…',
-          prefixIcon: const Icon(Icons.search, size: 18),
-          suffixIcon: _query.isEmpty
-              ? null
-              : IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _controller.clear();
-                    _setQuery('');
-                  },
+      // IntrinsicHeight + crossAxisAlignment.stretch để ô dropdown (cao
+      // cố định 44) và TextField (cao theo nội dung/contentPadding) khớp
+      // đúng chiều cao nhau, không lệch hàng.
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                textInputAction: TextInputAction.search,
+                style: Theme.of(context).textTheme.bodyMedium,
+                decoration: InputDecoration(
+                  hintText: 'Nhập từ tiếng Anh hoặc tiếng Việt…',
+                  prefixIcon: const Icon(Icons.search, size: 18),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _controller.clear();
+                            _setQuery('');
+                          },
+                        ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
                 ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                onChanged: _setQuery,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _SearchDirectionDropdown(
+              value: _direction,
+              onChanged: _setDirection,
+            ),
+          ],
         ),
-        onChanged: _setQuery,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final results = ref.watch(searchProvider(_query));
+    final results = ref.watch(
+      searchProvider((query: _query, direction: _direction)),
+    );
     final isDesktop =
         MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
 
@@ -85,8 +111,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     data: (words) {
                       if (words.isEmpty) {
                         return Center(
-                          child: Text('Không tìm thấy "$_query"',
-                              style: Theme.of(context).textTheme.bodyLarge),
+                          child: Text(
+                            'Không tìm thấy "$_query"',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
                         );
                       }
                       return _buildSingleColumn(words);
@@ -128,16 +156,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         ? const _SearchEmptyCarousel()
                         : results.when(
                             loading: () => const Center(
-                                child: CircularProgressIndicator()),
+                              child: CircularProgressIndicator(),
+                            ),
                             error: (e, _) => Center(child: Text('Lỗi: $e')),
                             data: (words) {
                               if (words.isEmpty) {
                                 return Center(
-                                  child: Text('Không tìm thấy "$_query"',
-                                      textAlign: TextAlign.center,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium),
+                                  child: Text(
+                                    'Không tìm thấy "$_query"',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                  ),
                                 );
                               }
                               return ListView.separated(
@@ -175,6 +206,126 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Dropdown chọn hướng tra cứu (Tự động/Anh→Việt/Việt→Anh) cạnh ô tìm
+/// kiếm — ép hướng thay vì để app tự đoán bằng ký tự tiếng Việt (đoán
+/// sai với từ mượn/tên riêng không dấu, xem [SearchDirection]).
+///
+/// Tự dựng bằng [showMenu] + toạ độ [RenderBox] thật của nút (thay vì
+/// [DropdownButton] mặc định) để neo menu chính xác NGAY DƯỚI nút, cùng
+/// chiều rộng — [DropdownButton] tự tính offset menu theo toàn khung
+/// hình nên menu xổ lệch/rộng hơn hẳn nút bấm.
+class _SearchDirectionDropdown extends StatefulWidget {
+  const _SearchDirectionDropdown({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final SearchDirection value;
+  final ValueChanged<SearchDirection> onChanged;
+
+  @override
+  State<_SearchDirectionDropdown> createState() =>
+      _SearchDirectionDropdownState();
+}
+
+class _SearchDirectionDropdownState extends State<_SearchDirectionDropdown> {
+  final _buttonKey = GlobalKey();
+
+  Future<void> _openMenu() async {
+    final buttonBox =
+        _buttonKey.currentContext!.findRenderObject() as RenderBox;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final buttonTopLeft = buttonBox.localToGlobal(
+      Offset.zero,
+      ancestor: overlayBox,
+    );
+    final buttonSize = buttonBox.size;
+
+    final selected = await showMenu<SearchDirection>(
+      context: context,
+      // Neo menu đúng mép dưới-trái nút, rộng bằng đúng nút (right =
+      // overlayWidth - buttonRight -> menu tự co theo buttonSize.width).
+      position: RelativeRect.fromLTRB(
+        buttonTopLeft.dx,
+        buttonTopLeft.dy + buttonSize.height + 4,
+        overlayBox.size.width - buttonTopLeft.dx - buttonSize.width,
+        0,
+      ),
+      constraints: BoxConstraints(
+        minWidth: buttonSize.width,
+        maxWidth: buttonSize.width * 1.6,
+      ),
+      items: [
+        for (final direction in SearchDirection.values)
+          PopupMenuItem(
+            value: direction,
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  child: direction == widget.value
+                      ? const Icon(
+                          Icons.check,
+                          size: 16,
+                          color: AppColors.brand,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  direction.label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: direction == widget.value
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                    color: direction == widget.value
+                        ? AppColors.brand
+                        : AppColors.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+    if (selected != null) widget.onChanged(selected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: _buttonKey,
+      borderRadius: BorderRadius.circular(8),
+      onTap: _openMenu,
+      child: Container(
+        // Không ép height cố định — để khớp chiều cao thật của TextField
+        // cạnh bên qua IntrinsicHeight ở widget cha ([_buildSearchField]).
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: AppColors.panel2,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.value.label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.ink),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 18),
+          ],
+        ),
       ),
     );
   }
@@ -229,20 +380,18 @@ class _PaneDetailEmpty extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               'Sẵn sàng tra cứu',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(color: scheme.primary),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(color: scheme.primary),
             ),
             const SizedBox(height: 8),
             Text(
               'Nhập từ vựng vào thanh tìm kiếm hoặc chọn '
               'một từ từ danh sách kết quả để xem chi tiết.',
               textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: scheme.outline),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.outline),
             ),
           ],
         ),
@@ -286,10 +435,9 @@ class _SearchEmptyCarousel extends StatelessWidget {
                 child: Text(
                   'Tra cứu từ vựng chuyên ngành',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(color: scheme.primary),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineSmall?.copyWith(color: scheme.primary),
                 ),
               ),
               const SizedBox(height: 4),
@@ -298,16 +446,14 @@ class _SearchEmptyCarousel extends StatelessWidget {
                 child: Text(
                   'Gõ từ tiếng Anh hoặc tiếng Việt để tìm',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: scheme.outline),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: scheme.outline),
                 ),
               ),
               const SizedBox(height: 20),
               Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: horizontalPadding),
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: CarouselSlider(
@@ -316,8 +462,9 @@ class _SearchEmptyCarousel extends StatelessWidget {
                       viewportFraction: 1,
                       autoPlay: true,
                       autoPlayInterval: const Duration(seconds: 4),
-                      autoPlayAnimationDuration:
-                          const Duration(milliseconds: 600),
+                      autoPlayAnimationDuration: const Duration(
+                        milliseconds: 600,
+                      ),
                     ),
                     items: _images
                         .map(
@@ -327,10 +474,12 @@ class _SearchEmptyCarousel extends StatelessWidget {
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
                                 ColoredBox(
-                              color: scheme.surfaceContainerHighest,
-                              child: Icon(Icons.image_not_supported_outlined,
-                                  color: scheme.outline),
-                            ),
+                                  color: scheme.surfaceContainerHighest,
+                                  child: Icon(
+                                    Icons.image_not_supported_outlined,
+                                    color: scheme.outline,
+                                  ),
+                                ),
                           ),
                         )
                         .toList(),
