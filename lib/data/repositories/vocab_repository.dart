@@ -20,17 +20,24 @@ class VocabRepository {
   VocabRepository(this._db);
   final Database _db;
 
-  VocabWord _wordFromRow(Row r) => VocabWord(
-    id: r['id'] as int,
-    word: r['word'] as String? ?? '',
-    phonetic: r['phonetic'] as String? ?? '',
-    partOfSpeech: _posLabels[r['part_of_speech'] as int?] ?? '',
-    meaningVi: r['meaning_vi'] as String? ?? '',
-    chapterTitle: r['chapter_title'] as String? ?? '',
-    imagePath: r['image_path'] as String?,
-    isSubentry: (r['is_subentry'] as int? ?? 0) == 1,
-    isManual: (r['source'] as int? ?? 0) == 2,
-  );
+  VocabWord _wordFromRow(Row r) {
+    final source = r['source'] as int? ?? 0;
+    return VocabWord(
+      id: r['id'] as int,
+      word: r['word'] as String? ?? '',
+      phonetic: r['phonetic'] as String? ?? '',
+      partOfSpeech: _posLabels[r['part_of_speech'] as int?] ?? '',
+      meaningVi: r['meaning_vi'] as String? ?? '',
+      chapterTitle: r['chapter_title'] as String? ?? '',
+      imagePath: r['image_path'] as String?,
+      isSubentry: (r['is_subentry'] as int? ?? 0) == 1,
+      isManual: source == 2,
+      // Theo TỪNG TỪ, không theo bộ chứa — source=0 (SEED) luôn khoá dù
+      // nằm trong bộ nào; source=1 (ONLINE)/source=2 (MANUAL) luôn sửa/
+      // xoá được kể cả khi đã thêm vào 1 bộ mặc định.
+      isEditable: source != 0,
+    );
+  }
 
   // "chapter_title" o day la ten bo tu dien (dictionaries) - giu ten
   // cot alias cu de khong phai sua VocabWord/word_widgets.dart hien co.
@@ -430,11 +437,13 @@ class VocabRepository {
     return wordId;
   }
 
-  /// Sửa 1 từ tự thêm (SCR-07c "Sửa từ") — chỉ áp dụng cho `source=2`
-  /// (MANUAL). UI đã kiểm tra [VocabWord.isManual] trước khi cho vào
-  /// màn sửa, nhưng vẫn chặn lại ở đây (`WHERE source = 2`) để từ mặc
-  /// định/tra online không thể bị sửa dù gọi từ đường nào — dữ liệu
-  /// giáo trình gốc là dùng chung, không phải của riêng user.
+  /// Sửa 1 từ trong bộ có thể sửa/xoá (SCR-07c "Sửa từ") — áp dụng cho
+  /// `source=1` (ONLINE_LOOKUP) hoặc `source=2` (MANUAL). UI đã kiểm
+  /// tra [DictionaryDetailScreen.isDictionaryDeletable] trước khi cho
+  /// vào màn sửa (quyết định theo BỘ chứa từ, không phải nguồn gốc
+  /// từng từ), nhưng vẫn chặn lại ở đây (`WHERE source != 0`) để từ
+  /// giáo trình gốc (SEED) không thể bị sửa dù gọi từ đường nào — dữ
+  /// liệu đó dùng chung cho Tra cứu, không phải của riêng user.
   void updateManualWord({
     required int wordId,
     required String word,
@@ -445,11 +454,11 @@ class VocabRepository {
     String? exampleEn,
     String? exampleVi,
   }) {
-    _assertManualWord(wordId, action: 'sửa');
+    _assertNotSeedWord(wordId, action: 'sửa');
     _db.execute(
       '''UPDATE words SET word = ?, word_lower = ?, phonetic = ?, meaning_vi = ?,
                            part_of_speech = ?, image_path = ?
-         WHERE id = ? AND source = 2''',
+         WHERE id = ? AND source != 0''',
       [
         word,
         word.toLowerCase(),
@@ -473,26 +482,47 @@ class VocabRepository {
     }
   }
 
-  /// Xoá hẳn 1 từ tự thêm (SCR-07c "Xoá từ") khỏi `words`, kèm dọn các
-  /// bảng phụ thuộc thủ công — `VocabDatabase.open()` không bật
-  /// `PRAGMA foreign_keys`, nên `ON DELETE CASCADE` khai báo trong
-  /// `docs/db/schema.sql` không tự chạy ở runtime. Chỉ áp dụng cho
-  /// `source=2` (MANUAL), xem [updateManualWord].
-  void deleteWord(int wordId) {
-    _assertManualWord(wordId, action: 'xoá');
-    _db.execute('DELETE FROM word_dictionaries WHERE word_id = ?', [wordId]);
+  /// Gỡ 1 từ khỏi ĐÚNG [dictionaryId] đang xem (SCR-07c "Xoá từ") — chỉ
+  /// xoá hẳn dòng `words`/`examples` (kèm dọn bảng phụ thuộc thủ công,
+  /// `VocabDatabase.open()` không bật `PRAGMA foreign_keys` nên `ON
+  /// DELETE CASCADE` không tự chạy) NẾU đây là bộ CUỐI CÙNG còn tham
+  /// chiếu từ đó. Một từ `source=1` (ONLINE_LOOKUP) có thể được lưu vào
+  /// nhiều bộ cùng lúc (xem [insertOnlineWord]) — xoá ở 1 bộ không được
+  /// làm mất từ đó ở các bộ khác đang dùng chung dòng `words`.
+  ///
+  /// Trả về `true` nếu từ đã bị xoá HẲN (không còn bộ nào tham chiếu) —
+  /// tầng gọi dùng giá trị này để quyết định có dọn `learned_words` ở
+  /// `user.db` hay không (chỉ dọn khi từ thực sự không còn tồn tại ở
+  /// bất kỳ bộ nào, xem `review_providers.dart` `deleteWord`).
+  bool deleteWord(int wordId, {required int dictionaryId}) {
+    _assertNotSeedWord(wordId, action: 'xoá');
+    _db.execute(
+      'DELETE FROM word_dictionaries WHERE word_id = ? AND dictionary_id = ?',
+      [wordId, dictionaryId],
+    );
+
+    final remaining = _db.select(
+      'SELECT COUNT(*) AS cnt FROM word_dictionaries WHERE word_id = ?',
+      [wordId],
+    );
+    final stillReferenced = (remaining.first['cnt'] as int? ?? 0) > 0;
+    if (stillReferenced) return false;
+
     _db.execute('DELETE FROM examples WHERE word_id = ?', [wordId]);
-    _db.execute('DELETE FROM words WHERE id = ? AND source = 2', [wordId]);
+    _db.execute('DELETE FROM words WHERE id = ? AND source != 0', [wordId]);
+    return true;
   }
 
-  /// Chặn sửa/xoá từ không phải do user tự thêm — bảo vệ dữ liệu giáo
-  /// trình gốc/tra online dù lời gọi có bỏ qua kiểm tra [VocabWord.isManual]
-  /// ở tầng UI hay không.
-  void _assertManualWord(int wordId, {required String action}) {
+  /// Chặn sửa/xoá từ giáo trình gốc (`source=0` SEED) — bảo vệ dữ liệu
+  /// dùng chung dù lời gọi có bỏ qua kiểm tra [VocabWord.isEditable] ở
+  /// tầng UI hay không. Từ `source=1`/`source=2` luôn được phép sửa/xoá
+  /// (sửa luôn đồng bộ mọi bộ chứa từ đó; xoá chỉ gỡ khỏi 1 bộ, xem
+  /// [deleteWord]).
+  void _assertNotSeedWord(int wordId, {required String action}) {
     final rows = _db.select('SELECT source FROM words WHERE id = ?', [wordId]);
     if (rows.isEmpty) return;
     final source = rows.first['source'] as int? ?? 0;
-    if (source != 2) {
+    if (source == 0) {
       throw StateError(
         'Không thể $action từ mặc định (id=$wordId, source=$source).',
       );

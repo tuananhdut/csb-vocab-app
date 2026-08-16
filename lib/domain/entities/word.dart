@@ -22,6 +22,7 @@ class VocabWord {
     this.imagePath,
     this.isSubentry = false,
     this.isManual = false,
+    this.isEditable = false,
     this.isOnline = false,
     this.examples = const [],
   });
@@ -36,10 +37,16 @@ class VocabWord {
   final bool isSubentry;
 
   /// `true` nếu từ do người dùng tự thêm (`source=2`, xem
-  /// `VocabRepository.insertManualWord`) — chỉ những từ này mới cho
-  /// sửa/xoá trong [DictionaryDetailScreen], từ có sẵn trong giáo trình
-  /// gốc là dữ liệu chung, không cho chỉnh sửa.
+  /// `VocabRepository.insertManualWord`).
   final bool isManual;
+
+  /// `true` nếu từ này cho phép sửa/xoá trong [DictionaryDetailScreen]
+  /// — theo TỪNG TỪ (`source != 0`), không theo bộ chứa nó: từ giáo
+  /// trình gốc (`source=0` SEED) luôn khoá dù nằm trong bộ nào; từ tự
+  /// thêm (`source=2`) hoặc lưu qua Tra Online (`source=1`) luôn sửa/
+  /// xoá được, kể cả khi đã thêm vào 1 bộ mặc định (bộ mặc định chỉ
+  /// khoá xoá CẢ BỘ, không khoá riêng từ user tự thêm vào đó).
+  final bool isEditable;
 
   /// `true` nếu đây là kết quả tra qua API ngoài (MyMemory, xem
   /// `DictionaryApiService`), CHƯA có trong `words` — `id` là

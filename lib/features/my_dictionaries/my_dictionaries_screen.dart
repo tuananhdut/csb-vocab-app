@@ -57,7 +57,10 @@ class MyDictionariesScreen extends ConsumerWidget {
       error: (e, _) => Center(child: Text('Lỗi: $e')),
       data: (list) => LayoutBuilder(
         builder: (context, constraints) {
-          final crossAxisCount = (constraints.maxWidth / 280).floor().clamp(1, 4);
+          final crossAxisCount = (constraints.maxWidth / 280).floor().clamp(
+            1,
+            4,
+          );
           return GridView.builder(
             padding: const EdgeInsets.all(16),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -69,7 +72,9 @@ class MyDictionariesScreen extends ConsumerWidget {
             itemCount: list.length + 1,
             itemBuilder: (_, i) => i < list.length
                 ? _DictionaryCard(dictionary: list[i])
-                : _NewDictionaryCard(onTap: () => _createDictionary(context, ref)),
+                : _NewDictionaryCard(
+                    onTap: () => _createDictionary(context, ref),
+                  ),
           );
         },
       ),
@@ -99,7 +104,12 @@ class _NewDictionaryCard extends StatelessWidget {
             children: [
               Icon(Icons.add_circle_outline, size: 32, color: scheme.outline),
               const SizedBox(height: 8),
-              Text('Tạo bộ mới', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.outline)),
+              Text(
+                'Tạo bộ mới',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: scheme.outline),
+              ),
             ],
           ),
         ),
@@ -121,12 +131,16 @@ class _DictionaryCard extends ConsumerWidget {
   const _DictionaryCard({required this.dictionary});
   final Dictionary dictionary;
 
-  Future<void> _startLearningNewWords(BuildContext context, WidgetRef ref) async {
+  Future<void> _startLearningNewWords(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final words = await ref.read(newWordsToLearnProvider(dictionary.id).future);
     if (!context.mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => LearnNewWordsScreen(dictionaryId: dictionary.id, words: words),
+        builder: (_) =>
+            LearnNewWordsScreen(dictionaryId: dictionary.id, words: words),
       ),
     );
   }
@@ -134,7 +148,10 @@ class _DictionaryCard extends ConsumerWidget {
   Future<void> _addWord(BuildContext context, WidgetRef ref) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AddWordScreen(dictionaryId: dictionary.id, dictionaryName: dictionary.name),
+        builder: (_) => AddWordScreen(
+          dictionaryId: dictionary.id,
+          dictionaryName: dictionary.name,
+        ),
       ),
     );
   }
@@ -165,9 +182,9 @@ class _DictionaryCard extends ConsumerWidget {
 
     await deleteDictionary(ref, dictionary.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã xoá bộ "${dictionary.name}".')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Đã xoá bộ "${dictionary.name}".')));
   }
 
   @override
@@ -177,7 +194,9 @@ class _DictionaryCard extends ConsumerWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: dictionary.isDefault ? color.withValues(alpha: 0.4) : AppColors.border,
+          color: dictionary.isDefault
+              ? color.withValues(alpha: 0.4)
+              : AppColors.border,
           style: dictionary.isDefault ? BorderStyle.solid : BorderStyle.solid,
         ),
       ),
@@ -200,7 +219,11 @@ class _DictionaryCard extends ConsumerWidget {
                 ),
                 if (dictionary.isDeletable)
                   PopupMenuButton<_DictionaryCardAction>(
-                    icon: Icon(Icons.more_vert, size: 18, color: Theme.of(context).colorScheme.outline),
+                    icon: Icon(
+                      Icons.more_vert,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
                     tooltip: 'Tuỳ chọn',
                     padding: EdgeInsets.zero,
                     onSelected: (action) {
@@ -224,8 +247,14 @@ class _DictionaryCard extends ConsumerWidget {
                       PopupMenuItem(
                         value: _DictionaryCardAction.delete,
                         child: ListTile(
-                          leading: Icon(Icons.delete_outline, color: AppColors.signalRed),
-                          title: Text('Xoá bộ', style: TextStyle(color: AppColors.signalRed)),
+                          leading: Icon(
+                            Icons.delete_outline,
+                            color: AppColors.signalRed,
+                          ),
+                          title: Text(
+                            'Xoá bộ',
+                            style: TextStyle(color: AppColors.signalRed),
+                          ),
                           contentPadding: EdgeInsets.zero,
                           visualDensity: VisualDensity.compact,
                         ),
@@ -235,26 +264,50 @@ class _DictionaryCard extends ConsumerWidget {
                 else
                   IconButton(
                     onPressed: () => _addWord(context, ref),
-                    icon: Icon(Icons.add, size: 18, color: Theme.of(context).colorScheme.outline),
+                    icon: Icon(
+                      Icons.add,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
                     tooltip: 'Thêm từ mới',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
               ],
             ),
             const SizedBox(height: 2),
-            Text('${dictionary.wordCount} từ', style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              '${dictionary.wordCount} từ',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.check_circle_outline, size: 14, color: Theme.of(context).colorScheme.outline),
+                Icon(
+                  Icons.check_circle_outline,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
                 const SizedBox(width: 4),
-                Text('${dictionary.learnedCount} đã học', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  '${dictionary.learnedCount} đã học',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(width: 12),
-                Icon(Icons.radar, size: 14, color: Theme.of(context).colorScheme.outline),
+                Icon(
+                  Icons.radar,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
                 const SizedBox(width: 4),
-                Text('${dictionary.dueCount} đến hạn', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  '${dictionary.dueCount} đến hạn',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
             const Spacer(),
@@ -262,12 +315,18 @@ class _DictionaryCard extends ConsumerWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.border),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text('Mặc định · không thể xoá', style: Theme.of(context).textTheme.labelSmall),
+                  child: Text(
+                    'Mặc định · không thể xoá',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ),
               ),
             const SizedBox(height: 8),
@@ -288,13 +347,15 @@ class _DictionaryCard extends ConsumerWidget {
                   child: OutlinedButton.icon(
                     onPressed: dictionary.dueCount > 0
                         ? () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => Scaffold(
-                                  appBar: AppBar(title: Text('Ôn tập · ${dictionary.name}')),
-                                  body: ReviewScreen(dictionaryId: dictionary.id),
+                            MaterialPageRoute(
+                              builder: (_) => Scaffold(
+                                appBar: AppBar(
+                                  title: Text('Ôn tập · ${dictionary.name}'),
                                 ),
+                                body: ReviewScreen(dictionaryId: dictionary.id),
                               ),
-                            )
+                            ),
+                          )
                         : null,
                     icon: const Icon(Icons.radar, size: 16),
                     label: Text('Ôn tập (${dictionary.dueCount})'),

@@ -20,26 +20,39 @@ import 'add_word_screen.dart';
 /// sách bên trái, chi tiết từ inline bên phải; mobile giữ bottom sheet
 /// ([WordDetailSheet]) vì màn hẹp không đủ chỗ cho pane thứ 2.
 ///
-/// Sửa/xoá chỉ áp dụng cho từ tự thêm ([VocabWord.isManual]) — từ có
-/// sẵn trong giáo trình gốc là dữ liệu chung dùng cho Tra cứu, không
-/// cho chỉnh sửa ở đây.
+/// Sửa/xoá quyết định theo TỪNG TỪ ([VocabWord.isEditable], tính từ
+/// `source`) — không phải theo bộ đang xem: từ giáo trình gốc
+/// (`source=0` SEED) luôn khoá dù nằm trong bộ nào (kể cả bộ user tự
+/// tạo, nếu lỡ có mặt); từ tự thêm (`source=2`) hoặc lưu qua Tra Online
+/// (`source=1`) luôn sửa/xoá được, kể cả khi đã thêm vào 1 bộ mặc định
+/// — bộ mặc định chỉ khoá XOÁ CẢ BỘ, không khoá riêng từ user tự thêm
+/// vào đó.
 class DictionaryDetailScreen extends ConsumerStatefulWidget {
-  const DictionaryDetailScreen({super.key, required this.dictionaryId, required this.dictionaryName});
+  const DictionaryDetailScreen({
+    super.key,
+    required this.dictionaryId,
+    required this.dictionaryName,
+  });
 
   final int dictionaryId;
   final String dictionaryName;
 
   @override
-  ConsumerState<DictionaryDetailScreen> createState() => _DictionaryDetailScreenState();
+  ConsumerState<DictionaryDetailScreen> createState() =>
+      _DictionaryDetailScreenState();
 }
 
-class _DictionaryDetailScreenState extends ConsumerState<DictionaryDetailScreen> {
+class _DictionaryDetailScreenState
+    extends ConsumerState<DictionaryDetailScreen> {
   VocabWord? _selected;
 
   Future<void> _addWord() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AddWordScreen(dictionaryId: widget.dictionaryId, dictionaryName: widget.dictionaryName),
+        builder: (_) => AddWordScreen(
+          dictionaryId: widget.dictionaryId,
+          dictionaryName: widget.dictionaryName,
+        ),
       ),
     );
   }
@@ -64,7 +77,9 @@ class _DictionaryDetailScreenState extends ConsumerState<DictionaryDetailScreen>
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Xoá từ này?'),
-        content: Text('"${word.word}" sẽ bị xoá khỏi ${widget.dictionaryName}. Hành động này không thể hoàn tác.'),
+        content: Text(
+          '"${word.word}" sẽ bị xoá khỏi ${widget.dictionaryName}. Hành động này không thể hoàn tác.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -83,15 +98,16 @@ class _DictionaryDetailScreenState extends ConsumerState<DictionaryDetailScreen>
     await deleteWord(ref, wordId: word.id, dictionaryId: widget.dictionaryId);
     if (!mounted) return;
     if (_selected?.id == word.id) setState(() => _selected = null);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã xoá "${word.word}".')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Đã xoá "${word.word}".')));
   }
 
   @override
   Widget build(BuildContext context) {
     final words = ref.watch(chapterWordsProvider(widget.dictionaryId));
-    final isDesktop = MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
+    final isDesktop =
+        MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
 
     return Scaffold(
       appBar: AppBar(
@@ -187,8 +203,14 @@ class _DictionaryDetailScreenState extends ConsumerState<DictionaryDetailScreen>
     );
   }
 
-  Widget _buildTile(VocabWord word, {bool selected = false, VoidCallback? onTap}) {
-    if (!word.isManual) return WordTile(word: word, selected: selected, onTap: onTap);
+  Widget _buildTile(
+    VocabWord word, {
+    bool selected = false,
+    VoidCallback? onTap,
+  }) {
+    if (!word.isEditable) {
+      return WordTile(word: word, selected: selected, onTap: onTap);
+    }
     return _ManagedWordTile(
       word: word,
       selected: selected,
@@ -235,7 +257,9 @@ class _CountHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: Text(
         '$count từ',
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).colorScheme.outline),
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: Theme.of(context).colorScheme.outline,
+        ),
       ),
     );
   }
@@ -255,18 +279,26 @@ class _PaneDetailEmpty extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.menu_book_outlined, size: 40, color: scheme.outline.withValues(alpha: 0.6)),
+            Icon(
+              Icons.menu_book_outlined,
+              size: 40,
+              color: scheme.outline.withValues(alpha: 0.6),
+            ),
             const SizedBox(height: 16),
             Text(
               'Chọn một từ để xem chi tiết',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(color: scheme.primary),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(color: scheme.primary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Bấm vào một dòng trong danh sách bên trái.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.outline),
             ),
           ],
         ),
@@ -290,7 +322,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.menu_book_outlined, size: 48, color: scheme.outline.withValues(alpha: 0.6)),
+            Icon(
+              Icons.menu_book_outlined,
+              size: 48,
+              color: scheme.outline.withValues(alpha: 0.6),
+            ),
             const SizedBox(height: 16),
             Text(
               'Bộ từ điển này chưa có từ nào',
@@ -300,7 +336,9 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'Thêm từ đầu tiên để bắt đầu học.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.outline),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -350,45 +388,108 @@ class _ManagedWordTile extends StatelessWidget {
 /// desktop, xem [_ManagedWordTile]) — chỉ 2 lựa chọn Sửa/Xoá. Pane chi
 /// tiết desktop ([_DesktopWordDetail]) đủ rộng nên hiện thẳng 2 nút,
 /// không dùng widget này.
-class _WordActionsMenu extends StatelessWidget {
+///
+/// Tự dựng bằng [showMenu] + toạ độ [RenderBox] thật của nút (cùng
+/// pattern `_SearchDirectionDropdown` ở `search_screen.dart`) thay vì
+/// [PopupMenuButton] mặc định — neo menu chính xác ngay dưới nút, cùng
+/// style item (khoảng cách gọn, font theo theme) thay vì [ListTile] mặc
+/// định cỡ lớn.
+class _WordActionsMenu extends StatefulWidget {
   const _WordActionsMenu({required this.onEdit, required this.onDelete});
 
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<_WordAction>(
-      icon: Icon(Icons.more_vert, size: 20, color: Theme.of(context).colorScheme.outline),
-      tooltip: 'Tuỳ chọn',
-      onSelected: (action) {
-        switch (action) {
-          case _WordAction.edit:
-            onEdit();
-          case _WordAction.delete:
-            onDelete();
-        }
-      },
-      itemBuilder: (context) => const [
+  State<_WordActionsMenu> createState() => _WordActionsMenuState();
+}
+
+class _WordActionsMenuState extends State<_WordActionsMenu> {
+  final _buttonKey = GlobalKey();
+
+  Future<void> _openMenu() async {
+    final buttonBox =
+        _buttonKey.currentContext!.findRenderObject() as RenderBox;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final buttonTopLeft = buttonBox.localToGlobal(
+      Offset.zero,
+      ancestor: overlayBox,
+    );
+    final buttonSize = buttonBox.size;
+
+    final selected = await showMenu<_WordAction>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        buttonTopLeft.dx,
+        buttonTopLeft.dy + buttonSize.height + 4,
+        overlayBox.size.width - buttonTopLeft.dx - buttonSize.width,
+        0,
+      ),
+      constraints: const BoxConstraints(minWidth: 140, maxWidth: 200),
+      items: [
         PopupMenuItem(
           value: _WordAction.edit,
-          child: ListTile(
-            leading: Icon(Icons.edit_outlined),
-            title: Text('Sửa'),
-            contentPadding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.edit_outlined, size: 16, color: AppColors.ink),
+              const SizedBox(width: 8),
+              Text('Sửa', style: Theme.of(context).textTheme.bodyMedium),
+            ],
           ),
         ),
         PopupMenuItem(
           value: _WordAction.delete,
-          child: ListTile(
-            leading: Icon(Icons.delete_outline, color: AppColors.signalRed),
-            title: Text('Xoá', style: TextStyle(color: AppColors.signalRed)),
-            contentPadding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.delete_outline,
+                size: 16,
+                color: AppColors.signalRed,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Xoá',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.signalRed),
+              ),
+            ],
           ),
         ),
       ],
+    );
+
+    switch (selected) {
+      case _WordAction.edit:
+        widget.onEdit();
+      case _WordAction.delete:
+        widget.onDelete();
+      case null:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      key: _buttonKey,
+      width: 32,
+      height: 32,
+      child: IconButton(
+        onPressed: _openMenu,
+        padding: EdgeInsets.zero,
+        tooltip: 'Tuỳ chọn',
+        icon: Icon(
+          Icons.more_vert,
+          size: 20,
+          color: Theme.of(context).colorScheme.outline,
+        ),
+      ),
     );
   }
 }
@@ -398,11 +499,16 @@ enum _WordAction { edit, delete }
 /// Chi tiết từ inline cho pane phải (desktop) — tái dùng
 /// [WordDetailContent] (giống mockup Windows) và chèn thêm 2 nút
 /// sửa/xoá hiện sẵn (không ẩn sau menu "⋮" như ở danh sách, vì pane
-/// chi tiết đủ rộng để hiện luôn) ở góc trên khi từ là tự thêm
-/// ([VocabWord.isManual]); từ giáo trình chỉ hiển thị, không có 2 nút
-/// này.
+/// chi tiết đủ rộng để hiện luôn) khi [VocabWord.isEditable] (theo
+/// TỪNG TỪ, xem [DictionaryDetailScreen]); từ giáo trình gốc chỉ hiển
+/// thị, không có 2 nút này.
 class _DesktopWordDetail extends StatelessWidget {
-  const _DesktopWordDetail({super.key, required this.word, required this.onEdit, required this.onDelete});
+  const _DesktopWordDetail({
+    super.key,
+    required this.word,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final VocabWord word;
   final VoidCallback onEdit;
@@ -413,7 +519,7 @@ class _DesktopWordDetail extends StatelessWidget {
     return WordDetailContent(
       word: word,
       padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
-      leadingAction: word.isManual
+      leadingAction: word.isEditable
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -425,9 +531,18 @@ class _DesktopWordDetail extends StatelessWidget {
                 const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.signalRed),
-                  label: const Text('Xoá', style: TextStyle(color: AppColors.signalRed)),
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.signalRed)),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 16,
+                    color: AppColors.signalRed,
+                  ),
+                  label: const Text(
+                    'Xoá',
+                    style: TextStyle(color: AppColors.signalRed),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.signalRed),
+                  ),
                 ),
               ],
             )
