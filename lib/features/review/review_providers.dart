@@ -68,14 +68,25 @@ final newWordsToLearnProvider = FutureProvider.family<List<VocabWord>, int>((
 });
 
 /// Đánh dấu nhiều từ đã học cùng lúc (phiên "Học từ mới") — làm mới các
-/// provider phụ thuộc sau khi xong.
-Future<void> markWordsLearnedBatch(WidgetRef ref, List<int> wordIds) async {
+/// provider phụ thuộc sau khi xong, bao gồm hàng đợi ôn RIÊNG của
+/// [dictionaryId] ([dueReviewsForDictionaryProvider], không phải
+/// `autoDispose` nên cache có thể đã tồn tại từ trước nếu user từng mở
+/// "Ôn tập" của đúng bộ này trong phiên app — thiếu invalidate ở đây
+/// khiến từ vừa học xong (due ngay hôm nay, xem
+/// [SqliteReviewRepository.markLearned]) không xuất hiện lại trong hàng
+/// đợi cho tới khi cache đó tự làm mới vì lý do khác).
+Future<void> markWordsLearnedBatch(
+  WidgetRef ref,
+  List<int> wordIds, {
+  required int dictionaryId,
+}) async {
   final repo = await ref.read(reviewRepositoryProvider.future);
   for (final wordId in wordIds) {
     await repo.markLearned(wordId);
   }
   ref.invalidate(dueReviewsProvider);
   ref.invalidate(dueReviewCountProvider);
+  ref.invalidate(dueReviewsForDictionaryProvider(dictionaryId));
   ref.invalidate(myDictionariesProvider);
   ref.invalidate(newWordsToLearnProvider);
 }

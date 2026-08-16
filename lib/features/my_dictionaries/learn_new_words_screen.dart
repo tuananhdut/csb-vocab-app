@@ -74,7 +74,11 @@ class _LearnNewWordsScreenState extends ConsumerState<LearnNewWordsScreen> {
       return;
     }
 
-    await markWordsLearnedBatch(ref, widget.words.map((w) => w.id).toList());
+    await markWordsLearnedBatch(
+      ref,
+      widget.words.map((w) => w.id).toList(),
+      dictionaryId: widget.dictionaryId,
+    );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => _LearnNewWordsResultScreen(count: widget.words.length)),
