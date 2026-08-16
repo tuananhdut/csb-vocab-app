@@ -329,6 +329,7 @@ class _DictionaryCard extends ConsumerWidget {
                       builder: (_) => DictionaryDetailScreen(
                         dictionaryId: dictionary.id,
                         dictionaryName: dictionary.name,
+                        isDictionaryDefault: dictionary.isDefault,
                       ),
                     ),
                   ),

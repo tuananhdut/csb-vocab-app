@@ -25,20 +25,25 @@ import 'add_word_screen.dart';
 ///   `source`): từ giáo trình gốc (`source=0` SEED) luôn khoá sửa dù
 ///   nằm trong bộ nào; từ tự thêm (`source=2`) hoặc lưu qua Tra Online
 ///   (`source=1`) luôn sửa được.
-/// - Xoá luôn khả dụng bất kể `source`, vì "xoá" ở màn này chỉ gỡ liên
-///   kết từ khỏi BỘ đang xem ([VocabRepository.deleteWord] xoá hẳn bản
-///   ghi `words` CHỈ KHI không còn bộ nào khác tham chiếu) — từ SEED
-///   luôn còn liên kết ở bộ giáo trình gốc nên gỡ khỏi bộ tự tạo không
-///   bao giờ xoá hẳn nó khỏi hệ thống.
+/// - Xoá khả dụng với mọi `source`, TRỪ từ SEED khi đang xem chính BỘ
+///   MẶC ĐỊNH ([isDictionaryDefault]) — "xoá" ở màn này chỉ gỡ liên kết
+///   từ khỏi bộ đang xem ([VocabRepository.deleteWord] xoá hẳn bản ghi
+///   `words` CHỈ KHI không còn bộ nào khác tham chiếu); gỡ SEED khỏi bộ
+///   TỰ TẠO an toàn vì nó còn liên kết ở bộ mặc định, nhưng gỡ ngay tại
+///   bộ mặc định sẽ khiến từ mất hẳn khỏi mọi danh sách hiển thị dù
+///   dòng `words` vẫn còn (mồ côi) — chặn tại đây, có cùng kiểm tra ở
+///   tầng repository ([VocabRepository.deleteWord]) làm lưới an toàn.
 class DictionaryDetailScreen extends ConsumerStatefulWidget {
   const DictionaryDetailScreen({
     super.key,
     required this.dictionaryId,
     required this.dictionaryName,
+    required this.isDictionaryDefault,
   });
 
   final int dictionaryId;
   final String dictionaryName;
+  final bool isDictionaryDefault;
 
   @override
   ConsumerState<DictionaryDetailScreen> createState() =>
@@ -209,6 +214,7 @@ class _DictionaryDetailScreenState
                   : _DesktopWordDetail(
                       key: ValueKey(_selected!.id),
                       word: _selected!,
+                      showDelete: _canDelete(_selected!),
                       onEdit: () => _editWord(_selected!),
                       onDelete: () => _deleteWord(_selected!),
                     ),
@@ -218,6 +224,12 @@ class _DictionaryDetailScreenState
       ),
     );
   }
+
+  /// `false` chỉ khi từ là SEED (`!word.isEditable`, tức `source=0`) VÀ
+  /// đang xem chính bộ mặc định — gỡ SEED khỏi bộ đó sẽ làm mất hẳn từ
+  /// khỏi mọi danh sách hiển thị (xem doc-comment class).
+  bool _canDelete(VocabWord word) =>
+      word.isEditable || !widget.isDictionaryDefault;
 
   Widget _buildTile(
     VocabWord word, {
@@ -229,6 +241,7 @@ class _DictionaryDetailScreenState
       selected: selected,
       onTap: onTap,
       showEdit: word.isEditable,
+      showDelete: _canDelete(word),
       onEdit: () => _editWord(word),
       onDelete: () => _deleteWord(word),
     );
@@ -369,14 +382,15 @@ class _EmptyState extends StatelessWidget {
 }
 
 /// [WordTile] kèm menu sửa/xoá. Xoá (gỡ từ khỏi BỘ đang xem, xem
-/// [DictionaryDetailScreen._deleteWord]) luôn hiển thị bất kể nguồn từ
-/// — kể cả từ giáo trình gốc vẫn gỡ được khỏi bộ tự tạo mà nó được
-/// thêm vào, chỉ không xoá hẳn khỏi hệ thống. Sửa thì chỉ hiển thị khi
+/// [DictionaryDetailScreen._deleteWord]) hiển thị bất kể nguồn từ, TRỪ
+/// khi [showDelete] là `false` — từ SEED đang xem tại chính bộ mặc định
+/// (xem [DictionaryDetailScreen._canDelete]). Sửa thì chỉ hiển thị khi
 /// [showEdit] ([VocabWord.isEditable] — theo TỪNG TỪ).
 class _ManagedWordTile extends StatelessWidget {
   const _ManagedWordTile({
     required this.word,
     required this.showEdit,
+    required this.showDelete,
     required this.onEdit,
     required this.onDelete,
     this.selected = false,
@@ -385,6 +399,7 @@ class _ManagedWordTile extends StatelessWidget {
 
   final VocabWord word;
   final bool showEdit;
+  final bool showDelete;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final bool selected;
@@ -396,11 +411,16 @@ class _ManagedWordTile extends StatelessWidget {
       word: word,
       selected: selected,
       onTap: onTap,
-      trailing: _WordActionsMenu(
-        showEdit: showEdit,
-        onEdit: onEdit,
-        onDelete: onDelete,
-      ),
+      // Không có action nào khả dụng (từ SEED ở chính bộ mặc định) ->
+      // ẩn hẳn nút "⋮" thay vì mở ra 1 menu rỗng vô nghĩa.
+      trailing: (showEdit || showDelete)
+          ? _WordActionsMenu(
+              showEdit: showEdit,
+              showDelete: showDelete,
+              onEdit: onEdit,
+              onDelete: onDelete,
+            )
+          : null,
     );
   }
 }
@@ -418,11 +438,13 @@ class _ManagedWordTile extends StatelessWidget {
 class _WordActionsMenu extends StatefulWidget {
   const _WordActionsMenu({
     required this.showEdit,
+    required this.showDelete,
     required this.onEdit,
     required this.onDelete,
   });
 
   final bool showEdit;
+  final bool showDelete;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -471,27 +493,28 @@ class _WordActionsMenuState extends State<_WordActionsMenu> {
               ],
             ),
           ),
-        PopupMenuItem(
-          value: _WordAction.delete,
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.delete_outline,
-                size: 16,
-                color: AppColors.signalRed,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Xoá',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: AppColors.signalRed),
-              ),
-            ],
+        if (widget.showDelete)
+          PopupMenuItem(
+            value: _WordAction.delete,
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.delete_outline,
+                  size: 16,
+                  color: AppColors.signalRed,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Xoá',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.signalRed),
+                ),
+              ],
+            ),
           ),
-        ),
       ],
     );
 
@@ -530,18 +553,20 @@ enum _WordAction { edit, delete }
 /// Chi tiết từ inline cho pane phải (desktop) — tái dùng
 /// [WordDetailContent] (giống mockup Windows) và chèn thêm nút sửa/xoá
 /// hiện sẵn (không ẩn sau menu "⋮" như ở danh sách, vì pane chi tiết
-/// đủ rộng để hiện luôn). Nút Xoá (gỡ từ khỏi BỘ đang xem) luôn hiện,
-/// kể cả với từ giáo trình gốc — chỉ nút Sửa mới gate theo
-/// [VocabWord.isEditable] (theo TỪNG TỪ, xem [DictionaryDetailScreen]).
+/// đủ rộng để hiện luôn). Nút Sửa gate theo [VocabWord.isEditable]
+/// (theo TỪNG TỪ); nút Xoá gate theo [showDelete] — ẩn khi từ SEED đang
+/// ở chính bộ mặc định (xem [DictionaryDetailScreen._canDelete]).
 class _DesktopWordDetail extends StatelessWidget {
   const _DesktopWordDetail({
     super.key,
     required this.word,
+    required this.showDelete,
     required this.onEdit,
     required this.onDelete,
   });
 
   final VocabWord word;
+  final bool showDelete;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -561,18 +586,22 @@ class _DesktopWordDetail extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          OutlinedButton.icon(
-            onPressed: onDelete,
-            icon: const Icon(
-              Icons.delete_outline,
-              size: 16,
-              color: AppColors.signalRed,
+          if (showDelete)
+            OutlinedButton.icon(
+              onPressed: onDelete,
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 16,
+                color: AppColors.signalRed,
+              ),
+              label: const Text(
+                'Xoá',
+                style: TextStyle(color: AppColors.signalRed),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.signalRed),
+              ),
             ),
-            label: const Text('Xoá', style: TextStyle(color: AppColors.signalRed)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.signalRed),
-            ),
-          ),
         ],
       ),
     );

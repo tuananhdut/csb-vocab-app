@@ -537,18 +537,22 @@ class VocabRepository {
   /// nhiều bộ cùng lúc (xem [insertOnlineWord]) — xoá ở 1 bộ không được
   /// làm mất từ đó ở các bộ khác đang dùng chung dòng `words`.
   ///
-  /// KHÔNG chặn `source=0` (SEED) như [updateManualWord] — "xoá" ở đây
-  /// chỉ gỡ liên kết khỏi 1 bộ, không xoá nội dung từ dùng chung; từ
-  /// SEED luôn còn liên kết ở bộ giáo trình gốc nên `DELETE FROM words
-  /// ... AND source != 0` phía dưới không bao giờ xoá hẳn được nó (điều
-  /// kiện đó chỉ có tác dụng với `source=1`/`2`), khớp đúng comment ở
-  /// `DictionaryDetailScreen` (nút Xoá luôn khả dụng, bất kể nguồn từ).
+  /// Cho phép gỡ `source=0` (SEED) khỏi bộ TỰ TẠO — "xoá" ở đây chỉ gỡ
+  /// liên kết khỏi 1 bộ, không xoá nội dung từ dùng chung, và từ SEED
+  /// còn liên kết ở bộ giáo trình gốc nên không mất hẳn. Nhưng CHẶN nếu
+  /// [dictionaryId] chính là bộ giáo trình gốc (`is_default=1`) — nếu
+  /// đó là bộ mặc định duy nhất còn liên kết, gỡ ở đây sẽ khiến từ mất
+  /// hẳn khỏi mọi danh sách (mồ côi trong `words`, `source != 0` chặn
+  /// xoá hẳn dòng đó nhưng không cứu được liên kết đã mất) — phát hiện
+  /// bug thật do user báo cáo, xem `docs/spec_history.md`.
   ///
   /// Trả về `true` nếu từ đã bị xoá HẲN (không còn bộ nào tham chiếu) —
   /// tầng gọi dùng giá trị này để quyết định có dọn `learned_words` ở
   /// `user.db` hay không (chỉ dọn khi từ thực sự không còn tồn tại ở
   /// bất kỳ bộ nào, xem `review_providers.dart` `deleteWord`).
   bool deleteWord(int wordId, {required int dictionaryId}) {
+    _assertNotSeedWordInDefaultDictionary(wordId, dictionaryId: dictionaryId);
+
     _db.execute(
       'DELETE FROM word_dictionaries WHERE word_id = ? AND dictionary_id = ?',
       [wordId, dictionaryId],
@@ -578,6 +582,37 @@ class VocabRepository {
     if (source == 0) {
       throw StateError(
         'Không thể $action từ mặc định (id=$wordId, source=$source).',
+      );
+    }
+  }
+
+  /// Chặn gỡ 1 từ SEED (`source=0`) khỏi chính bộ giáo trình gốc
+  /// (`dictionaries.is_default=1`) — nếu đó là bộ mặc định duy nhất còn
+  /// liên kết, gỡ sẽ khiến từ mất hẳn khỏi mọi danh sách hiển thị dù
+  /// dòng `words` vẫn còn (mồ côi, không thuộc bộ nào). Vẫn cho phép gỡ
+  /// SEED khỏi bộ TỰ TẠO (`is_default=0`) như thiết kế ban đầu.
+  void _assertNotSeedWordInDefaultDictionary(
+    int wordId, {
+    required int dictionaryId,
+  }) {
+    final wordRows = _db.select(
+      'SELECT source FROM words WHERE id = ?',
+      [wordId],
+    );
+    if (wordRows.isEmpty) return;
+    final source = wordRows.first['source'] as int? ?? 0;
+    if (source != 0) return;
+
+    final dictRows = _db.select(
+      'SELECT is_default FROM dictionaries WHERE id = ?',
+      [dictionaryId],
+    );
+    if (dictRows.isEmpty) return;
+    final isDefault = (dictRows.first['is_default'] as int? ?? 0) == 1;
+    if (isDefault) {
+      throw StateError(
+        'Không thể xoá từ giáo trình gốc (id=$wordId) khỏi bộ mặc định '
+        '(dictionaryId=$dictionaryId).',
       );
     }
   }
