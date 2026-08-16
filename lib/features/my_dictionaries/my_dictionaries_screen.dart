@@ -218,48 +218,9 @@ class _DictionaryCard extends ConsumerWidget {
                   ),
                 ),
                 if (dictionary.isDeletable)
-                  PopupMenuButton<_DictionaryCardAction>(
-                    icon: Icon(
-                      Icons.more_vert,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    tooltip: 'Tuỳ chọn',
-                    padding: EdgeInsets.zero,
-                    onSelected: (action) {
-                      switch (action) {
-                        case _DictionaryCardAction.addWord:
-                          _addWord(context, ref);
-                        case _DictionaryCardAction.delete:
-                          _delete(context, ref);
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: _DictionaryCardAction.addWord,
-                        child: ListTile(
-                          leading: Icon(Icons.add),
-                          title: Text('Thêm từ mới'),
-                          contentPadding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: _DictionaryCardAction.delete,
-                        child: ListTile(
-                          leading: Icon(
-                            Icons.delete_outline,
-                            color: AppColors.signalRed,
-                          ),
-                          title: Text(
-                            'Xoá bộ',
-                            style: TextStyle(color: AppColors.signalRed),
-                          ),
-                          contentPadding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ],
+                  _DictionaryActionsMenu(
+                    onAddWord: () => _addWord(context, ref),
+                    onDelete: () => _delete(context, ref),
                   )
                 else
                   IconButton(
@@ -376,6 +337,119 @@ class _DictionaryCard extends ConsumerWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Menu "⋮" của card bộ từ điển — cùng pattern [showMenu] + toạ độ
+/// [RenderBox] thật của nút như `_SearchDirectionDropdown`
+/// (`search_screen.dart`) và `_WordActionsMenu`
+/// (`dictionary_detail_screen.dart`), thay cho [PopupMenuButton] mặc
+/// định để neo menu chính xác ngay dưới nút và dùng cùng style item
+/// (khoảng cách gọn, font theo theme) trên toàn app.
+class _DictionaryActionsMenu extends StatefulWidget {
+  const _DictionaryActionsMenu({
+    required this.onAddWord,
+    required this.onDelete,
+  });
+
+  final VoidCallback onAddWord;
+  final VoidCallback onDelete;
+
+  @override
+  State<_DictionaryActionsMenu> createState() =>
+      _DictionaryActionsMenuState();
+}
+
+class _DictionaryActionsMenuState extends State<_DictionaryActionsMenu> {
+  final _buttonKey = GlobalKey();
+
+  Future<void> _openMenu() async {
+    final buttonBox =
+        _buttonKey.currentContext!.findRenderObject() as RenderBox;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final buttonTopLeft = buttonBox.localToGlobal(
+      Offset.zero,
+      ancestor: overlayBox,
+    );
+    final buttonSize = buttonBox.size;
+
+    final selected = await showMenu<_DictionaryCardAction>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        buttonTopLeft.dx,
+        buttonTopLeft.dy + buttonSize.height + 4,
+        overlayBox.size.width - buttonTopLeft.dx - buttonSize.width,
+        0,
+      ),
+      constraints: const BoxConstraints(minWidth: 160, maxWidth: 220),
+      items: [
+        PopupMenuItem(
+          value: _DictionaryCardAction.addWord,
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.add, size: 16, color: AppColors.ink),
+              const SizedBox(width: 8),
+              Text(
+                'Thêm từ mới',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: _DictionaryCardAction.delete,
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.delete_outline,
+                size: 16,
+                color: AppColors.signalRed,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Xoá bộ',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.signalRed),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    switch (selected) {
+      case _DictionaryCardAction.addWord:
+        widget.onAddWord();
+      case _DictionaryCardAction.delete:
+        widget.onDelete();
+      case null:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      key: _buttonKey,
+      width: 28,
+      height: 28,
+      child: IconButton(
+        onPressed: _openMenu,
+        padding: EdgeInsets.zero,
+        tooltip: 'Tuỳ chọn',
+        icon: Icon(
+          Icons.more_vert,
+          size: 18,
+          color: Theme.of(context).colorScheme.outline,
         ),
       ),
     );
