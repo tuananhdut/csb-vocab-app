@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,19 +19,9 @@ const _weekdayLabels = {
 /// hệ thống nhắc ôn tập (xem
 /// `docs/csb-vocab-analysis/tasks/05-dat-gio-nhac-on-tap/03-plan.md`, FE-02).
 ///
-/// Mobile: [showModalBottomSheet] (kéo lên từ đáy, quen thuộc trên màn
-/// hẹp). Windows: [showDialog] căn giữa, width cố định — tránh 1
-/// BottomSheet kiểu mobile trôi nổi giữa màn hình desktop rộng, không
-/// neo vào cạnh nào của cửa sổ.
+/// Chỉ gọi được từ Android/iOS — Windows không hỗ trợ nhắc nền theo lịch
+/// nên nút mở modal này bị ẩn trên Windows (xem `home_shell.dart`).
 Future<void> showDailyReminderSheet(BuildContext context) {
-  if (Platform.isWindows) {
-    return showDialog<void>(
-      context: context,
-      builder: (_) => const Dialog(
-        child: SizedBox(width: 420, child: DailyReminderSheet()),
-      ),
-    );
-  }
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -79,14 +67,9 @@ class DailyReminderSheet extends ConsumerWidget {
     final settings = ref.watch(reminderSettingsProvider);
     final time = TimeOfDay(hour: settings.hour, minute: settings.minute);
 
-    // Windows (`Dialog`) không có status bar/notch để né và không có drag
-    // handle phía trên như BottomSheet mobile — cần padding-top đầy đủ
-    // thay vì 0.
-    final topPadding = Platform.isWindows ? 20.0 : 0.0;
-
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20, topPadding, 20, 20),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,16 +115,6 @@ class DailyReminderSheet extends ConsumerWidget {
                   ),
               ],
             ),
-            if (Platform.isWindows) ...[
-              const SizedBox(height: 16),
-              Text(
-                'Trên Windows, ứng dụng chỉ nhắc được khi đang mở — không hỗ trợ '
-                'thông báo nền khi ứng dụng đã đóng.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: AppColors.inkSoft),
-              ),
-            ],
           ],
         ),
       ),

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -71,11 +73,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                   padding: EdgeInsets.only(right: 12),
                   child: _ConnectivityAppBarBadge(),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined),
-                  tooltip: 'Cài đặt nhắc ôn tập',
-                  onPressed: () => showDailyReminderSheet(context),
-                ),
+                // Windows không hỗ trợ nhắc nền theo lịch (chỉ nhắc tức thời
+                // lúc mở app, tự chạy không cần cấu hình) nên không có gì để
+                // cài đặt qua nút này — xem `daily_reminder_sheet.dart`.
+                if (!Platform.isWindows)
+                  IconButton(
+                    icon: const Icon(Icons.settings_outlined),
+                    tooltip: 'Cài đặt nhắc ôn tập',
+                    onPressed: () => showDailyReminderSheet(context),
+                  ),
               ],
             ),
       body: isDesktop
@@ -101,9 +107,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                           ],
                         ),
                       ),
-                      _NavRailSettingsButton(
-                        onTap: () => showDailyReminderSheet(context),
-                      ),
+                      if (!Platform.isWindows)
+                        _NavRailSettingsButton(
+                          onTap: () => showDailyReminderSheet(context),
+                        ),
                       const _NavRailConnectivityFooter(),
                     ],
                   ),
