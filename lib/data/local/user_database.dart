@@ -37,21 +37,12 @@ class UserDatabase {
     db.execute(
       'CREATE INDEX IF NOT EXISTS idx_learned_words_due ON learned_words(due_date);',
     );
-    db.execute('''
-      CREATE TABLE IF NOT EXISTS search_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        word TEXT NOT NULL,
-        searched_at INTEGER NOT NULL
-      );
-    ''');
-    db.execute('''
-      CREATE TABLE IF NOT EXISTS review_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        word_id INTEGER NOT NULL,
-        reviewed_at INTEGER NOT NULL,
-        rating INTEGER NOT NULL
-      );
-    ''');
+    // `search_history`/`review_logs` bỏ hẳn theo docs/spec_history.md
+    // [IMPL-016] — chỉ từng được INSERT, không có màn/provider nào đọc
+    // lại. Dọn cả DB cũ của user hiện có (`DROP TABLE IF EXISTS`) vì
+    // trước đây chưa được xoá dù quyết định đã chốt.
+    db.execute('DROP TABLE IF EXISTS search_history;');
+    db.execute('DROP TABLE IF EXISTS review_logs;');
   }
 
   void dispose() => _db.close();

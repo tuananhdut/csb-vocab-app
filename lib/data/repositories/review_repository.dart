@@ -8,7 +8,7 @@ import '../../domain/srs/srs_scheduler.dart';
 import 'vocab_repository.dart';
 
 /// Implementation SQLite của [domain.ReviewRepository], dùng `user.db`
-/// (bảng learned_words, review_logs) ghép với `vocab.db` qua [VocabRepository].
+/// (bảng `learned_words`) ghép với `vocab.db` qua [VocabRepository].
 class SqliteReviewRepository implements domain.ReviewRepository {
   SqliteReviewRepository(this._userDb, this._vocabRepository, this._scheduler);
 
@@ -75,10 +75,6 @@ class SqliteReviewRepository implements domain.ReviewRepository {
         updated.lastReviewed?.millisecondsSinceEpoch,
         wordId,
       ],
-    );
-    _userDb.execute(
-      'INSERT INTO review_logs (word_id, reviewed_at, rating) VALUES (?, ?, ?)',
-      [wordId, DateTime.now().millisecondsSinceEpoch, rating.quality],
     );
   }
 
