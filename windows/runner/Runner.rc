@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "vn.canhsatbien" "\0"
-            VALUE "FileDescription", "csb_vocab_app" "\0"
+            VALUE "FileDescription", "CSB Vocab" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "csb_vocab_app" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 vn.canhsatbien. All rights reserved." "\0"
             VALUE "OriginalFilename", "csb_vocab_app.exe" "\0"
-            VALUE "ProductName", "csb_vocab_app" "\0"
+            VALUE "ProductName", "CSB Vocab" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

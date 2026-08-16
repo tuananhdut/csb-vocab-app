@@ -70,6 +70,10 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
+  windows:
+    generate: true
+    image_path: "assets/images/logo/csb-logo.png"
+    icon_size: 256
   image_path: "assets/images/logo/csb-logo.png"
 
 # For information on the generic Dart part of this file, see the
