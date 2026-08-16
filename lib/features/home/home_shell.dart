@@ -9,6 +9,7 @@ import '../lessons/lessons_screen.dart';
 import '../my_dictionaries/my_dictionaries_screen.dart';
 import '../review/review_providers.dart';
 import '../search/search_screen.dart';
+import '../settings/widgets/daily_reminder_sheet.dart';
 import '../translate/translate_screen.dart';
 
 const _myDictionariesDestinationIndex = 3;
@@ -65,10 +66,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           ? null
           : AppBar(
               title: Text(_destinations[_index].label),
-              actions: const [
-                Padding(
+              actions: [
+                const Padding(
                   padding: EdgeInsets.only(right: 12),
                   child: _ConnectivityAppBarBadge(),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings_outlined),
+                  tooltip: 'Cài đặt nhắc ôn tập',
+                  onPressed: () => showDailyReminderSheet(context),
                 ),
               ],
             ),
@@ -94,6 +100,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                               ),
                           ],
                         ),
+                      ),
+                      _NavRailSettingsButton(
+                        onTap: () => showDailyReminderSheet(context),
                       ),
                       const _NavRailConnectivityFooter(),
                     ],
@@ -343,6 +352,47 @@ class _PageHeader extends StatelessWidget {
         children: [
           Text(title, style: Theme.of(context).textTheme.headlineSmall),
         ],
+      ),
+    );
+  }
+}
+
+/// Nút mở modal "Nhắc ôn tập" trong nav-rail Windows — cùng hàng ghế với
+/// [_NavRailItem] nhưng không phải tab điều hướng nên không có trạng thái
+/// "selected". Mobile dùng icon tương đương trong `AppBar.actions`.
+class _NavRailSettingsButton extends StatelessWidget {
+  const _NavRailSettingsButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = AppColors.white.withValues(alpha: 0.65);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: AppColors.white.withValues(alpha: 0.06),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 10),
+            child: Row(
+              children: [
+                Icon(Icons.settings_outlined, color: fg, size: 20),
+                const SizedBox(width: 12),
+                Text(
+                  'Nhắc ôn tập',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: fg),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

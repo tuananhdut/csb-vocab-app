@@ -4,6 +4,185 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-020] 2026-08-16 — Task-plan: đặt giờ nhắc ôn tập tuỳ chỉnh (chưa implement)
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Hoàn thành `task-plan` cho task đặt giờ nhắc ôn tập (kế thừa
+[IMPL-018]/[IMPL-019]), chốt kế hoạch implement cụ thể dựa trên Option 1
+đã khuyến nghị ở bước brainstorm.
+
+Trước khi lập plan, đã hỏi lại và chốt 2 điểm còn treo:
+
+1. **UX khi bỏ chọn hết tất cả 7 thứ** (công tắc tổng vẫn bật): **cho
+   phép** — không chặn thao tác, kết quả không có lịch nào được tạo
+   (tương đương tắt), không cần validate ở UI.
+2. **Định dạng lưu tập hợp thứ**: `List<String>` qua
+   `setStringList`/`getStringList` của `shared_preferences` (mỗi phần
+   tử là `weekday.toString()`, `'1'`–`'7'` theo `DateTime.weekday`) —
+   không tự viết serialize/CSV/bitmask thủ công.
+
+Nội dung chính của `03-plan.md`:
+
+- **Quy đổi "API Contract" sang "Provider/Service Contract"** — dự án
+  không có network API, hợp đồng thật sự là giữa UI và
+  `ReminderSettingsNotifier`/`NotificationService` (local service
+  layer). Ghi rõ contract 2 tầng: state Riverpod (`ReminderSettings`
+  entity, `reminderSettingsProvider`) và service method
+  (`scheduleWeeklyReminders`, `cancelAllReminders` — thay hẳn
+  `scheduleDailyReminder` cũ, không giữ song song).
+- **4 subtask Backend** (BE-01 thêm dependency, BE-02 viết lại lên lịch
+  N-thứ trong `NotificationService`, BE-03 `ReminderSettingsNotifier`,
+  BE-04 nối `main.dart`), **2 subtask Frontend** (FE-01 icon Cài đặt,
+  FE-02 `DailyReminderSheet`), **2 subtask Integration** (INT-01 nối
+  provider thật, INT-02 verify lịch thật theo thứ — đánh dấu rủi ro
+  trung bình vì khó test tự động).
+- **Khuyến nghị thứ tự Backend First** — rủi ro kỹ thuật lớn nhất nằm ở
+  BE-02 (đổi cơ chế lên lịch 1→N), cần verify độc lập trước khi ràng
+  buộc UI lên trên.
+- Manual Verification Plan đầy đủ 6 mục (Main Flow, UI, Service, Error/
+  Edge Case, SPA/Browser — ghi rõ không áp dụng vì là app Flutter
+  native, Regression).
+
+### Tài liệu tạo mới
+
+| File | Nội dung |
+|---|---|
+| `docs/csb-vocab-analysis/tasks/05-dat-gio-nhac-on-tap/03-plan.md` | Task-plan đầy đủ: Provider/Service Contract, 8 subtask BE/FE/INT, thứ tự thực hiện khuyến nghị (Backend First), Manual Verification Plan, Risks |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — 2 điểm treo từ [IMPL-019] (UX bỏ chọn hết
+thứ, định dạng lưu) đã chốt ở bước này. Còn 1 quyết định nhỏ để lúc code
+(không chặn tiến độ): `DailyReminderSheet` có disable trực quan phần
+giờ/chip khi công tắc tổng tắt hay không.
+
+Chưa implement — bước tiếp theo là user chọn thứ tự thực hiện
+(khuyến nghị Backend First, bắt đầu từ BE-01) rồi dùng
+`task-implement`/`task-implement-app` để code.
+
+---
+
+## [IMPL-019] 2026-08-16 — Mở rộng scope đặt giờ nhắc: thêm chọn theo thứ trong tuần
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Ngay sau khi hoàn thành task-brainstorm cho [IMPL-018] (đặt giờ nhắc ôn
+tập, khuyến nghị Option 1 — `shared_preferences` + BottomSheet, 1 giờ
+cố định áp dụng mọi ngày), user yêu cầu mở rộng: **cho chọn theo thứ
+trong tuần** (ví dụ chỉ nhắc T2/T3/T4, các thứ khác không nhắc), không
+chỉ 1 giờ cố định mọi ngày như đã chốt trước đó (D2 cũ trong
+`01-analysis.md`).
+
+Đã hỏi lại và chốt: **1 giờ chung áp dụng cho tất cả các thứ được
+chọn** — không hỗ trợ giờ khác nhau theo từng thứ (giữ mức phức tạp UI
+vừa phải, tránh trở thành "1 lịch/thứ độc lập"). Ghi nhận thành D3
+trong `01-analysis.md`, thay thế D2 cũ (giữ lại D2 dạng gạch ngang để
+lưu vết lịch sử quyết định đổi hướng).
+
+**Phát hiện kỹ thuật quan trọng khi rà lại thiết kế:** đọc source
+`flutter_local_notifications-22.0.1` (`lib/src/flutter_local_
+notifications_plugin.dart` + Android `FlutterLocalNotificationsPlugin.
+java`) xác nhận `matchDateTimeComponents: DateTimeComponents.
+dayOfWeekAndTime` chỉ khớp **đúng 1 thứ cụ thể** mỗi lần gọi
+`zonedSchedule` — không có cơ chế "khớp nhiều thứ trong 1 lịch". Nhắc
+nhiều thứ đòi hỏi **lên nhiều lịch song song, mỗi thứ 1 `id` thông báo
+riêng** (đề xuất: `id = 2001 + weekday`, range `2002`–`2008`). Đây là
+thay đổi kiến trúc thật ở tầng `NotificationService` (đổi từ
+`scheduleDailyReminder(hour, minute)` 1-lịch sang
+`scheduleWeeklyReminders(hour, minute, Set<int> weekdays)` N-lịch),
+không chỉ thêm tham số như đánh giá ban đầu ở [IMPL-018].
+
+Đã cập nhật lại toàn bộ `01-analysis.md` (Scope, Acceptance Criteria,
+UI Gap — thêm 7 `FilterChip` chọn thứ, Backend Gap, API/Data Impact,
+Risk Analysis, Quyết định đã chốt, Open Questions) và `02-brainstorm.md`
+(Requirement Recap, thiết kế Backend Changes của Option 1 và Option 2)
+cho khớp scope mới. Kết luận chọn **Option 1** ở bước brainstorm **không
+đổi** — vẫn là vấn đề lưu trữ giá trị cấu hình phẳng qua
+`shared_preferences`, chỉ đổi cách tầng service dùng chúng để lên lịch.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/tasks/05-dat-gio-nhac-on-tap/01-analysis.md` | Cập nhật Scope/Acceptance Criteria cho chọn theo thứ; thêm phát hiện kỹ thuật N-lịch vào Backend Gap + API/Data Impact; thêm D3 thay D2; thêm Open Questions mới (UX bỏ chọn hết thứ, định dạng lưu tập hợp thứ) |
+| `docs/csb-vocab-analysis/tasks/05-dat-gio-nhac-on-tap/02-brainstorm.md` | Cập nhật Requirement Recap; viết lại Backend Changes của Option 1/2 theo cơ chế N-lịch-theo-thứ; cập nhật Risks, Comparison, Recommended Approach |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| — | UX khi user bỏ chọn hết tất cả các thứ (công tắc tổng vẫn bật): chặn thao tác (luôn giữ ≥1 thứ) hay cho phép và ngầm hiểu tương đương tắt nhắc? Quyết định ở `task-plan` |
+| — | Định dạng lưu tập hợp thứ trong `shared_preferences`: chuỗi CSV hay bitmask int? Quyết định ở `task-plan` |
+| — | Kế thừa các điểm chờ chưa đổi từ [IMPL-018]: nội dung text thông báo có đổi theo giờ/thứ đã chọn không, giá trị mặc định khi chưa từng cấu hình |
+
+Chưa implement — bước tiếp theo là `task-plan`.
+
+---
+
+## [IMPL-018] 2026-08-16 — Task-analysis: đặt giờ nhắc ôn tập tuỳ chỉnh (chưa implement)
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Task-analysis (chỉ phân tích, không sửa code) cho yêu cầu: cho phép user
+tự đặt giờ để app thông báo nhắc "đến giờ ôn tập", thay vì giờ cố định
+`20:00` đang hardcode ở `lib/main.dart:10` (gọi
+`NotificationService.instance.scheduleDailyReminder()` không truyền
+tham số, dùng default `hour: 20, minute: 0` của
+`lib/data/services/notification_service.dart:96`).
+
+**Phát hiện quan trọng khi khảo sát code thật:** `docs/csb-vocab-
+analysis/06_Settings.md` (và `README.md` mục "Danh sách tài liệu",
+dòng SCR-06) mô tả có sẵn `lib/features/settings/settings_screen.dart`
++ `ThemeModeNotifier` (chọn giao diện Sáng/Tối/Theo hệ thống, lưu qua
+`shared_preferences`) — nhưng **cả 2 file này không còn tồn tại trong
+code hiện tại** (xác nhận bằng glob `lib/features/settings/**` → không
+khớp), và `shared_preferences` **không có trong `pubspec.yaml`**.
+**Không có entry nào trong file này ghi lại việc xoá màn Settings** —
+đây là khoảng trống tài liệu, tài liệu phân tích màn hình (`06_Settings.md`,
+`README.md`) đã lỗi thời so với code thật, chưa rõ xoá từ khi nào hay lý
+do — cần lưu ý khi cập nhật lại các tài liệu đó và khi implement task
+này (có thể phải thêm lại `shared_preferences` từ đầu).
+
+Quyết định đã chốt cùng user trong phiên phân tích:
+
+1. **Entry point vào UI cấu hình** = icon Cài đặt trong `AppBar.actions`
+   (mobile) / nav-rail footer (Windows) của `HomeShell` — **không** thêm
+   tab thứ 5, giữ nguyên bố cục 4 tab hiện tại (Tra cứu/Học/Dịch/Từ điển
+   của tôi) để tránh làm chật bottom nav mobile.
+2. **Chỉ 1 giờ nhắc cố định áp dụng mọi ngày** — không hỗ trợ nhiều
+   khung giờ hay khác nhau theo ngày trong tuần, giữ đúng tinh thần MVP.
+3. **Windows ngoài phạm vi** cho phần lên lịch nền — kế thừa đúng ràng
+   buộc D2 đã chốt trước đó (`00_Overview.md`): Windows chỉ nhắc được
+   lúc app đang mở, không hỗ trợ nhắc nền khi app đóng hẳn. UI trên
+   Windows chỉ cần hiển thị ghi chú giới hạn, không hứa hẹn hành vi
+   không hỗ trợ được.
+
+### Tài liệu tạo mới
+
+| File | Nội dung |
+|---|---|
+| `docs/csb-vocab-analysis/tasks/05-dat-gio-nhac-on-tap/01-analysis.md` | Task-analysis đầy đủ: Requirement Summary, Existing UI Analysis, UI/Backend Gap, API/Data Impact (quy đổi local persistence + local notification scheduling), Risk Analysis, quyết định đã chốt, Open Questions |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| — | `shared_preferences` cần thêm lại vào `pubspec.yaml` — xác nhận không xung đột với lý do (chưa rõ) mà màn Settings cũ từng bị gỡ |
+| — | Nội dung text thông báo có cần đổi theo giờ user chọn không, hay giữ nguyên câu hiện tại — quyết định ở bước task-plan |
+| — | Giá trị mặc định khi user chưa từng cấu hình — đề xuất giữ `20:00` + bật sẵn (giữ đúng hành vi hiện tại), cần xác nhận lại ở task-plan |
+
+Chưa implement — bước tiếp theo (nếu user đồng ý) là `task-brainstorm`
+rồi `task-plan` trước khi code.
+
+---
+
 ## [IMPL-017] 2026-08-06 — Đổi hướng Dịch (FR-4): máy dịch neural on-device thay vì ghép từ/cụm
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude

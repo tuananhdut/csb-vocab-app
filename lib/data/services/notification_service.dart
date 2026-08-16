@@ -17,6 +17,10 @@ class NotificationService {
   static const _dailyChannelId = 'daily_reminder';
   static const _windowsGuid = 'd2a2f8b8-1b0b-4ee7-8e9f-6e1e7b2b9a31';
 
+  /// `id` thông báo của mỗi thứ = base + `weekday` (1=T2..7=CN) → range
+  /// 2002-2008, tách biệt với `id: 1001` của [showDueReminder].
+  static const _weeklyReminderIdBase = 2001;
+
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
@@ -90,35 +94,55 @@ class NotificationService {
     );
   }
 
-  /// Lên lịch nhắc hàng ngày cho Android/iOS (nhắc cả khi app đã đóng).
-  /// Windows không hỗ trợ nhắc nền khi app tắt hẳn — ngoài phạm vi MVP
-  /// (đã chốt D2, plan 06).
-  Future<void> scheduleDailyReminder({int hour = 20, int minute = 0}) async {
+  /// Lên lịch nhắc theo các thứ trong tuần đã chọn cho Android/iOS (nhắc cả
+  /// khi app đã đóng) — 1 giờ chung áp dụng cho mọi thứ trong [weekdays]
+  /// (theo `DateTime.weekday`, 1=Thứ Hai..7=Chủ Nhật). Vì
+  /// `flutter_local_notifications` chỉ khớp được 1 thứ/lịch
+  /// (`DateTimeComponents.dayOfWeekAndTime`), nhắc nhiều thứ cần nhiều lịch
+  /// song song — mỗi thứ 1 `id` riêng (`_weeklyReminderIdBase + weekday`) để
+  /// huỷ/lên lịch lại độc lập được. Windows không hỗ trợ nhắc nền khi app
+  /// tắt hẳn — ngoài phạm vi MVP (đã chốt D2, plan 06).
+  Future<void> scheduleWeeklyReminders({
+    required int hour,
+    required int minute,
+    required Set<int> weekdays,
+  }) async {
     if (Platform.isWindows) return;
 
-    await _plugin.zonedSchedule(
-      id: 2001,
-      title: 'Đến giờ ôn từ vựng',
-      body: 'Đừng quên ôn lại các từ đã học hôm nay nhé!',
-      scheduledDate: _nextInstanceOf(hour, minute),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _dailyChannelId,
-          'Nhắc ôn tập hàng ngày',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
+    for (final weekday in weekdays) {
+      await _plugin.zonedSchedule(
+        id: _weeklyReminderIdBase + weekday,
+        title: 'Đến giờ ôn từ vựng',
+        body: 'Đừng quên ôn lại các từ đã học hôm nay nhé!',
+        scheduledDate: _nextInstanceOf(weekday, hour, minute),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _dailyChannelId,
+            'Nhắc ôn tập hàng ngày',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    }
   }
 
-  tz.TZDateTime _nextInstanceOf(int hour, int minute) {
+  /// Huỷ toàn bộ lịch nhắc hàng tuần (cả 7 thứ khả dĩ) — dùng khi user tắt
+  /// nhắc hoặc trước khi lên lịch lại theo lựa chọn mới. An toàn để gọi dù
+  /// một số `id` chưa từng được lên lịch.
+  Future<void> cancelAllReminders() async {
+    for (var weekday = 1; weekday <= 7; weekday++) {
+      await _plugin.cancel(id: _weeklyReminderIdBase + weekday);
+    }
+  }
+
+  tz.TZDateTime _nextInstanceOf(int weekday, int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (scheduled.isBefore(now)) {
+    while (scheduled.weekday != weekday || scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
     return scheduled;
