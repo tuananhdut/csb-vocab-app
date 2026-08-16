@@ -174,6 +174,20 @@ Future<void> addOnlineWord(
   }
 }
 
+/// Liên kết 1 từ đã có sẵn (khớp trúng lúc tự điền ở SCR-07b, xem
+/// `AddWordScreen._autofill`) vào [dictionaryId] thay vì tạo bản ghi
+/// trùng lặp mới — làm mới danh sách từ + bộ sau khi xong.
+Future<void> linkExistingWord(
+  WidgetRef ref, {
+  required int wordId,
+  required int dictionaryId,
+}) async {
+  final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+  vocabRepo.linkWordToDictionary(wordId: wordId, dictionaryId: dictionaryId);
+  ref.invalidate(chapterWordsProvider(dictionaryId));
+  ref.invalidate(myDictionariesProvider);
+}
+
 /// Thêm 1 từ tự nhập tay vào [dictionaryId] (SCR-07b "Tự thêm từ mới")
 /// và làm mới danh sách bộ (đổi `wordCount`).
 Future<void> addManualWord(

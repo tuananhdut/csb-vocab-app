@@ -91,6 +91,34 @@ class VocabRepository {
     return rows.map(_wordFromRow).toList();
   }
 
+  /// Khớp CHÍNH XÁC (không phải `LIKE` gần đúng) 1 từ theo [direction] —
+  /// dùng cho tự điền form thêm từ (SCR-07b "Tự điền từ dữ liệu"), nơi
+  /// điền nhầm dữ liệu của 1 từ khác gần giống là hành vi tệ hơn nhiều
+  /// so với không tìm thấy gì. Trả về từ đầu tiên khớp (ưu tiên
+  /// `sort_order`/`id` tăng dần) nếu có nhiều bản ghi trùng.
+  VocabWord? findExactMatch(
+    String query, {
+    required SearchDirection direction,
+  }) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return null;
+
+    final matchColumn = switch (direction) {
+      SearchDirection.enToVi => 'w.word_lower = ?',
+      SearchDirection.viToEn => 'lower(w.meaning_vi) = ?',
+    };
+
+    final rows = _db.select(
+      '''$_selectWord
+         WHERE w.source != 2 AND $matchColumn
+         ORDER BY w.id
+         LIMIT 1''',
+      [q],
+    );
+    if (rows.isEmpty) return null;
+    return _wordFromRow(rows.first);
+  }
+
   /// Tra 1 từ theo id (dùng khi ghép dữ liệu ôn tập từ `user.db`).
   VocabWord? wordById(int id) {
     final rows = _db.select('$_selectWord WHERE w.id = ?', [id]);
@@ -435,6 +463,21 @@ class VocabRepository {
       );
     }
     return wordId;
+  }
+
+  /// Liên kết 1 từ ĐÃ CÓ SẴN (bất kỳ `source` nào — giáo trình gốc,
+  /// online-lookup, hay tự thêm ở bộ khác) vào [dictionaryId], KHÔNG
+  /// tạo dòng `words` mới — dùng khi form "Tự thêm từ mới" tự điền
+  /// (SCR-07b) khớp trúng 1 từ đã tồn tại: liên kết tránh trùng lặp dữ
+  /// liệu thay vì insert 1 bản ghi MANUAL riêng có cùng nội dung. Không
+  /// làm gì nếu [wordId] đã có sẵn trong [dictionaryId] (idempotent).
+  void linkWordToDictionary({required int wordId, required int dictionaryId}) {
+    final alreadyIn = dictionaryIdsContaining(wordId).contains(dictionaryId);
+    if (alreadyIn) return;
+    _db.execute(
+      'INSERT INTO word_dictionaries (word_id, dictionary_id, added_at) VALUES (?, ?, ?)',
+      [wordId, dictionaryId, DateTime.now().millisecondsSinceEpoch],
+    );
   }
 
   /// Sửa 1 từ trong bộ có thể sửa/xoá (SCR-07c "Sửa từ") — áp dụng cho
