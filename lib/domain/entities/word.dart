@@ -6,6 +6,11 @@ class WordExample {
   final String vi;
 }
 
+/// `id` sentinel cho kết quả tra Online (chưa lưu vào `words`, xem
+/// [VocabWord.isOnline]) — không trùng bất kỳ `id` thật nào vì
+/// `INTEGER PRIMARY KEY AUTOINCREMENT` của SQLite luôn > 0.
+const onlineWordSentinelId = -1;
+
 class VocabWord {
   const VocabWord({
     required this.id,
@@ -17,6 +22,7 @@ class VocabWord {
     this.imagePath,
     this.isSubentry = false,
     this.isManual = false,
+    this.isOnline = false,
     this.examples = const [],
   });
 
@@ -34,5 +40,13 @@ class VocabWord {
   /// sửa/xoá trong [DictionaryDetailScreen], từ có sẵn trong giáo trình
   /// gốc là dữ liệu chung, không cho chỉnh sửa.
   final bool isManual;
+
+  /// `true` nếu đây là kết quả tra qua API ngoài (MyMemory, xem
+  /// `DictionaryApiService`), CHƯA có trong `words` — `id` là
+  /// [onlineWordSentinelId], không dùng được với provider nào truy vấn
+  /// theo id thật (`wordExamplesProvider`, `learnedStatusProvider`...).
+  /// UI hiện badge "Online" và ẩn các hành động chỉ áp dụng cho từ đã
+  /// lưu (đánh dấu đã học, xem ví dụ) — thay bằng nút "Thêm vào bộ".
+  final bool isOnline;
   final List<WordExample> examples;
 }

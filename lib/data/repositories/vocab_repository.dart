@@ -280,6 +280,8 @@ class VocabRepository {
     String? phonetic,
     int? partOfSpeechCode,
     String? imagePath,
+    String? exampleEn,
+    String? exampleVi,
   }) {
     final now = DateTime.now().millisecondsSinceEpoch;
     _db.execute(
@@ -294,12 +296,93 @@ class VocabRepository {
       'INSERT INTO word_dictionaries (word_id, dictionary_id, added_at) VALUES (?, ?, ?)',
       [wordId, dictionaryId, now],
     );
+
+    if (exampleEn != null && exampleVi != null) {
+      _db.execute(
+        'INSERT INTO examples (word_id, example_en, example_vi) VALUES (?, ?, ?)',
+        [wordId, exampleEn, exampleVi],
+      );
+    }
     return wordId;
   }
 
-  /// Sửa 1 từ tự thêm (SCR-07c "Sửa từ") — chỉ áp dụng cho `source=2`,
-  /// gọi từ UI đã kiểm tra [VocabWord.isManual] trước đó nên không lọc
-  /// lại điều kiện `source` ở đây.
+  /// `id` của từ tra Online (`source=1`) đã lưu khớp [word] (so khớp
+  /// `word_lower`, không phân biệt hoa/thường), `null` nếu chưa từng
+  /// lưu. Dùng để: (1) tích sẵn checkbox bộ đã chứa từ này khi mở lại
+  /// modal "Thêm vào bộ" cho cùng 1 kết quả tra, (2) tránh
+  /// [insertOnlineWord] tạo dòng `words` trùng lặp ở lần thêm sau.
+  int? findOnlineWordId(String word) {
+    final rows = _db.select(
+      'SELECT id FROM words WHERE word_lower = ? AND source = 1',
+      [word.trim().toLowerCase()],
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['id'] as int;
+  }
+
+  /// `dictionary_id` của các bộ đã chứa [wordId] — dùng để tích sẵn
+  /// checkbox trong modal "Thêm vào bộ" (xem [findOnlineWordId]).
+  List<int> dictionaryIdsContaining(int wordId) {
+    final rows = _db.select(
+      'SELECT dictionary_id FROM word_dictionaries WHERE word_id = ?',
+      [wordId],
+    );
+    return rows.map((r) => r['dictionary_id'] as int).toList();
+  }
+
+  /// Lưu 1 từ tra được qua API ngoài (SCR-02 "Chế độ Online", `source=1`
+  /// ONLINE_LOOKUP — khác `source=2` MANUAL của [insertManualWord]) vào
+  /// 1 hoặc nhiều [dictionaryIds] cùng lúc (mockup `screen-04b`, checkbox
+  /// chọn nhiều bộ). Không tự động lưu khi chỉ *tra* — chỉ gọi hàm này
+  /// khi user chủ động bấm "Thêm vào bộ" (đã chốt Q-CSB-05, xem
+  /// `02_Search.md`). [dictionaryIds] rỗng -> gán vào "Chưa phân loại"
+  /// (id cố định = 1, nguyên tắc #2 trong `91_DB-design-new-model.md`).
+  ///
+  /// Nếu [word] đã từng được lưu qua đường này trước đó (xem
+  /// [findOnlineWordId]), TÁI SỬ DỤNG dòng `words` cũ thay vì insert
+  /// mới — tránh tạo bản ghi trùng lặp khi user thêm cùng 1 từ vào
+  /// nhiều bộ ở các lần bấm khác nhau; chỉ những bộ CHƯA có từ này mới
+  /// được thêm dòng `word_dictionaries` mới.
+  int insertOnlineWord({
+    required String word,
+    required String meaningVi,
+    required List<int> dictionaryIds,
+  }) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final existingWordId = findOnlineWordId(word);
+
+    final int wordId;
+    if (existingWordId != null) {
+      wordId = existingWordId;
+    } else {
+      _db.execute(
+        '''INSERT INTO words (word, word_lower, phonetic, meaning_vi,
+                               part_of_speech, is_subentry, image_path, source, created_at)
+           VALUES (?, ?, NULL, ?, NULL, 0, NULL, 1, ?)''',
+        [word, word.toLowerCase(), meaningVi, now],
+      );
+      wordId = _db.lastInsertRowId;
+    }
+
+    final alreadyIn = existingWordId == null
+        ? const <int>{}
+        : dictionaryIdsContaining(existingWordId).toSet();
+    final targetIds = dictionaryIds.isEmpty ? const [1] : dictionaryIds;
+    for (final dictionaryId in targetIds) {
+      if (alreadyIn.contains(dictionaryId)) continue;
+      _db.execute(
+        'INSERT INTO word_dictionaries (word_id, dictionary_id, added_at) VALUES (?, ?, ?)',
+        [wordId, dictionaryId, now],
+      );
+    }
+    return wordId;
+  }
+
+  /// Sửa 1 từ tự thêm (SCR-07c "Sửa từ") — chỉ áp dụng cho `source=2`
+  /// (MANUAL). UI đã kiểm tra [VocabWord.isManual] trước khi cho vào
+  /// màn sửa, nhưng vẫn chặn lại ở đây (`WHERE source = 2`) để từ mặc
+  /// định/tra online không thể bị sửa dù gọi từ đường nào — dữ liệu
+  /// giáo trình gốc là dùng chung, không phải của riêng user.
   void updateManualWord({
     required int wordId,
     required String word,
@@ -307,22 +390,50 @@ class VocabRepository {
     String? phonetic,
     int? partOfSpeechCode,
     String? imagePath,
+    String? exampleEn,
+    String? exampleVi,
   }) {
+    _assertManualWord(wordId, action: 'sửa');
     _db.execute(
       '''UPDATE words SET word = ?, word_lower = ?, phonetic = ?, meaning_vi = ?,
                            part_of_speech = ?, image_path = ?
-         WHERE id = ?''',
+         WHERE id = ? AND source = 2''',
       [word, word.toLowerCase(), phonetic, meaningVi, partOfSpeechCode, imagePath, wordId],
     );
+
+    // Form chỉ hỗ trợ đúng 1 cặp ví dụ EN/VI cho từ tự thêm -> xoá hết
+    // dòng cũ rồi insert lại (thay vì UPDATE) để không phải phân biệt
+    // "sửa dòng có sẵn" và "thêm dòng mới" ở đây.
+    _db.execute('DELETE FROM examples WHERE word_id = ?', [wordId]);
+    if (exampleEn != null && exampleVi != null) {
+      _db.execute(
+        'INSERT INTO examples (word_id, example_en, example_vi) VALUES (?, ?, ?)',
+        [wordId, exampleEn, exampleVi],
+      );
+    }
   }
 
   /// Xoá hẳn 1 từ tự thêm (SCR-07c "Xoá từ") khỏi `words`, kèm dọn các
   /// bảng phụ thuộc thủ công — `VocabDatabase.open()` không bật
   /// `PRAGMA foreign_keys`, nên `ON DELETE CASCADE` khai báo trong
-  /// `docs/db/schema.sql` không tự chạy ở runtime.
+  /// `docs/db/schema.sql` không tự chạy ở runtime. Chỉ áp dụng cho
+  /// `source=2` (MANUAL), xem [updateManualWord].
   void deleteWord(int wordId) {
+    _assertManualWord(wordId, action: 'xoá');
     _db.execute('DELETE FROM word_dictionaries WHERE word_id = ?', [wordId]);
     _db.execute('DELETE FROM examples WHERE word_id = ?', [wordId]);
-    _db.execute('DELETE FROM words WHERE id = ?', [wordId]);
+    _db.execute('DELETE FROM words WHERE id = ? AND source = 2', [wordId]);
+  }
+
+  /// Chặn sửa/xoá từ không phải do user tự thêm — bảo vệ dữ liệu giáo
+  /// trình gốc/tra online dù lời gọi có bỏ qua kiểm tra [VocabWord.isManual]
+  /// ở tầng UI hay không.
+  void _assertManualWord(int wordId, {required String action}) {
+    final rows = _db.select('SELECT source FROM words WHERE id = ?', [wordId]);
+    if (rows.isEmpty) return;
+    final source = rows.first['source'] as int? ?? 0;
+    if (source != 2) {
+      throw StateError('Không thể $action từ mặc định (id=$wordId, source=$source).');
+    }
   }
 }

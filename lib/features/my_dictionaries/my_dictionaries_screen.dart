@@ -231,6 +231,15 @@ class _DictionaryCard extends ConsumerWidget {
                         ),
                       ),
                     ],
+                  )
+                else
+                  IconButton(
+                    onPressed: () => _addWord(context, ref),
+                    icon: Icon(Icons.add, size: 18, color: Theme.of(context).colorScheme.outline),
+                    tooltip: 'Thêm từ mới',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    visualDensity: VisualDensity.compact,
                   ),
               ],
             ),

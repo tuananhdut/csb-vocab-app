@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../data/repositories/vocab_providers.dart';
 import '../../domain/entities/word.dart';
 import '../review/review_providers.dart';
 
@@ -58,6 +59,8 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
   late final _wordController = TextEditingController(text: widget.existingWord?.word);
   late final _meaningController = TextEditingController(text: widget.existingWord?.meaningVi);
   late final _phoneticController = TextEditingController(text: widget.existingWord?.phonetic);
+  final _exampleEnController = TextEditingController();
+  final _exampleViController = TextEditingController();
   int? _partOfSpeechCode;
   File? _pickedImage;
   bool _saving = false;
@@ -72,7 +75,22 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
       if (imagePath != null && imagePath.isNotEmpty && p.isAbsolute(imagePath)) {
         _pickedImage = File(imagePath);
       }
+      _loadExistingExample(existing.id);
     }
+  }
+
+  /// Nạp ví dụ đã lưu khi mở form ở chế độ sửa — [VocabWord] từ
+  /// [chapterWordsProvider]/[DictionaryDetailScreen] không kèm sẵn
+  /// `examples` (chỉ được gán ở luồng "Học từ mới"), nên đọc riêng qua
+  /// [wordExamplesProvider]. Form chỉ hỗ trợ đúng 1 cặp ví dụ nên chỉ
+  /// lấy dòng đầu tiên nếu có nhiều.
+  Future<void> _loadExistingExample(int wordId) async {
+    final examples = await ref.read(wordExamplesProvider(wordId).future);
+    if (!mounted || examples.isEmpty) return;
+    setState(() {
+      _exampleEnController.text = examples.first.en;
+      _exampleViController.text = examples.first.vi;
+    });
   }
 
   @override
@@ -80,6 +98,8 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
     _wordController.dispose();
     _meaningController.dispose();
     _phoneticController.dispose();
+    _exampleEnController.dispose();
+    _exampleViController.dispose();
     super.dispose();
   }
 
@@ -123,6 +143,8 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
         phonetic: _phoneticController.text,
         partOfSpeechCode: _partOfSpeechCode,
         imagePath: imagePath,
+        exampleEn: _exampleEnController.text,
+        exampleVi: _exampleViController.text,
       );
     } else {
       await addManualWord(
@@ -133,6 +155,8 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
         phonetic: _phoneticController.text,
         partOfSpeechCode: _partOfSpeechCode,
         imagePath: imagePath,
+        exampleEn: _exampleEnController.text,
+        exampleVi: _exampleViController.text,
       );
     }
     if (!mounted) return;
@@ -186,7 +210,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
                     const SizedBox(height: 20),
                     _ImagePickerField(image: _pickedImage, onPick: _pickImage, onRemove: _removeImage),
                     const SizedBox(height: 24),
-                    _SectionLabel('TỪ TIẾNG ANH'),
+                    _SectionLabel('TỪ TIẾNG ANH', required: true),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _wordController,
@@ -241,7 +265,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
                       ],
                     ),
                     const SizedBox(height: 18),
-                    _SectionLabel('NGHĨA TIẾNG VIỆT'),
+                    _SectionLabel('NGHĨA TIẾNG VIỆT', required: true),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _meaningController,
@@ -249,6 +273,30 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
                       maxLines: 4,
                       decoration: const InputDecoration(hintText: 'Nhập nghĩa của từ'),
                       validator: (value) => (value == null || value.trim().isEmpty) ? 'Bắt buộc' : null,
+                    ),
+                    const SizedBox(height: 18),
+                    _SectionLabel('VÍ DỤ THỰC TẾ'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _exampleEnController,
+                      decoration: const InputDecoration(hintText: 'Câu ví dụ (tiếng Anh)'),
+                      validator: (value) =>
+                          (value != null &&
+                                  value.trim().isNotEmpty &&
+                                  _exampleViController.text.trim().isEmpty)
+                              ? 'Cần điền cả bản dịch bên dưới'
+                              : null,
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _exampleViController,
+                      decoration: const InputDecoration(hintText: 'Dịch nghĩa câu ví dụ'),
+                      validator: (value) =>
+                          (value != null &&
+                                  value.trim().isNotEmpty &&
+                                  _exampleEnController.text.trim().isEmpty)
+                              ? 'Cần điền cả câu tiếng Anh bên trên'
+                              : null,
                     ),
                     const SizedBox(height: 28),
                     SizedBox(
@@ -292,12 +340,24 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+  const _SectionLabel(this.text, {this.required = false});
   final String text;
+
+  /// `true` cho ô bắt buộc — hiện thêm dấu `*` màu đỏ để phân biệt với
+  /// ô tuỳ chọn ngay từ khi mở form, không phải chờ bấm Lưu mới biết.
+  final bool required;
 
   @override
   Widget build(BuildContext context) {
-    return Text(text, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.inkSoft));
+    final style = Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.inkSoft);
+    if (!required) return Text(text, style: style);
+    return Text.rich(
+      TextSpan(
+        text: text,
+        style: style,
+        children: const [TextSpan(text: ' *', style: TextStyle(color: AppColors.signalRed))],
+      ),
+    );
   }
 }
 

@@ -127,6 +127,7 @@ class AppTheme {
         isDense: true,
         filled: true,
         fillColor: AppColors.panel2,
+        hintStyle: TextStyle(color: AppColors.inkSoft.withValues(alpha: 0.5)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radius),
           borderSide: const BorderSide(color: AppColors.border),

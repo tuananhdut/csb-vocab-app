@@ -62,14 +62,22 @@ quả.
   — UI cụ thể tham khảo mockup, chưa code.
 - **Hành vi tra cứu khi Online:** vẫn chạy `VocabRepository.search(query)`
   trên `vocab.db` như bình thường trước; nếu không có kết quả, gọi thêm
-  **API từ điển ngoài** để bổ sung. Đã chốt (Q-CSB-04): **Free Dictionary
-  API** (`https://api.dictionaryapi.dev`, miễn phí, không cần API key) lấy
-  định nghĩa/phiên âm/ví dụ **tiếng Anh**, sau đó gọi thêm
-  **LibreTranslate** (self-host hoặc instance công khai) để dịch phần nghĩa
-  sang tiếng Việt trước khi hiển thị — khớp với hành vi song ngữ hiện tại
-  của `WordTile`/`WordDetailSheet`. Rủi ro: instance LibreTranslate công
-  khai có thể không ổn định/giới hạn rate — cân nhắc self-host khi lên
-  production.
+  **API từ điển ngoài** để bổ sung.
+  **[CẬP NHẬT — thay quyết định Q-CSB-04 cũ]**: LibreTranslate public
+  instance đã đổi chính sách, giờ bắt buộc API key (xác nhận trực tiếp
+  lúc khảo sát lại: gọi thử trả lỗi yêu cầu đăng ký key ở
+  `portal.libretranslate.com`), không còn miễn phí ẩn danh được nữa —
+  không dùng được như quyết định gốc. Chuyển sang **MyMemory
+  Translation API** (`https://api.mymemory.translated.net/get`, miễn
+  phí, không cần key, gọi thẳng từ Flutter client qua `dio`) để dịch
+  en↔vi trực tiếp — xem `lib/data/services/dictionary_api_service.dart`.
+  Quota: 5.000 ký tự/ngày/IP ẩn danh, hoặc 50.000 ký tự/ngày/IP nếu kèm
+  tham số `de=<email liên hệ>` (đã dùng `tuanhaoggg@gmail.com`, xem
+  comment trong service — quota tính theo IP gọi API, không phải theo
+  từng user vì app không có backend/tài khoản để phân biệt). **Free
+  Dictionary API** (`https://api.dictionaryapi.dev`, miễn phí, không
+  cần key) vẫn giữ nguyên vai trò bổ sung phiên âm/loại từ/ví dụ khi từ
+  tra là tiếng Anh (không hỗ trợ tiếng Việt nên không dùng để dịch).
 - **Từ mới tra được qua API ngoài:** đã chốt (Q-CSB-05) **không tự động lưu
   lại local**. Chỉ ghi vào `user.db` khi user **chủ động bấm "Thêm vào bộ"**
   trong `WordDetailSheet` (theo mockup `screen-04b-them-vao-bo-tu-dien.html`)

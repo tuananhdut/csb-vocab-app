@@ -132,6 +132,23 @@ Future<void> deleteDictionary(WidgetRef ref, int dictionaryId) async {
   ref.invalidate(myDictionariesProvider);
 }
 
+/// Lưu 1 từ tra được qua API ngoài vào 1+ bộ đã chọn (SCR-02 "Chế độ
+/// Online", mockup `screen-04b-them-vao-bo-tu-dien.html`) và làm mới
+/// danh sách bộ (đổi `wordCount`).
+Future<void> addOnlineWord(
+  WidgetRef ref, {
+  required String word,
+  required String meaningVi,
+  required List<int> dictionaryIds,
+}) async {
+  final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+  vocabRepo.insertOnlineWord(word: word, meaningVi: meaningVi, dictionaryIds: dictionaryIds);
+  ref.invalidate(myDictionariesProvider);
+  for (final dictionaryId in dictionaryIds) {
+    ref.invalidate(chapterWordsProvider(dictionaryId));
+  }
+}
+
 /// Thêm 1 từ tự nhập tay vào [dictionaryId] (SCR-07b "Tự thêm từ mới")
 /// và làm mới danh sách bộ (đổi `wordCount`).
 Future<void> addManualWord(
@@ -142,6 +159,8 @@ Future<void> addManualWord(
   String? phonetic,
   int? partOfSpeechCode,
   String? imagePath,
+  String? exampleEn,
+  String? exampleVi,
 }) async {
   final vocabRepo = await ref.read(vocabRepositoryProvider.future);
   vocabRepo.insertManualWord(
@@ -151,7 +170,10 @@ Future<void> addManualWord(
     phonetic: (phonetic == null || phonetic.trim().isEmpty) ? null : phonetic.trim(),
     partOfSpeechCode: partOfSpeechCode,
     imagePath: imagePath,
+    exampleEn: (exampleEn == null || exampleEn.trim().isEmpty) ? null : exampleEn.trim(),
+    exampleVi: (exampleVi == null || exampleVi.trim().isEmpty) ? null : exampleVi.trim(),
   );
+  ref.invalidate(chapterWordsProvider(dictionaryId));
   ref.invalidate(myDictionariesProvider);
 }
 
@@ -166,6 +188,8 @@ Future<void> editWord(
   String? phonetic,
   int? partOfSpeechCode,
   String? imagePath,
+  String? exampleEn,
+  String? exampleVi,
 }) async {
   final vocabRepo = await ref.read(vocabRepositoryProvider.future);
   vocabRepo.updateManualWord(
@@ -175,6 +199,8 @@ Future<void> editWord(
     phonetic: (phonetic == null || phonetic.trim().isEmpty) ? null : phonetic.trim(),
     partOfSpeechCode: partOfSpeechCode,
     imagePath: imagePath,
+    exampleEn: (exampleEn == null || exampleEn.trim().isEmpty) ? null : exampleEn.trim(),
+    exampleVi: (exampleVi == null || exampleVi.trim().isEmpty) ? null : exampleVi.trim(),
   );
   ref.invalidate(chapterWordsProvider(dictionaryId));
   ref.invalidate(myDictionariesProvider);

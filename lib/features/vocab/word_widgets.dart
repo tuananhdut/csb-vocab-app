@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../data/services/tts_service.dart';
 import '../../domain/entities/word.dart';
+import 'add_to_dictionary_sheet.dart';
 
 /// Ảnh minh hoạ 1 từ vựng — tự nhận diện nguồn: [imagePath] tuyệt đối
 /// (từ tự thêm, ảnh do user upload, xem `AddWordScreen`) dùng
@@ -83,6 +84,38 @@ class PosTag extends StatelessWidget {
               fontFamily: AppFonts.mono,
               color: color,
             ),
+      ),
+    );
+  }
+}
+
+/// Nhãn phân biệt kết quả tra qua API ngoài (MyMemory) — chưa lưu vào
+/// `words`, xem [VocabWord.isOnline]. Màu cam accent để dễ nhận ra
+/// ngay trong danh sách trộn chung với kết quả local.
+class _OnlineBadge extends StatelessWidget {
+  const _OnlineBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.snap.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.wifi, size: 10, color: AppColors.snapDeep),
+          const SizedBox(width: 3),
+          Text(
+            'Online',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.snapDeep,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -178,7 +211,10 @@ class WordTile extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (showChapter && word.chapterTitle.isNotEmpty) ...[
+                        if (word.isOnline) ...[
+                          const SizedBox(width: 8),
+                          const _OnlineBadge(),
+                        ] else if (showChapter && word.chapterTitle.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 96),
@@ -260,7 +296,12 @@ class WordDetailContent extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     const ipaColor = AppColors.brand;
-    final examples = ref.watch(wordExamplesProvider(word.id));
+    // Kết quả Online chưa có id thật trong `words` (xem
+    // VocabWord.onlineWordSentinelId) -> không watch provider nào truy
+    // vấn theo id, tránh lỗi/dữ liệu rác từ id sentinel.
+    final examples = word.isOnline
+        ? const AsyncValue<List<WordExample>>.data([])
+        : ref.watch(wordExamplesProvider(word.id));
 
     return ListView(
       controller: scrollController,
@@ -269,6 +310,10 @@ class WordDetailContent extends ConsumerWidget {
         if (leadingAction != null) ...[
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [leadingAction!]),
           const SizedBox(height: 20),
+        ],
+        if (word.isOnline) ...[
+          const Align(alignment: Alignment.centerLeft, child: _OnlineBadge()),
+          const SizedBox(height: 10),
         ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -342,6 +387,21 @@ class WordDetailContent extends ConsumerWidget {
                 style:
                     textTheme.bodySmall?.copyWith(color: scheme.outline)),
           ]),
+        ],
+        if (word.isOnline) ...[
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => showAddToDictionarySheet(
+                context,
+                word: word.word,
+                meaningVi: word.meaningVi,
+              ),
+              icon: const Icon(Icons.bookmark_add_outlined),
+              label: const Text('Thêm vào bộ'),
+            ),
+          ),
         ],
         const SizedBox(height: 20),
         examples.when(
