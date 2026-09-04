@@ -1,8 +1,12 @@
+import 'dart:io' show Platform;
+import 'dart:typed_data' show Uint8List;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfx/pdfx.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../domain/entities/section.dart';
@@ -167,7 +171,14 @@ class _ChapterTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ChapterContentScreen(chapterId: chapter.id)),
+        MaterialPageRoute(
+          // The title is already known here, so desktop's merged header
+          // (see home_shell.dart's _SubtitleTrackingObserver) can show it
+          // immediately instead of waiting on ChapterContentScreen's own
+          // provider watch.
+          settings: RouteSettings(arguments: chapter.title),
+          builder: (_) => ChapterContentScreen(chapterId: chapter.id),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -218,19 +229,29 @@ class ChapterContentScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final chapter = ref.watch(articleChapterProvider(chapterId));
+    final content = chapter.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Lỗi: $e')),
+      data: (c) {
+        if (c == null) return const Center(child: Text('Không tìm thấy bài đọc.'));
+        if (c.pdfPath == null) {
+          return const Center(child: Text('Chưa có nội dung cho bài này.'));
+        }
+        return _ChapterPdfBody(pdfPath: c.pdfPath!);
+      },
+    );
+
+    // Desktop already gets a back+title bar from HomeShell's merged page
+    // header (driven by this route's `arguments`, set in _ChapterTile), so
+    // adding our own AppBar here would stack two bars — only mobile keeps
+    // its own Scaffold/AppBar.
+    final isDesktop =
+        MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
+    if (isDesktop) return content;
+
     return Scaffold(
       appBar: AppBar(title: Text(chapter.value?.title ?? '')),
-      body: chapter.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Lỗi: $e')),
-        data: (c) {
-          if (c == null) return const Center(child: Text('Không tìm thấy bài đọc.'));
-          if (c.pdfPath == null) {
-            return const Center(child: Text('Chưa có nội dung cho bài này.'));
-          }
-          return _ChapterPdfBody(pdfPath: c.pdfPath!);
-        },
-      ),
+      body: content,
     );
   }
 }
@@ -283,24 +304,154 @@ class _PdfAssetView extends StatefulWidget {
 }
 
 class _PdfAssetViewState extends State<_PdfAssetView> {
-  late final PdfControllerPinch _controller;
+  // pdfx's pinch viewer (PdfViewPinch) throws UnimplementedError on
+  // Windows. Its paged PdfView (PageView-based) is an alternative, but
+  // pages snap to the full viewport instead of scrolling continuously,
+  // so mouse-wheel scrolling still feels stuck. Windows instead renders
+  // pages to images and lays them out in a plain ListView, which scrolls
+  // like any other Flutter list.
+  final bool _usePinch = !Platform.isWindows;
+
+  PdfControllerPinch? _controllerPinch;
+  Future<PdfDocument>? _documentFuture;
 
   @override
   void initState() {
     super.initState();
-    _controller = PdfControllerPinch(
-      document: PdfDocument.openAsset(widget.assetPath),
-    );
+    if (_usePinch) {
+      _controllerPinch = PdfControllerPinch(
+        document: PdfDocument.openAsset(widget.assetPath),
+      );
+    } else {
+      _documentFuture = PdfDocument.openAsset(widget.assetPath);
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controllerPinch?.dispose();
+    _documentFuture?.then((document) => document.close());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return PdfViewPinch(controller: _controller);
+    if (_usePinch) {
+      return PdfViewPinch(controller: _controllerPinch!);
+    }
+    return FutureBuilder<PdfDocument>(
+      future: _documentFuture,
+      builder: (context, snapshot) {
+        final document = snapshot.data;
+        if (document == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return _PdfPageScrollList(document: document);
+      },
+    );
+  }
+}
+
+/// Continuous, mouse-wheel-friendly page list used on Windows in place of
+/// pdfx's PdfView/PdfViewPinch (see [_PdfAssetViewState]). Pages are capped
+/// to a reading-width column on a grey backdrop instead of stretching
+/// edge-to-edge, so each page reads like a sheet of paper.
+class _PdfPageScrollList extends StatelessWidget {
+  const _PdfPageScrollList({required this.document});
+  final PdfDocument document;
+
+  static const _maxPageWidth = 820.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.pageBg,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+        itemCount: document.pagesCount,
+        separatorBuilder: (_, _) => const SizedBox(height: 16),
+        itemBuilder: (_, index) => Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _maxPageWidth),
+            child: _PdfPageImage(document: document, pageNumber: index + 1),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PdfPageImage extends StatefulWidget {
+  const _PdfPageImage({required this.document, required this.pageNumber});
+  final PdfDocument document;
+  final int pageNumber;
+
+  @override
+  State<_PdfPageImage> createState() => _PdfPageImageState();
+}
+
+class _PdfPageImageState extends State<_PdfPageImage>
+    with AutomaticKeepAliveClientMixin<_PdfPageImage> {
+  Uint8List? _bytes;
+  double _aspectRatio = 1 / 1.4142; // A4 fallback while the page renders.
+
+  // Without this, ListView disposes pages once they scroll past the cache
+  // extent and re-renders them from scratch (a fresh pdfx render call)
+  // every time they scroll back into view — the jank the user reported.
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _render();
+  }
+
+  Future<void> _render() async {
+    final page = await widget.document.getPage(widget.pageNumber);
+    try {
+      final image = await page.render(
+        width: page.width * 2,
+        height: page.height * 2,
+        format: PdfPageImageFormat.jpeg,
+        backgroundColor: '#ffffff',
+      );
+      if (mounted && image != null) {
+        setState(() {
+          _bytes = image.bytes;
+          _aspectRatio = page.width / page.height;
+        });
+      }
+    } finally {
+      await page.close();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.panel,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: AspectRatio(
+          aspectRatio: _aspectRatio,
+          child: _bytes == null
+              ? const Center(child: CircularProgressIndicator())
+              : Image.memory(_bytes!, fit: BoxFit.contain),
+        ),
+      ),
+    );
   }
 }

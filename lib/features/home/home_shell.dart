@@ -30,17 +30,49 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
   bool _dueNotified = false;
 
-  static const _destinations = <_Destination>[
-    _Destination('Tra cứu', Icons.explore_outlined, SearchScreen()),
-    _Destination('Học', Icons.menu_book_outlined, LessonsScreen()),
-    _Destination('Dịch', Icons.waves_outlined, TranslateScreen()),
-    _Destination('Từ điển của tôi', Icons.collections_bookmark_outlined, MyDictionariesScreen()),
-  ];
+  // Desktop wraps "Học" in its own Navigator so drilling into a chapter's
+  // PDF only swaps the content pane — pushing straight onto the root
+  // Navigator (as mobile does) would cover the sidebar/nav-rail too.
+  //
+  // Sub-pages pushed there (e.g. ChapterContentScreen) skip their own
+  // AppBar on desktop and instead pass their title as the route's
+  // `arguments`; this observer mirrors it into [_lessonsSubtitle] so
+  // [_PageHeader] can render a single merged back+title bar instead of
+  // stacking its own bar on top of a per-page one.
+  final _lessonsNavigatorKey = GlobalKey<NavigatorState>();
+  final _lessonsSubtitle = ValueNotifier<String?>(null);
+  late final _lessonsTitleObserver = _SubtitleTrackingObserver(_lessonsSubtitle);
+
+  List<_Destination> _destinations(bool isDesktop) => <_Destination>[
+        const _Destination('Tra cứu', Icons.explore_outlined, SearchScreen()),
+        _Destination(
+          'Học',
+          Icons.menu_book_outlined,
+          isDesktop
+              ? Navigator(
+                  key: _lessonsNavigatorKey,
+                  observers: [_lessonsTitleObserver],
+                  onGenerateRoute: (_) => MaterialPageRoute(
+                    builder: (_) => const LessonsScreen(),
+                  ),
+                )
+              : const LessonsScreen(),
+        ),
+        const _Destination('Dịch', Icons.waves_outlined, TranslateScreen()),
+        const _Destination('Từ điển của tôi', Icons.collections_bookmark_outlined, MyDictionariesScreen()),
+      ];
+
+  @override
+  void dispose() {
+    _lessonsSubtitle.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDesktop =
         MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
+    final destinations = _destinations(isDesktop);
     final dueCount = ref.watch(dueReviewCountProvider).value ?? 0;
 
     // Nhắc 1 lần khi mở app nếu có từ đến hạn ôn (FR-5.3, Windows: in-app +
@@ -58,7 +90,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         const Positioned.fill(child: _ContentWatermark()),
         IndexedStack(
           index: _index,
-          children: [for (final d in _destinations) d.screen],
+          children: [for (final d in destinations) d.screen],
         ),
       ],
     );
@@ -67,7 +99,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       appBar: isDesktop
           ? null
           : AppBar(
-              title: Text(_destinations[_index].label),
+              title: Text(destinations[_index].label),
               actions: [
                 const Padding(
                   padding: EdgeInsets.only(right: 12),
@@ -97,7 +129,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                         child: ListView(
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           children: [
-                            for (final (i, d) in _destinations.indexed)
+                            for (final (i, d) in destinations.indexed)
                               _NavRailItem(
                                 label: d.label,
                                 icon: _destinationIcon(d.icon, i, dueCount),
@@ -118,7 +150,18 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 Expanded(
                   child: Column(
                     children: [
-                      _PageHeader(title: _destinations[_index].label),
+                      ValueListenableBuilder<String?>(
+                        valueListenable: _lessonsSubtitle,
+                        builder: (context, subtitle, _) {
+                          final showBack = _index == 1 && subtitle != null;
+                          return _PageHeader(
+                            title: showBack ? subtitle : destinations[_index].label,
+                            onBack: showBack
+                                ? () => _lessonsNavigatorKey.currentState?.maybePop()
+                                : null,
+                          );
+                        },
+                      ),
                       Expanded(child: body),
                     ],
                   ),
@@ -131,7 +174,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           : _BottomNavBar(
               selectedIndex: _index,
               onSelect: _onSelect,
-              destinations: _destinations,
+              destinations: destinations,
               iconBuilder: _destinationIcon,
               dueCount: dueCount,
             ),
@@ -341,14 +384,19 @@ class _NavRailItem extends StatelessWidget {
 /// `Scaffold.appBar` để khớp `.page-header` trong mockup Windows (tiêu đề
 /// nằm trong `page-body`, tách khỏi title bar cửa sổ). Mobile vẫn dùng
 /// `AppBar` thông thường, không đổi.
+///
+/// Khi [onBack] khác null (đang xem 1 trang con, vd. nội dung PDF của 1
+/// chapter), hiện thêm mũi tên back — gộp làm 1 header thay vì để trang con
+/// tự vẽ `AppBar` riêng chồng lên header này.
 class _PageHeader extends StatelessWidget {
-  const _PageHeader({required this.title});
+  const _PageHeader({required this.title, this.onBack});
   final String title;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
+      padding: EdgeInsets.fromLTRB(onBack == null ? 28 : 12, 12, 28, 12),
       decoration: BoxDecoration(
         color: AppColors.white,
         border: Border(
@@ -357,7 +405,20 @@ class _PageHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(title, style: Theme.of(context).textTheme.headlineSmall),
+          if (onBack != null)
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              color: AppColors.ink,
+              onPressed: onBack,
+            ),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
         ],
       ),
     );
@@ -524,4 +585,25 @@ class _NavRailBrand extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Mirrors the topmost route's `arguments` (expected to be a nullable
+/// title string, or null for a tab's base route) into [notifier], so
+/// [_PageHeader] can track the desktop Lessons Navigator from outside it.
+class _SubtitleTrackingObserver extends NavigatorObserver {
+  _SubtitleTrackingObserver(this.notifier);
+  final ValueNotifier<String?> notifier;
+
+  void _sync(Route<dynamic>? route) {
+    notifier.value = route?.settings.arguments as String?;
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _sync(route);
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _sync(previousRoute);
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => _sync(previousRoute);
 }
