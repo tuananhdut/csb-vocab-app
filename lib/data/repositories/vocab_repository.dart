@@ -66,6 +66,7 @@ class VocabRepository {
     String query, {
     required SearchDirection direction,
     int limit = 50,
+    int offset = 0,
   }) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
@@ -78,15 +79,21 @@ class VocabRepository {
     };
     final matchParams = [like];
 
+    // "w.id" o cuoi ORDER BY chi de PHA THE HOA - cac dong khac deu
+    // trung word_lower/do dai (vd nhieu muc viet tat trung headword nhu
+    // "RA") van co the co thu tu KHAC NHAU giua 2 lan truy van neu
+    // khong co tieu chi phan biet co dinh, lam LIMIT/OFFSET phan trang
+    // bi lap/mat dong. Khong anh huong thu tu hien thi (id chi phan
+    // dinh sau cung, khong doi thu tu uu tien da co).
     final rows = _db.select(
       '''$_selectWord
          WHERE w.source != 2 AND $matchColumn
          ORDER BY
            CASE WHEN w.word_lower = ? THEN 0
                 WHEN w.word_lower LIKE ? THEN 1 ELSE 2 END,
-           length(w.word), w.word_lower
-         LIMIT ?''',
-      [...matchParams, q, prefix, limit],
+           length(w.word), w.word_lower, w.id
+         LIMIT ? OFFSET ?''',
+      [...matchParams, q, prefix, limit, offset],
     );
     return rows.map(_wordFromRow).toList();
   }
@@ -163,6 +170,43 @@ class VocabRepository {
       [chapterId],
     );
     return rows.map(_wordFromRow).toList();
+  }
+
+  /// 1 trang từ trong 1 bộ (cùng WHERE/ORDER BY [wordsByChapter], thêm
+  /// `LIMIT`/`OFFSET`) — dùng cho danh sách cuộn vô hạn ở
+  /// [DictionaryDetailScreen], KHÔNG thay [wordsByChapter] (giữ nguyên
+  /// cho 2 nơi cần TOÀN BỘ id: [ReviewRepository]/
+  /// [MyDictionariesRepository]). Sau khi gộp Tu_dien.pdf, 1 bộ có thể
+  /// tới ~32K từ — tải hết 1 lần cho riêng màn danh sách là không cần
+  /// thiết.
+  List<VocabWord> wordsByChapterPage(
+    int chapterId, {
+    bool includeSub = true,
+    required int limit,
+    required int offset,
+  }) {
+    final rows = _db.select(
+      '''$_selectWord
+         JOIN word_dictionaries wd ON wd.word_id = w.id
+         WHERE wd.dictionary_id = ? ${includeSub ? '' : 'AND w.is_subentry = 0'}
+         ORDER BY w.is_subentry, w.word_lower
+         LIMIT ? OFFSET ?''',
+      [chapterId, limit, offset],
+    );
+    return rows.map(_wordFromRow).toList();
+  }
+
+  /// Tổng số từ trong 1 bộ — dùng cho tiêu đề đếm số lượng cạnh
+  /// [wordsByChapterPage] (danh sách chỉ tải từng trang, không còn biết
+  /// tổng số qua `list.length`).
+  int countWordsByChapter(int chapterId, {bool includeSub = true}) {
+    final row = _db.select(
+      '''SELECT COUNT(*) AS cnt FROM words w
+         JOIN word_dictionaries wd ON wd.word_id = w.id
+         WHERE wd.dictionary_id = ? ${includeSub ? '' : 'AND w.is_subentry = 0'}''',
+      [chapterId],
+    ).first;
+    return row['cnt'] as int;
   }
 
   List<WordExample> examplesFor(int wordId) {

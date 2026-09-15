@@ -7,16 +7,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
+import '../../data/services/connectivity_service.dart';
 import '../../domain/entities/word.dart';
 import '../vocab/word_widgets.dart';
 
 /// Sau khi bo Tu_dien.pdf vao vocab.db (~33K tu, xem docs/db/import/
-/// build_combined_vocab_db.py), goi searchProvider tren MOI ky tu go
-/// (khong debounce) tao ra 1 truy van SQL + 1 lan goi API tra Online
-/// (neu chua khop chinh xac - xem searchProvider) cho TUNG ky tu trung
-/// gian luc go, du ket qua bi ky tu tiep theo de len ngay sau do -
-/// gay cham/giat khi go nhanh. Debounce 300ms truoc khi cap nhat gia
-/// tri thuc su duoc doc boi provider.
+/// build_combined_vocab_db.py), goi tim kiem tren MOI ky tu go (khong
+/// debounce) tao ra 1 truy van SQL + 1 lan goi API tra Online (neu chua
+/// khop chinh xac) cho TUNG ky tu trung gian luc go, du ket qua bi ky
+/// tu tiep theo de len ngay sau do - gay cham/giat khi go nhanh.
+/// Debounce 300ms truoc khi thuc su chay tim kiem.
 const _searchDebounce = Duration(milliseconds: 300);
 
 /// FR-2 — Tra cứu từ vựng (offline, 2 chiều Anh↔Việt trong phạm vi giáo trình).
@@ -28,21 +28,56 @@ class SearchScreen extends ConsumerStatefulWidget {
 }
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
+  static const _pageSize = 50;
+  // Bat dau tai trang tiep theo TRUOC khi cham day danh sach, tranh
+  // khoang trong ngan khi cuon nhanh (cung nguong voi
+  // DictionaryDetailScreen).
+  static const _loadMoreThreshold = 400.0;
+
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
   Timer? _debounce;
   String _query = '';
-  // Gia tri debounce, dung de goi searchProvider - _query (khong
-  // debounce) van dung cho cac phan UI can phan hoi ngay (nut xoa,
-  // trang thai rong, thong bao "khong tim thay").
-  String _debouncedQuery = '';
   SearchDirection _direction = SearchDirection.enToVi;
   VocabWord? _selected;
+
+  // Ket qua local (co the phan trang qua _loadMore), cong them TOI DA 1
+  // dong Online o DAU DANH SACH (VocabWord.isOnline == true, chen vao
+  // vi tri 0 ngay khi tra xong dù co the den sau trang local dau tien)
+  // neu tra Online co khop - xem _maybeAppendOnline.
+  final List<VocabWord> _results = [];
+  bool _searching = false;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  Object? _searchError;
+
+  // Tang moi lan bat dau 1 luot tim kiem MOI (doi query/direction) - cac
+  // callback bat dong bo (trang tiep theo, tra Online) chup lai gia tri
+  // nay luc bat dau, bo qua ket qua neu khac luc hoan tat (vd user go
+  // tu khoa khac truoc khi ket qua cu kip ve).
+  int _searchGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.maxScrollExtent - position.pixels < _loadMoreThreshold) {
+      _loadMore();
+    }
   }
 
   void _setQuery(String value) {
@@ -53,18 +88,137 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     _debounce?.cancel();
     if (value.trim().isEmpty) {
-      // Xoa trang thi cap nhat ngay - khong ton kem gi de debounce.
-      setState(() => _debouncedQuery = value);
+      // Xoa trang thi chay ngay - khong ton kem gi de debounce, va can
+      // dep ket qua cu di ngay lap tuc.
+      _runSearch(value, _direction);
       return;
     }
     _debounce = Timer(_searchDebounce, () {
       if (!mounted) return;
-      setState(() => _debouncedQuery = value);
+      _runSearch(value, _direction);
     });
   }
 
   void _setDirection(SearchDirection direction) {
+    // Huy debounce dang cho (neu co) - khong thi timer cu no muon se
+    // tim lai bang GIA TRI GO CU, de len ket qua vua tim theo huong moi.
+    _debounce?.cancel();
     setState(() => _direction = direction);
+    _runSearch(_query, direction);
+  }
+
+  /// Bat dau 1 luot tim kiem moi (query/direction doi) - nap trang dau
+  /// tien, roi tra Online ngam (khong chan hien thi trang dau) qua
+  /// [_maybeAppendOnline].
+  Future<void> _runSearch(String query, SearchDirection direction) async {
+    final generation = ++_searchGeneration;
+    final trimmed = query.trim();
+    setState(() {
+      _results.clear();
+      _hasMore = trimmed.isNotEmpty;
+      _searchError = null;
+      _searching = trimmed.isNotEmpty;
+    });
+    if (trimmed.isEmpty) return;
+
+    try {
+      final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+      final page = vocabRepo.search(
+        query,
+        direction: direction,
+        limit: _pageSize,
+        offset: 0,
+      );
+      if (!mounted || generation != _searchGeneration) return;
+      setState(() {
+        _results.addAll(page);
+        _hasMore = page.length == _pageSize;
+        _searching = false;
+      });
+      await _maybeAppendOnline(query, direction, page, generation);
+    } catch (e) {
+      if (!mounted || generation != _searchGeneration) return;
+      setState(() {
+        _searchError = e;
+        _searching = false;
+      });
+    }
+  }
+
+  /// Bổ sung 1 kết quả Online (MyMemory) ở ĐẦU danh sách nếu: có mạng,
+  /// và không có từ nào trong [localResults] khớp CHÍNH XÁC [query]
+  /// (tránh trùng lặp/tốn quota API khi local đã có sẵn) — cùng điều
+  /// kiện với logic cũ ở `searchProvider` (nay chuyển vào đây để chạy
+  /// song song với phân trang thay vì chặn hiển thị trang đầu).
+  Future<void> _maybeAppendOnline(
+    String query,
+    SearchDirection direction,
+    List<VocabWord> localResults,
+    int generation,
+  ) async {
+    final trimmedQuery = query.trim().toLowerCase();
+    final hasExactMatch = localResults.any(
+      (w) =>
+          w.word.toLowerCase() == trimmedQuery ||
+          w.meaningVi.toLowerCase() == trimmedQuery,
+    );
+    final isOnline = ref.read(connectivityProvider).value ?? false;
+    if (hasExactMatch || !isOnline) return;
+
+    final apiService = ref.read(dictionaryApiServiceProvider);
+    final onlineResult = await apiService.lookup(
+      query.trim(),
+      direction: direction,
+    );
+    if (!mounted || generation != _searchGeneration || onlineResult == null) {
+      return;
+    }
+    setState(() {
+      _results.insert(
+        0,
+        VocabWord(
+          id: onlineWordSentinelId,
+          word: onlineResult.word,
+          phonetic: onlineResult.phonetic,
+          partOfSpeech: onlineResult.partOfSpeech,
+          meaningVi: onlineResult.meaningVi,
+          chapterTitle: '',
+          isOnline: true,
+        ),
+      );
+    });
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _searching) return;
+    final generation = _searchGeneration;
+    setState(() => _loadingMore = true);
+    try {
+      final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+      // Offset theo so ket qua LOCAL da co - dong Online (neu co) luon
+      // nam DAU danh sach, khong tinh vao offset phan trang.
+      final localCount = _results.where((w) => !w.isOnline).length;
+      final page = vocabRepo.search(
+        _query,
+        direction: _direction,
+        limit: _pageSize,
+        offset: localCount,
+      );
+      if (!mounted || generation != _searchGeneration) return;
+      setState(() {
+        // Online (neu co) luon o vi tri 0, khong bi dung toi - trang moi
+        // chi can noi vao cuoi.
+        _results.addAll(page);
+        _hasMore = page.length == _pageSize;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      // Loi tai them: giu danh sach da co, chi tat co xoay - user cuon
+      // lai la thu lai duoc.
+      if (mounted && generation == _searchGeneration) {
+        setState(() => _loadingMore = false);
+      }
+    }
   }
 
   Widget _buildSearchField() {
@@ -115,13 +269,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final results = ref.watch(
-      searchProvider((query: _debouncedQuery, direction: _direction)),
-    );
     final isDesktop =
         MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
 
-    if (isDesktop) return _buildTwoPane(results);
+    if (isDesktop) return _buildTwoPane();
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -129,37 +280,44 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       child: Column(
         children: [
           _buildSearchField(),
-          Expanded(
-            child: _query.trim().isEmpty
-                ? const _SearchEmptyCarousel()
-                : results.when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Center(child: Text('Lỗi: $e')),
-                    data: (words) {
-                      if (words.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'Không tìm thấy "$_query"',
-                            style: Theme.of(context).textTheme.bodyLarge,
-                          ),
-                        );
-                      }
-                      return _buildSingleColumn(words);
-                    },
-                  ),
-          ),
+          Expanded(child: _buildResultsArea()),
         ],
       ),
     );
   }
 
+  /// Nội dung vùng kết quả (dưới ô tìm kiếm) — dùng chung cho mobile
+  /// (full width) và cột trái layout desktop.
+  Widget _buildResultsArea() {
+    if (_query.trim().isEmpty) return const _SearchEmptyCarousel();
+    if (_searching) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_searchError != null) {
+      return Center(child: Text('Lỗi: $_searchError'));
+    }
+    if (_results.isEmpty) {
+      return Center(
+        child: Text(
+          'Không tìm thấy "$_query"',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+      );
+    }
+    return _buildSingleColumn(_results);
+  }
+
   /// Mobile: danh sách kết quả, bấm 1 dòng mở `WordDetailSheet` bottom sheet.
   Widget _buildSingleColumn(List<VocabWord> words) {
+    final footerCount = _hasMore ? 1 : 0;
     return ListView.separated(
-      itemCount: words.length,
+      controller: _scrollController,
+      itemCount: words.length + footerCount,
       separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (_, i) => WordTile(word: words[i], showChapter: true),
+      itemBuilder: (_, i) => i >= words.length
+          ? _LoadMoreFooter(loading: _loadingMore)
+          : WordTile(word: words[i], showChapter: true),
     );
   }
 
@@ -167,7 +325,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   /// (`pane-list`), cột phải hiển thị chi tiết từ đang chọn
   /// (`pane-detail`), khớp mockup
   /// `docs/artifact-design-windows/screens/screen-02-tra-cuu.html`.
-  Widget _buildTwoPane(AsyncValue<List<VocabWord>> results) {
+  Widget _buildTwoPane() {
+    final footerCount = _hasMore ? 1 : 0;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -182,37 +341,34 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   Expanded(
                     child: _query.trim().isEmpty
                         ? const _SearchEmptyCarousel()
-                        : results.when(
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
+                        : _searching
+                        ? const Center(child: CircularProgressIndicator())
+                        : _searchError != null
+                        ? Center(child: Text('Lỗi: $_searchError'))
+                        : _results.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Không tìm thấy "$_query"',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
-                            error: (e, _) => Center(child: Text('Lỗi: $e')),
-                            data: (words) {
-                              if (words.isEmpty) {
-                                return Center(
-                                  child: Text(
-                                    'Không tìm thấy "$_query"',
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium,
-                                  ),
-                                );
+                          )
+                        : ListView.separated(
+                            controller: _scrollController,
+                            itemCount: _results.length + footerCount,
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 1),
+                            itemBuilder: (_, i) {
+                              if (i >= _results.length) {
+                                return _LoadMoreFooter(loading: _loadingMore);
                               }
-                              return ListView.separated(
-                                itemCount: words.length,
-                                separatorBuilder: (_, _) =>
-                                    const Divider(height: 1),
-                                itemBuilder: (_, i) {
-                                  final word = words[i];
-                                  return WordTile(
-                                    word: word,
-                                    showChapter: true,
-                                    selected: _selected?.id == word.id,
-                                    onTap: () =>
-                                        setState(() => _selected = word),
-                                  );
-                                },
+                              final word = _results[i];
+                              return WordTile(
+                                word: word,
+                                showChapter: true,
+                                selected: _selected?.id == word.id,
+                                onTap: () =>
+                                    setState(() => _selected = word),
                               );
                             },
                           ),
@@ -234,6 +390,29 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Dòng cuối danh sách khi còn trang tiếp theo (cuộn vô hạn) — khớp
+/// `_LoadMoreFooter` trong `dictionary_detail_screen.dart`, khai báo
+/// riêng ở đây vì widget private không export được giữa 2 file.
+class _LoadMoreFooter extends StatelessWidget {
+  const _LoadMoreFooter({required this.loading});
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!loading) return const SizedBox(height: 24);
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
       ),
     );
   }

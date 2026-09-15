@@ -10,7 +10,10 @@ import '../vocab/word_widgets.dart';
 import 'add_word_screen.dart';
 
 /// SCR-07c — Chi tiết bộ từ điển: toàn bộ từ thuộc [dictionaryId], mở
-/// từ nút "Xem" trên card (SCR-07). Tái dùng [chapterWordsProvider] —
+/// từ nút "Xem" trên card (SCR-07). Tự quản lý state cuộn vô hạn (nạp
+/// theo trang qua [VocabRepository.wordsByChapterPage]) thay vì watch
+/// `chapterWordsProvider` như trước — 1 bộ có thể tới ~32K từ (sau khi
+/// gộp Tu_dien.pdf), nạp hết 1 lần vào 1 `FutureProvider` là quá tốn.
 /// `word_dictionaries.dictionary_id` là cùng cột dùng cho cả bộ giáo
 /// trình lẫn bộ cá nhân, nên logic lấy từ theo bộ giống hệt lấy từ
 /// theo chương.
@@ -52,7 +55,108 @@ class DictionaryDetailScreen extends ConsumerStatefulWidget {
 
 class _DictionaryDetailScreenState
     extends ConsumerState<DictionaryDetailScreen> {
+  static const _pageSize = 10;
+  // Bat dau tai trang tiep theo TRUOC khi cham day danh sach, tranh
+  // khoang trong ngan khi cuon nhanh.
+  static const _loadMoreThreshold = 400.0;
+
   VocabWord? _selected;
+  final _scrollController = ScrollController();
+
+  final List<VocabWord> _words = [];
+  int? _totalCount;
+  bool _initialLoading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  Object? _loadError;
+
+  // Tang moi lan _loadInitial() chay - _loadMore() chup lai gia tri nay
+  // luc bat dau va so sanh khi ket qua ve, tranh 1 lan cuon-toi-day dang
+  // cho DB (vd dung ngay luc bam Sua/Xoa dieu huong sang man khac) noi
+  // ket qua ve SAU khi _loadInitial() da reset _words - khong con thi
+  // se ghi de len danh sach moi bang offset cua danh sach cu, sai lech.
+  int _loadGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    _loadInitial();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.maxScrollExtent - position.pixels < _loadMoreThreshold) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadInitial() async {
+    final generation = ++_loadGeneration;
+    setState(() {
+      _initialLoading = true;
+      _loadingMore = false;
+      _loadError = null;
+      _words.clear();
+      _hasMore = true;
+    });
+    try {
+      final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+      final page = vocabRepo.wordsByChapterPage(
+        widget.dictionaryId,
+        limit: _pageSize,
+        offset: 0,
+      );
+      final total = vocabRepo.countWordsByChapter(widget.dictionaryId);
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _words.addAll(page);
+        _totalCount = total;
+        _hasMore = page.length == _pageSize;
+        _initialLoading = false;
+      });
+    } catch (e) {
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _loadError = e;
+        _initialLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _initialLoading) return;
+    final generation = _loadGeneration;
+    setState(() => _loadingMore = true);
+    try {
+      final vocabRepo = await ref.read(vocabRepositoryProvider.future);
+      final page = vocabRepo.wordsByChapterPage(
+        widget.dictionaryId,
+        limit: _pageSize,
+        offset: _words.length,
+      );
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _words.addAll(page);
+        _hasMore = page.length == _pageSize;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      // Loi tai them: giu danh sach da co, chi tat co xoay, user cuon
+      // lai la thu lai duoc (khong chan ca man vi 1 loi tam thoi o 1 trang).
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _loadingMore = false);
+      }
+    }
+  }
 
   Future<void> _addWord() async {
     await Navigator.of(context).push(
@@ -63,6 +167,7 @@ class _DictionaryDetailScreenState
         ),
       ),
     );
+    if (mounted) await _loadInitial();
   }
 
   Future<void> _editWord(VocabWord word) async {
@@ -75,8 +180,11 @@ class _DictionaryDetailScreenState
         ),
       ),
     );
-    // Bộ đã sửa xong -> danh sách nạp lại từ mới; bỏ chọn để tránh giữ
-    // dữ liệu cũ trên pane phải (desktop) sau khi provider invalidate.
+    // Bộ đã sửa xong -> nạp lại từ đầu (đơn giản, đúng cho danh sách vài
+    // chục-vài trăm trang thay vì cố giữ đúng vị trí cuộn); bỏ chọn vì
+    // [_selected] đang giữ dữ liệu cũ trước khi sửa (pane phải desktop).
+    if (!mounted) return;
+    await _loadInitial();
     if (mounted) setState(() => _selected = null);
   }
 
@@ -118,6 +226,10 @@ class _DictionaryDetailScreenState
 
     await deleteWord(ref, wordId: word.id, dictionaryId: widget.dictionaryId);
     if (!mounted) return;
+    await _loadInitial();
+    if (!mounted) return;
+    // Chi bo chon neu dung tu vua xoa dang duoc chon (pane phai desktop)
+    // - xoa 1 tu KHAC voi tu dang xem thi giu nguyen lua chon.
     if (_selected?.id == word.id) setState(() => _selected = null);
     ScaffoldMessenger.of(
       context,
@@ -126,7 +238,6 @@ class _DictionaryDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final words = ref.watch(chapterWordsProvider(widget.dictionaryId));
     final isDesktop =
         MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
 
@@ -141,31 +252,39 @@ class _DictionaryDetailScreenState
           ),
         ],
       ),
-      body: words.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Lỗi: $e')),
-        data: (list) {
-          if (list.isEmpty) {
-            return _EmptyState(onAddWord: _addWord);
-          }
-          return isDesktop ? _buildTwoPane(list) : _buildSingleColumn(list);
-        },
-      ),
+      body: _buildBody(isDesktop),
     );
+  }
+
+  Widget _buildBody(bool isDesktop) {
+    if (_initialLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_loadError != null) {
+      return Center(child: Text('Lỗi: $_loadError'));
+    }
+    if (_words.isEmpty) {
+      return _EmptyState(onAddWord: _addWord);
+    }
+    return isDesktop ? _buildTwoPane(_words) : _buildSingleColumn(_words);
   }
 
   /// Mobile: danh sách đầy màn hình, bấm 1 dòng mở [WordDetailSheet]
   /// bottom sheet (hành vi mặc định của [WordTile.onTap]).
   Widget _buildSingleColumn(List<VocabWord> list) {
+    final footerCount = _hasMore ? 1 : 0;
     return Column(
       children: [
-        _CountHeader(count: list.length),
+        _CountHeader(count: _totalCount ?? list.length),
         Expanded(
           child: ListView.separated(
+            controller: _scrollController,
             padding: const EdgeInsets.only(bottom: 8),
-            itemCount: list.length,
+            itemCount: list.length + footerCount,
             separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (_, i) => _buildTile(list[i]),
+            itemBuilder: (_, i) => i >= list.length
+                ? _LoadMoreFooter(loading: _loadingMore)
+                : _buildTile(list[i]),
           ),
         ),
       ],
@@ -176,6 +295,7 @@ class _DictionaryDetailScreenState
   /// trái là danh sách trong 1 card trắng, cột phải hiển thị chi tiết
   /// từ đang chọn inline (không mở bottom sheet trên màn rộng).
   Widget _buildTwoPane(List<VocabWord> list) {
+    final footerCount = _hasMore ? 1 : 0;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -186,13 +306,17 @@ class _DictionaryDetailScreenState
             child: _Card(
               child: Column(
                 children: [
-                  _CountHeader(count: list.length),
+                  _CountHeader(count: _totalCount ?? list.length),
                   const Divider(height: 1),
                   Expanded(
                     child: ListView.separated(
-                      itemCount: list.length,
+                      controller: _scrollController,
+                      itemCount: list.length + footerCount,
                       separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (_, i) {
+                        if (i >= list.length) {
+                          return _LoadMoreFooter(loading: _loadingMore);
+                        }
                         final word = list[i];
                         return _buildTile(
                           word,
@@ -286,6 +410,30 @@ class _CountHeader extends StatelessWidget {
         '$count từ',
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
           color: Theme.of(context).colorScheme.outline,
+        ),
+      ),
+    );
+  }
+}
+
+/// Dòng cuối danh sách khi còn trang tiếp theo ([DictionaryDetailScreen]
+/// cuộn vô hạn) — chỉ hiện xoay vòng lúc đang thật sự tải ([loading]
+/// true, do `_onScroll` kích hoạt); khi chưa cuộn tới thì để trống,
+/// tránh 1 dòng xoay vòng hiện thường trực gây rối mắt.
+class _LoadMoreFooter extends StatelessWidget {
+  const _LoadMoreFooter({required this.loading});
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!loading) return const SizedBox(height: 24);
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
       ),
     );
