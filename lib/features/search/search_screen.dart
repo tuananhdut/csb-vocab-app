@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,15 @@ import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../domain/entities/word.dart';
 import '../vocab/word_widgets.dart';
+
+/// Sau khi bo Tu_dien.pdf vao vocab.db (~33K tu, xem docs/db/import/
+/// build_combined_vocab_db.py), goi searchProvider tren MOI ky tu go
+/// (khong debounce) tao ra 1 truy van SQL + 1 lan goi API tra Online
+/// (neu chua khop chinh xac - xem searchProvider) cho TUNG ky tu trung
+/// gian luc go, du ket qua bi ky tu tiep theo de len ngay sau do -
+/// gay cham/giat khi go nhanh. Debounce 300ms truoc khi cap nhat gia
+/// tri thuc su duoc doc boi provider.
+const _searchDebounce = Duration(milliseconds: 300);
 
 /// FR-2 — Tra cứu từ vựng (offline, 2 chiều Anh↔Việt trong phạm vi giáo trình).
 class SearchScreen extends ConsumerStatefulWidget {
@@ -18,12 +29,18 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
+  Timer? _debounce;
   String _query = '';
+  // Gia tri debounce, dung de goi searchProvider - _query (khong
+  // debounce) van dung cho cac phan UI can phan hoi ngay (nut xoa,
+  // trang thai rong, thong bao "khong tim thay").
+  String _debouncedQuery = '';
   SearchDirection _direction = SearchDirection.enToVi;
   VocabWord? _selected;
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -32,6 +49,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     setState(() {
       _query = value;
       if (value.trim().isEmpty) _selected = null;
+    });
+
+    _debounce?.cancel();
+    if (value.trim().isEmpty) {
+      // Xoa trang thi cap nhat ngay - khong ton kem gi de debounce.
+      setState(() => _debouncedQuery = value);
+      return;
+    }
+    _debounce = Timer(_searchDebounce, () {
+      if (!mounted) return;
+      setState(() => _debouncedQuery = value);
     });
   }
 
@@ -88,7 +116,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final results = ref.watch(
-      searchProvider((query: _query, direction: _direction)),
+      searchProvider((query: _debouncedQuery, direction: _direction)),
     );
     final isDesktop =
         MediaQuery.sizeOf(context).width >= AppConstants.desktopBreakpoint;
