@@ -1,0 +1,40 @@
+name: Android build
+
+# Build ban Android Release (.apk, cai truc tiep len may) — dung chung
+# ky debug hien tai (android/app/build.gradle.kts: "TODO: Add your own
+# signing config for the release build... Signing with the debug keys
+# for now") nen APK nay chi de test/gui thu, chua phai ban nop Play
+# Store (can keystore rieng + Play App Signing, ngoai pham vi workflow
+# nay).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+
+      - run: flutter pub get
+
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csb-vocab-app-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
