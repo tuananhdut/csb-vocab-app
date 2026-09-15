@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dismiss_keyboard_on_tap.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../data/repositories/vocab_repository.dart';
 import '../../data/services/connectivity_service.dart';
@@ -257,7 +258,10 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
   /// DB cho phép nhiều (`examples.word_id` không UNIQUE) — `_save` chỉ
   /// link, không đụng bảng `examples`, nên ví dụ user gõ khác bản ghi
   /// gốc mà vẫn link sẽ mất, phải bắt tạo bản ghi MANUAL mới thay vào đó.
-  bool _formMatchesRecord(VocabWord record, List<WordExample> existingExamples) {
+  bool _formMatchesRecord(
+    VocabWord record,
+    List<WordExample> existingExamples,
+  ) {
     final wordMatches =
         _wordController.text.trim().toLowerCase() ==
         record.word.trim().toLowerCase();
@@ -462,244 +466,246 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Sửa từ' : 'Tự thêm từ mới'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
+      body: DismissKeyboardOnTap(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.panel2,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.collections_bookmark_outlined,
+                              size: 14,
+                              color: AppColors.brand,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              widget.dictionaryName,
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(color: AppColors.brand),
+                            ),
+                          ],
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.panel2,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: AppColors.border),
+                      const SizedBox(height: 20),
+                      _ImagePickerField(
+                        image: _pickedImage,
+                        onPick: _pickImage,
+                        onRemove: _removeImage,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      const SizedBox(height: 24),
+                      _SectionLabel('TỪ TIẾNG ANH', required: true),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _wordController,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        decoration: const InputDecoration(
+                          hintText: 'Nhập từ hoặc cụm từ',
+                        ),
+                        onChanged: (_) => _onWordEdited(),
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                            ? 'Bắt buộc'
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+                      // AnimatedBuilder vi _onWordEdited/_onMeaningEdited
+                      // khong luon goi setState (xem
+                      // _clearLinkedWordIfUserEdited).
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: AnimatedBuilder(
+                          animation: Listenable.merge([
+                            _wordController,
+                            _meaningController,
+                          ]),
+                          builder: (context, _) {
+                            final bothFilled =
+                                _wordController.text.trim().isNotEmpty &&
+                                _meaningController.text.trim().isNotEmpty;
+                            return OutlinedButton.icon(
+                              onPressed: (_autofilling || bothFilled)
+                                  ? null
+                                  : _autofill,
+                              icon: _autofilling
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.auto_awesome, size: 16),
+                              label: const Text('Tự điền từ dữ liệu'),
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _SectionLabel('NGHĨA TIẾNG VIỆT', required: true),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _meaningController,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        decoration: const InputDecoration(
+                          hintText: 'Nhập nghĩa của từ',
+                        ),
+                        onChanged: (_) => _onMeaningEdited(),
+                        validator: (value) =>
+                            (value == null || value.trim().isEmpty)
+                            ? 'Bắt buộc'
+                            : null,
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.collections_bookmark_outlined,
-                            size: 14,
-                            color: AppColors.brand,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _SectionLabel('PHIÊN ÂM'),
+                                const SizedBox(height: 6),
+                                TextFormField(
+                                  controller: _phoneticController,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        fontFamily: AppFonts.mono,
+                                        color: AppColors.brand,
+                                      ),
+                                  decoration: const InputDecoration(
+                                    hintText: '/tʃɒk/',
+                                  ),
+                                  onChanged: (_) =>
+                                      _clearLinkedWordIfUserEdited(),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            widget.dictionaryName,
-                            style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(color: AppColors.brand),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _SectionLabel('LOẠI TỪ'),
+                                const SizedBox(height: 6),
+                                _PartOfSpeechDropdown(
+                                  value: _partOfSpeechCode,
+                                  onChanged: (value) => setState(() {
+                                    _partOfSpeechCode = value;
+                                    if (!_autofilling) _linkedWordId = null;
+                                  }),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    _ImagePickerField(
-                      image: _pickedImage,
-                      onPick: _pickImage,
-                      onRemove: _removeImage,
-                    ),
-                    const SizedBox(height: 24),
-                    _SectionLabel('TỪ TIẾNG ANH', required: true),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _wordController,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      decoration: const InputDecoration(
-                        hintText: 'Nhập từ hoặc cụm từ',
+                      const SizedBox(height: 18),
+                      _SectionLabel('VÍ DỤ THỰC TẾ'),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _exampleEnController,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        decoration: const InputDecoration(
+                          hintText: 'Câu ví dụ (tiếng Anh)',
+                        ),
+                        onChanged: (_) => _clearLinkedWordIfUserEdited(),
+                        validator: (value) =>
+                            (value != null &&
+                                value.trim().isNotEmpty &&
+                                _exampleViController.text.trim().isEmpty)
+                            ? 'Cần điền cả bản dịch bên dưới'
+                            : null,
                       ),
-                      onChanged: (_) => _onWordEdited(),
-                      validator: (value) =>
-                          (value == null || value.trim().isEmpty)
-                          ? 'Bắt buộc'
-                          : null,
-                    ),
-                    const SizedBox(height: 10),
-                    // AnimatedBuilder vi _onWordEdited/_onMeaningEdited
-                    // khong luon goi setState (xem
-                    // _clearLinkedWordIfUserEdited).
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: AnimatedBuilder(
-                        animation: Listenable.merge([
-                          _wordController,
-                          _meaningController,
-                        ]),
-                        builder: (context, _) {
-                          final bothFilled =
-                              _wordController.text.trim().isNotEmpty &&
-                              _meaningController.text.trim().isNotEmpty;
-                          return OutlinedButton.icon(
-                            onPressed: (_autofilling || bothFilled)
-                                ? null
-                                : _autofill,
-                            icon: _autofilling
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.auto_awesome, size: 16),
-                            label: const Text('Tự điền từ dữ liệu'),
-                            style: OutlinedButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _exampleViController,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        decoration: const InputDecoration(
+                          hintText: 'Dịch nghĩa câu ví dụ',
+                        ),
+                        onChanged: (_) => _clearLinkedWordIfUserEdited(),
+                        validator: (value) =>
+                            (value != null &&
+                                value.trim().isNotEmpty &&
+                                _exampleEnController.text.trim().isEmpty)
+                            ? 'Cần điền cả câu tiếng Anh bên trên'
+                            : null,
+                      ),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _saving ? null : _save,
+                          icon: _saving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.check),
+                          label: Text(
+                            widget.isEditing ? 'Lưu thay đổi' : 'Lưu từ mới',
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: scheme.outline,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Từ tự thêm chỉ hiển thị trong bộ từ điển cá nhân — không xuất hiện khi Tra cứu trong giáo trình gốc.',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: scheme.outline),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    _SectionLabel('NGHĨA TIẾNG VIỆT', required: true),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _meaningController,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      decoration: const InputDecoration(
-                        hintText: 'Nhập nghĩa của từ',
-                      ),
-                      onChanged: (_) => _onMeaningEdited(),
-                      validator: (value) =>
-                          (value == null || value.trim().isEmpty)
-                          ? 'Bắt buộc'
-                          : null,
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _SectionLabel('PHIÊN ÂM'),
-                              const SizedBox(height: 6),
-                              TextFormField(
-                                controller: _phoneticController,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      fontFamily: AppFonts.mono,
-                                      color: AppColors.brand,
-                                    ),
-                                decoration: const InputDecoration(
-                                  hintText: '/tʃɒk/',
-                                ),
-                                onChanged: (_) =>
-                                    _clearLinkedWordIfUserEdited(),
-                              ),
-                            ],
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _SectionLabel('LOẠI TỪ'),
-                              const SizedBox(height: 6),
-                              _PartOfSpeechDropdown(
-                                value: _partOfSpeechCode,
-                                onChanged: (value) => setState(() {
-                                  _partOfSpeechCode = value;
-                                  if (!_autofilling) _linkedWordId = null;
-                                }),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    _SectionLabel('VÍ DỤ THỰC TẾ'),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _exampleEnController,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      decoration: const InputDecoration(
-                        hintText: 'Câu ví dụ (tiếng Anh)',
+                        ],
                       ),
-                      onChanged: (_) => _clearLinkedWordIfUserEdited(),
-                      validator: (value) =>
-                          (value != null &&
-                              value.trim().isNotEmpty &&
-                              _exampleViController.text.trim().isEmpty)
-                          ? 'Cần điền cả bản dịch bên dưới'
-                          : null,
-                    ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _exampleViController,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      decoration: const InputDecoration(
-                        hintText: 'Dịch nghĩa câu ví dụ',
-                      ),
-                      onChanged: (_) => _clearLinkedWordIfUserEdited(),
-                      validator: (value) =>
-                          (value != null &&
-                              value.trim().isNotEmpty &&
-                              _exampleEnController.text.trim().isEmpty)
-                          ? 'Cần điền cả câu tiếng Anh bên trên'
-                          : null,
-                    ),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _saving ? null : _save,
-                        icon: _saving
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.white,
-                                ),
-                              )
-                            : const Icon(Icons.check),
-                        label: Text(
-                          widget.isEditing ? 'Lưu thay đổi' : 'Lưu từ mới',
-                        ),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 14,
-                          color: scheme.outline,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Từ tự thêm chỉ hiển thị trong bộ từ điển cá nhân — không xuất hiện khi Tra cứu trong giáo trình gốc.',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: scheme.outline),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

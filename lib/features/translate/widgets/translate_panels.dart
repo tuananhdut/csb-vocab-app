@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/dismiss_keyboard_on_tap.dart';
 import '../../../data/repositories/translation_providers.dart';
 import '../../../domain/entities/translation_direction.dart';
 
@@ -56,9 +57,7 @@ class _TranslatePanelsState extends ConsumerState<TranslatePanels> {
         ? null
         : ref.watch(translateProvider((widget.direction, _debouncedText)));
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => FocusScope.of(context).unfocus(),
+    return DismissKeyboardOnTap(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
