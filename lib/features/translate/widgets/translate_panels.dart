@@ -56,53 +56,72 @@ class _TranslatePanelsState extends ConsumerState<TranslatePanels> {
         ? null
         : ref.watch(translateProvider((widget.direction, _debouncedText)));
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            '${widget.direction.sourceLangLabel} → ${widget.direction.targetLangLabel}',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(color: scheme.primary),
-          ),
-          const SizedBox(height: 12),
-          _Panel(
-            child: TextField(
-              controller: _controller,
-              maxLines: 5,
-              minLines: 3,
-              style: Theme.of(context).textTheme.bodyMedium,
-              decoration: InputDecoration(
-                hintText: 'Nhập ${widget.direction.sourceLangLabel.toLowerCase()}…',
-                border: InputBorder.none,
-              ),
-              onChanged: _onChanged,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '${widget.direction.sourceLangLabel} → ${widget.direction.targetLangLabel}',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: scheme.primary),
             ),
-          ),
-          const SizedBox(height: 12),
-          _Panel(
-            child: result == null
-                ? Text(
-                    'Bản dịch sẽ hiện ở đây',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.outline),
-                  )
-                : result.when(
-                    loading: () => const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+            const SizedBox(height: 12),
+            _Panel(
+              child: TextField(
+                controller: _controller,
+                maxLines: 5,
+                minLines: 3,
+                style: Theme.of(context).textTheme.bodyMedium,
+                decoration: InputDecoration(
+                  hintText: 'Nhập ${widget.direction.sourceLangLabel.toLowerCase()}…',
+                  border: InputBorder.none,
+                ),
+                onChanged: _onChanged,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _Panel(
+              child: result == null
+                  ? Text(
+                      'Bản dịch sẽ hiện ở đây',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.outline),
+                    )
+                  : result.when(
+                      loading: () => Row(
+                        children: [
+                          SizedBox(
+                            height: 14,
+                            width: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: scheme.outline,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Đang dịch…',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: scheme.outline),
+                          ),
+                        ],
+                      ),
+                      error: (e, _) => Text(
+                        'Lỗi dịch: $e',
+                        style: TextStyle(color: scheme.error),
+                      ),
+                      data: (text) => SelectableText(
+                        text,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                     ),
-                    error: (e, _) => Text(
-                      'Lỗi dịch: $e',
-                      style: TextStyle(color: scheme.error),
-                    ),
-                    data: (text) => SelectableText(
-                      text,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
