@@ -42,12 +42,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   VocabWord? _selected;
 
   // Ket qua local (co the phan trang qua _loadMore), cong them TOI DA 1
-  // dong Online o DAU DANH SACH (VocabWord.isOnline == true, chen vao
-  // vi tri 0 ngay khi tra xong dù co the den sau trang local dau tien)
-  // neu tra Online co khop - xem _maybeAppendOnline.
+  // dong Online o CUOI DANH SACH (VocabWord.isOnline == true) neu tra
+  // Online co khop - xem _maybeAppendOnline.
   final List<VocabWord> _results = [];
   bool _searching = false;
   bool _loadingMore = false;
+  bool _checkingOnline = false;
   bool _hasMore = false;
   Object? _searchError;
 
@@ -118,6 +118,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _hasMore = trimmed.isNotEmpty;
       _searchError = null;
       _searching = trimmed.isNotEmpty;
+      _checkingOnline = false;
     });
     if (trimmed.isEmpty) return;
 
@@ -145,7 +146,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
   }
 
-  /// Bổ sung 1 kết quả Online (MyMemory) ở ĐẦU danh sách nếu: có mạng,
+  /// Bổ sung 1 kết quả Online (MyMemory) ở CUỐI danh sách nếu: có mạng,
   /// và không có từ nào trong [localResults] khớp CHÍNH XÁC [query]
   /// (tránh trùng lặp/tốn quota API khi local đã có sẵn) — cùng điều
   /// kiện với logic cũ ở `searchProvider` (nay chuyển vào đây để chạy
@@ -165,17 +166,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final isOnline = ref.read(connectivityProvider).value ?? false;
     if (hasExactMatch || !isOnline) return;
 
+    setState(() => _checkingOnline = true);
     final apiService = ref.read(dictionaryApiServiceProvider);
     final onlineResult = await apiService.lookup(
       query.trim(),
       direction: direction,
     );
-    if (!mounted || generation != _searchGeneration || onlineResult == null) {
+    if (!mounted || generation != _searchGeneration) return;
+    if (onlineResult == null) {
+      setState(() => _checkingOnline = false);
       return;
     }
     setState(() {
-      _results.insert(
-        0,
+      _checkingOnline = false;
+      _results.add(
         VocabWord(
           id: onlineWordSentinelId,
           word: onlineResult.word,
@@ -196,7 +200,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     try {
       final vocabRepo = await ref.read(vocabRepositoryProvider.future);
       // Offset theo so ket qua LOCAL da co - dong Online (neu co) luon
-      // nam DAU danh sach, khong tinh vao offset phan trang.
+      // nam cuoi cung, khong tinh vao offset phan trang.
       final localCount = _results.where((w) => !w.isOnline).length;
       final page = vocabRepo.search(
         _query,
@@ -206,9 +210,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       );
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
-        // Online (neu co) luon o vi tri 0, khong bi dung toi - trang moi
-        // chi can noi vao cuoi.
-        _results.addAll(page);
+        // Chen truoc dong Online (neu da co) de no o LAI CUOI CUNG -
+        // truong hop tra Online da xong truoc khi user cuon toi day.
+        final onlineIndex = _results.indexWhere((w) => w.isOnline);
+        if (onlineIndex == -1) {
+          _results.addAll(page);
+        } else {
+          _results.insertAll(onlineIndex, page);
+        }
         _hasMore = page.length == _pageSize;
         _loadingMore = false;
       });
@@ -297,6 +306,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       return Center(child: Text('Lỗi: $_searchError'));
     }
     if (_results.isEmpty) {
+      // Con dang tra them Online (local rong) - cho ket qua do ve thay
+      // vi bao "khong tim thay" ngay roi lai tu doi y khi Online tra
+      // duoc, gay flicker/mau thuan.
+      if (_checkingOnline) {
+        return const Center(child: CircularProgressIndicator());
+      }
       return Center(
         child: Text(
           'Không tìm thấy "$_query"',
@@ -310,13 +325,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   /// Mobile: danh sách kết quả, bấm 1 dòng mở `WordDetailSheet` bottom sheet.
   Widget _buildSingleColumn(List<VocabWord> words) {
-    final footerCount = _hasMore ? 1 : 0;
+    final footerCount = (_hasMore || _checkingOnline) ? 1 : 0;
     return ListView.separated(
       controller: _scrollController,
       itemCount: words.length + footerCount,
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (_, i) => i >= words.length
-          ? _LoadMoreFooter(loading: _loadingMore)
+          ? _LoadMoreFooter(loading: _loadingMore || _checkingOnline)
           : WordTile(word: words[i], showChapter: true),
     );
   }
@@ -326,7 +341,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   /// (`pane-detail`), khớp mockup
   /// `docs/artifact-design-windows/screens/screen-02-tra-cuu.html`.
   Widget _buildTwoPane() {
-    final footerCount = _hasMore ? 1 : 0;
+    final footerCount = (_hasMore || _checkingOnline) ? 1 : 0;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -346,13 +361,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         : _searchError != null
                         ? Center(child: Text('Lỗi: $_searchError'))
                         : _results.isEmpty
-                        ? Center(
-                            child: Text(
-                              'Không tìm thấy "$_query"',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          )
+                        ? _checkingOnline
+                              ? const Center(
+                                  child: CircularProgressIndicator(),
+                                )
+                              : Center(
+                                  child: Text(
+                                    'Không tìm thấy "$_query"',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                  ),
+                                )
                         : ListView.separated(
                             controller: _scrollController,
                             itemCount: _results.length + footerCount,
@@ -360,7 +381,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 const Divider(height: 1),
                             itemBuilder: (_, i) {
                               if (i >= _results.length) {
-                                return _LoadMoreFooter(loading: _loadingMore);
+                                return _LoadMoreFooter(
+                                  loading: _loadingMore || _checkingOnline,
+                                );
                               }
                               final word = _results[i];
                               return WordTile(
