@@ -1,11 +1,11 @@
 name: iOS build check
 
-# Chỉ verify build pass trên macOS thật (không ký code, không archive/nộp
-# App Store) — máy dev chính là Windows, không có Xcode để tự kiểm tra
-# (xem trao đổi trong task-brainstorm "các cách build iOS trên máy Win").
-# Ký code thật + TestFlight cần thêm Apple Developer Program + quản lý
-# certificate/provisioning profile qua GitHub Secrets, ngoài phạm vi
-# workflow này.
+# Verify build pass trên macOS thật + đóng gói .ipa CHƯA KÝ để tải về máy
+# Windows, tự ký lại bằng Apple ID cá nhân qua Sideloadly/AltStore rồi cài
+# lên iPhone thật (xem trao đổi trong task-brainstorm "các cách build iOS
+# trên máy Win"). Không dùng Apple Developer Program/certificate thật —
+# nếu cần TestFlight/App Store sau này thì đây là bước build khác, ngoài
+# phạm vi workflow này.
 on:
   push:
     branches: [main]
@@ -27,3 +27,18 @@ jobs:
       - run: flutter pub get
 
       - run: flutter build ios --release --no-codesign
+
+      # .ipa chỉ là zip của thư mục Payload/<App>.app theo đúng quy ước
+      # Apple — không cần Xcode archive vì chưa ký (Sideloadly/AltStore tự
+      # ký lại khi cài vào máy, xem hướng dẫn đã trao đổi với user).
+      - name: Package unsigned .ipa
+        run: |
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r csb-vocab-app-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: csb-vocab-app-unsigned-ipa
+          path: csb-vocab-app-unsigned.ipa
+          retention-days: 14
