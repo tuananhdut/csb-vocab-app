@@ -31,7 +31,14 @@ jobs:
 
       - run: flutter pub get
 
+      # pdfx tai pdfium ve build bang mot sub-project CMake rieng
+      # (DownloadProject.cmake) khai bao cmake_minimum_required qua cu —
+      # CMake moi tren windows-latest (4.x) tu choi thang, khong lien
+      # quan gi den code app. CMAKE_POLICY_VERSION_MINIMUM la co che
+      # chinh thuc CMake >= 3.31 dua ra cho dung truong hop nay.
       - run: flutter build windows --release
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: '3.5'
 
       - name: Read app version from pubspec.yaml
         id: app_version
