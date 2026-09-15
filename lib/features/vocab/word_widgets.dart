@@ -349,13 +349,20 @@ class WordDetailContent extends ConsumerWidget {
             ],
           ),
         ],
-        const SizedBox(height: 16),
-        Center(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: WordImage(imagePath: word.imagePath, height: 220, naturalSize: true),
+        // Chi hien anh khi tu THAT co anh minh hoa - bo qua khoi anh
+        // (khong hien placeholder "NO PHOTO") khi imagePath rong, vi
+        // tuyet dai da so tu trong "Military Dictionary" (Tu_dien.pdf,
+        // ~32K tu) khong co anh; hien placeholder co dinh 220px cho gan
+        // het ket qua tra cuu tao 1 khoang trong lon, khong hop ly.
+        if (word.imagePath != null && word.imagePath!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: WordImage(imagePath: word.imagePath, height: 220, naturalSize: true),
+            ),
           ),
-        ),
+        ],
         const SizedBox(height: 20),
         Row(
           children: [
@@ -390,19 +397,36 @@ class WordDetailContent extends ConsumerWidget {
         ],
         if (word.isOnline) ...[
           const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () => showAddToDictionarySheet(
-                context,
-                word: word.word,
-                meaningVi: word.meaningVi,
-                phonetic: word.phonetic.isEmpty ? null : word.phonetic,
-                partOfSpeech: word.partOfSpeech.isEmpty ? null : word.partOfSpeech,
-              ),
-              icon: const Icon(Icons.bookmark_add_outlined),
-              label: const Text('Thêm vào bộ'),
-            ),
+          // Thay SizedBox(width: double.infinity) bang do rong = min(rong
+          // container, 360): tren mobile (sheet hep hon 360) ket qua =
+          // rong container -> giu dung hanh vi full-width nhu truoc; tren
+          // pane chi tiet rong cua layout desktop (Expanded, khong gioi
+          // han chieu rong) thi bi cham 360, khong keo giãn to/lech can
+          // doi nhu truoc.
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth < 360
+                  ? constraints.maxWidth
+                  : 360.0;
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: width,
+                  child: FilledButton.icon(
+                    onPressed: () => showAddToDictionarySheet(
+                      context,
+                      word: word.word,
+                      meaningVi: word.meaningVi,
+                      phonetic: word.phonetic.isEmpty ? null : word.phonetic,
+                      partOfSpeech:
+                          word.partOfSpeech.isEmpty ? null : word.partOfSpeech,
+                    ),
+                    icon: const Icon(Icons.bookmark_add_outlined),
+                    label: const Text('Thêm vào bộ'),
+                  ),
+                ),
+              );
+            },
           ),
         ],
         const SizedBox(height: 20),
