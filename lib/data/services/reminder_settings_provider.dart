@@ -123,3 +123,12 @@ final reminderSettingsProvider =
     NotifierProvider<ReminderSettingsNotifier, ReminderSettings>(
       ReminderSettingsNotifier.new,
     );
+
+/// Quyền thông báo hệ thống hiện tại — [DailyReminderSheet] chặn UI đặt
+/// lịch và chỉ hiện nút mở Cài đặt hệ thống khi `false` (lịch đặt trong
+/// app vô nghĩa nếu quyền bị từ chối, không có gì hiện ra ngoài). Không
+/// tự cập nhật khi user cấp quyền lại từ Cài đặt hệ thống rồi quay lại
+/// app — nơi gọi cần tự `ref.invalidate` khi app resume.
+final notificationPermissionGrantedProvider = FutureProvider<bool>((ref) {
+  return NotificationService.instance.areNotificationsEnabled();
+});

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -41,12 +42,14 @@ class NotificationService {
     if (Platform.isAndroid) {
       await _plugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
     } else if (Platform.isIOS) {
       await _plugin
           .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
+            IOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, badge: true, sound: true);
     }
 
@@ -70,6 +73,17 @@ class NotificationService {
     } catch (_) {
       // Múi giờ lệch nửa giờ (không thuộc Etc/GMT) — giữ mặc định UTC.
     }
+  }
+
+  /// Quyền thông báo hệ thống hiện tại — Windows luôn coi là đã cấp vì
+  /// không có prompt permission như Android/iOS (`init()` không xin quyền
+  /// trên Windows, xem trên). Dùng để [DailyReminderSheet] biết có cần
+  /// chặn UI và dẫn user sang Cài đặt hệ thống hay không (permission bị
+  /// từ chối thì lịch nhắc đặt trong app sẽ không bao giờ hiện ra ngoài,
+  /// user cần biết để tự cấp lại thay vì tưởng app lỗi).
+  Future<bool> areNotificationsEnabled() async {
+    if (Platform.isWindows) return true;
+    return (await Permission.notification.status).isGranted;
   }
 
   /// Nhắc tức thời khi có từ đến hạn ôn — dùng lúc mở/quay lại app
@@ -141,7 +155,14 @@ class NotificationService {
 
   tz.TZDateTime _nextInstanceOf(int weekday, int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
     while (scheduled.weekday != weekday || scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
