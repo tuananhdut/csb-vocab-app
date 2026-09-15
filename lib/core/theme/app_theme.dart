@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Bảng màu — copy nguyên từ `app-ssm`
 /// (`Sato/agent/app-ssm/lib/label_app/core/theme/app_colors.dart`): navy
@@ -113,6 +114,15 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
         elevation: 0,
+        // Thanh trang thai (gio, wifi, pin) mac dinh Flutter ve trong
+        // suot de mau AppBar tran len - tren AppBar mau navy dam thi
+        // icon trang de doc nhung nhin nhu header phu het man hinh. Doi
+        // sang nen trang + icon toi de tach bach ro voi header navy.
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: AppColors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.panel,
