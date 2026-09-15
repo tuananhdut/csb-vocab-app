@@ -147,9 +147,20 @@ class DictionaryApiService {
       return _EnglishDetails(phonetic: phonetic, partOfSpeech: posLabel);
     } on DioException catch (e) {
       // 404 (từ không có trong từ điển) là kết quả bình thường, không
-      // phải lỗi — chỉ log các lỗi khác (mạng/timeout) để tránh log rác.
-      if (e.response?.statusCode != 404) {
-        debugPrint('DictionaryApiService: Free Dictionary API lỗi — $e');
+      // phải lỗi — chỉ log các lỗi khác (mạng/timeout/server) để tránh
+      // log rác. Ghi rõ từ đang tra + loại lỗi + status code thay vì
+      // dump nguyên `$e` (DioException.toString() dài, không nêu từ
+      // đang tra - khó biết lượt tra nào bị lỗi khi có nhiều log liền
+      // nhau, vd 522 "Connection timed out" là lỗi HẠ TẦNG của
+      // dictionaryapi.dev, không phải lỗi trong app - xem giải thích
+      // đã trao đổi với user).
+      final statusCode = e.response?.statusCode;
+      if (statusCode != 404) {
+        debugPrint(
+          'DictionaryApiService: Free Dictionary API lỗi khi tra "$word" — '
+          'type=${e.type.name}, statusCode=${statusCode ?? "(không có response)"}, '
+          'url=${e.requestOptions.uri}, message=${e.message}',
+        );
       }
       return null;
     } catch (e) {
