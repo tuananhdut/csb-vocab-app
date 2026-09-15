@@ -1,0 +1,29 @@
+name: iOS build check
+
+# Chỉ verify build pass trên macOS thật (không ký code, không archive/nộp
+# App Store) — máy dev chính là Windows, không có Xcode để tự kiểm tra
+# (xem trao đổi trong task-brainstorm "các cách build iOS trên máy Win").
+# Ký code thật + TestFlight cần thêm Apple Developer Program + quản lý
+# certificate/provisioning profile qua GitHub Secrets, ngoài phạm vi
+# workflow này.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+
+      - run: flutter pub get
+
+      - run: flutter build ios --release --no-codesign
