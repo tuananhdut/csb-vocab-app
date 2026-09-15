@@ -82,6 +82,20 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
   /// chắc khớp với bản ghi gốc nữa.
   int? _linkedWordId;
 
+  /// Hướng tra đã dùng cho lần "Tự điền" GẦN NHẤT còn hiệu lực — vd
+  /// [SearchDirection.enToVi] nghĩa là "Từ tiếng Anh" là ô nguồn (người
+  /// dùng tự gõ), còn "Nghĩa tiếng Việt"/phiên âm/loại từ là dữ liệu
+  /// TRA RA từ ô đó. `null` = chưa tự điền, hoặc dữ liệu tự điền đã bị
+  /// vô hiệu (xem [_onWordEdited]/[_onMeaningEdited]).
+  ///
+  /// Lý do cần theo dõi riêng: trước đây sửa ô nguồn SAU KHI đã tự điền
+  /// (vd gõ "chock" -> tự điền ra "cái chặn" -> đổi ý gõ lại thành
+  /// "chalk") chỉ xoá [_linkedWordId] (đúng, tránh link nhầm bản ghi
+  /// cũ) nhưng KHÔNG xoá nghĩa/phiên âm/loại từ đã tự điền theo "chock"
+  /// — form hiển thị "chalk" đi kèm nghĩa của "chock", sai lệch mà
+  /// không có gì báo hiệu.
+  SearchDirection? _autofillSourceDirection;
+
   @override
   void initState() {
     super.initState();
@@ -161,6 +175,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
           meaningVi: localMatch.meaningVi,
           phonetic: localMatch.phonetic,
           partOfSpeechAbbreviation: localMatch.partOfSpeech,
+          sourceDirection: direction,
         );
         if (_recordMatchesForm(vocabRepo, localMatch)) {
           setState(() => _linkedWordId = localMatch.id);
@@ -193,6 +208,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
         meaningVi: onlineResult.meaningVi,
         phonetic: onlineResult.phonetic,
         partOfSpeechAbbreviation: onlineResult.partOfSpeech,
+        sourceDirection: direction,
       );
     } finally {
       if (mounted) setState(() => _autofilling = false);
@@ -208,6 +224,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
     required String meaningVi,
     required String phonetic,
     required String partOfSpeechAbbreviation,
+    required SearchDirection sourceDirection,
   }) {
     setState(() {
       if (_wordController.text.trim().isEmpty) _wordController.text = word;
@@ -217,6 +234,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
       if (phonetic.isNotEmpty) _phoneticController.text = phonetic;
       final code = _posCodeByAbbreviation[partOfSpeechAbbreviation];
       if (code != null) _partOfSpeechCode = code;
+      _autofillSourceDirection = sourceDirection;
     });
   }
 
@@ -273,6 +291,54 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
   void _clearLinkedWordIfUserEdited() {
     if (_autofilling || _linkedWordId == null) return;
     setState(() => _linkedWordId = null);
+  }
+
+  /// Gọi khi user tự sửa "Từ tiếng Anh". Nếu ô này chính là ô NGUỒN của
+  /// lần tự điền gần nhất (`_autofillSourceDirection == enToVi`) — nghĩa
+  /// là nghĩa/phiên âm/loại từ đang hiển thị được tra ra TỪ giá trị cũ
+  /// của ô này — giá trị mới gõ vào không còn khớp nữa, phải xoá 3 ô đó
+  /// đi thay vì để lại dữ liệu sai lệch trông như vẫn còn hợp lệ.
+  void _onWordEdited() {
+    _clearLinkedWordIfUserEdited();
+    if (_autofilling || _autofillSourceDirection != SearchDirection.enToVi) {
+      return;
+    }
+    setState(() {
+      _meaningController.clear();
+      _phoneticController.clear();
+      _partOfSpeechCode = null;
+      _autofillSourceDirection = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Đã xoá nghĩa/phiên âm tự điền cũ vì bạn đổi từ tiếng Anh — bấm "Tự điền" lại.',
+        ),
+      ),
+    );
+  }
+
+  /// Đối xứng với [_onWordEdited] — cho trường hợp "Nghĩa tiếng Việt" là
+  /// ô nguồn (`_autofillSourceDirection == viToEn`, tự điền theo hướng
+  /// Việt -> Anh).
+  void _onMeaningEdited() {
+    _clearLinkedWordIfUserEdited();
+    if (_autofilling || _autofillSourceDirection != SearchDirection.viToEn) {
+      return;
+    }
+    setState(() {
+      _wordController.clear();
+      _phoneticController.clear();
+      _partOfSpeechCode = null;
+      _autofillSourceDirection = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Đã xoá từ tiếng Anh/phiên âm tự điền cũ vì bạn đổi nghĩa tiếng Việt — bấm "Tự điền" lại.',
+        ),
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -449,34 +515,50 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Nhập từ hoặc cụm từ',
                       ),
-                      onChanged: (_) => _clearLinkedWordIfUserEdited(),
+                      onChanged: (_) => _onWordEdited(),
                       validator: (value) =>
                           (value == null || value.trim().isEmpty)
                           ? 'Bắt buộc'
                           : null,
                     ),
                     const SizedBox(height: 10),
+                    // AnimatedBuilder vi _onWordEdited/_onMeaningEdited
+                    // khong luon goi setState (xem
+                    // _clearLinkedWordIfUserEdited).
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: OutlinedButton.icon(
-                        onPressed: _autofilling ? null : _autofill,
-                        icon: _autofilling
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.auto_awesome, size: 16),
-                        label: const Text('Tự điền từ dữ liệu'),
-                        style: OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _wordController,
+                          _meaningController,
+                        ]),
+                        builder: (context, _) {
+                          final bothFilled =
+                              _wordController.text.trim().isNotEmpty &&
+                              _meaningController.text.trim().isNotEmpty;
+                          return OutlinedButton.icon(
+                            onPressed: (_autofilling || bothFilled)
+                                ? null
+                                : _autofill,
+                            icon: _autofilling
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.auto_awesome, size: 16),
+                            label: const Text('Tự điền từ dữ liệu'),
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -488,7 +570,7 @@ class _AddWordScreenState extends ConsumerState<AddWordScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Nhập nghĩa của từ',
                       ),
-                      onChanged: (_) => _clearLinkedWordIfUserEdited(),
+                      onChanged: (_) => _onMeaningEdited(),
                       validator: (value) =>
                           (value == null || value.trim().isEmpty)
                           ? 'Bắt buộc'
