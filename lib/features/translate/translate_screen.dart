@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/translation_providers.dart';
+import '../../data/services/connectivity_service.dart';
 import '../../domain/entities/translation_direction.dart';
 import 'widgets/model_download_prompt.dart';
 import 'widgets/translate_panels.dart';
@@ -43,13 +44,18 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
     });
 
     final downloadState = ref.watch(modelDownloadStateProvider(_direction));
+    final isOnline = ref.watch(connectivityProvider).value ?? false;
+    // Có mạng -> dịch qua MyMemory (translateProvider tự ưu tiên online,
+    // xem translation_providers.dart), không cần tải model on-device
+    // trước. Chỉ bắt tải model khi offline và chưa từng tải.
+    final canTranslate = downloadState is ModelReady || isOnline;
 
     return Column(
       children: [
         _DirectionSwitch(direction: _direction, onSwap: _swapDirection),
         const Divider(height: 1),
         Expanded(
-          child: downloadState is ModelReady
+          child: canTranslate
               ? TranslatePanels(key: ValueKey(_direction), direction: _direction)
               : ModelDownloadPrompt(key: ValueKey(_direction), direction: _direction),
         ),

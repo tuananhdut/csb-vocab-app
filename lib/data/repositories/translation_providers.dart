@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 
 import '../../domain/entities/translation_direction.dart';
+import '../services/connectivity_service.dart';
 import '../services/model_download_service.dart';
 import '../services/translation_service.dart';
+import 'vocab_providers.dart' show dictionaryApiServiceProvider;
 
 /// Trạng thái tải model dịch cho 1 chiều — sealed vì cần phân biệt rõ
 /// "đang tải X/Y byte" là 1 trạng thái riêng, khác data/error/loading mà
@@ -102,10 +104,29 @@ final translationServiceProvider = Provider<TranslationService>((ref) {
 ///
 /// Suy luận ONNX không rẻ như tra DB — UI phải debounce input trước khi
 /// invalidate provider này, không gọi lại mỗi keystroke.
+///
+/// Có mạng -> ưu tiên dịch qua MyMemory (miễn phí, độ chính xác cao hơn
+/// model on-device đã quantize) trước, chỉ rơi về model on-device nếu
+/// MyMemory lỗi/timeout hoặc không có mạng — theo yêu cầu user: model
+/// offline hiện tại độ chính xác còn thấp, muốn ưu tiên online khi có
+/// thể. Không cần tải model trước nếu đang online (xem gating tương ứng
+/// ở `translate_screen.dart`).
 final translateProvider =
     FutureProvider.family<String, (TranslationDirection, String)>((ref, args) async {
   final (direction, text) = args;
   if (text.trim().isEmpty) return '';
+
+  final isOnline = ref.watch(connectivityProvider).value ?? false;
+  if (isOnline) {
+    final api = ref.watch(dictionaryApiServiceProvider);
+    final online = await api.translate(
+      text,
+      from: direction == TranslationDirection.viToEn ? 'vi' : 'en',
+      to: direction == TranslationDirection.viToEn ? 'en' : 'vi',
+    );
+    if (online != null) return online;
+  }
+
   final service = ref.watch(translationServiceProvider);
   await service.loadDirection(direction);
   return service.translate(direction, text);

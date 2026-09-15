@@ -85,12 +85,12 @@ class DictionaryApiService {
     _EnglishDetails? details;
     if (isVietnamese) {
       // Chưa biết từ tiếng Anh là gì cho tới khi có bản dịch -> tuần tự.
-      translated = await _translate(trimmed, from: from, to: to);
+      translated = await translate(trimmed, from: from, to: to);
       if (translated != null) details = await _lookupEnglishDetails(translated);
     } else {
       // [text] đã là tiếng Anh -> bắt đầu cả 2 request trước khi await
       // cái nào, chạy song song thật (không phải tuần tự).
-      final translateFuture = _translate(trimmed, from: from, to: to);
+      final translateFuture = translate(trimmed, from: from, to: to);
       final detailsFuture = _lookupEnglishDetails(trimmed);
       translated = await translateFuture;
       details = await detailsFuture;
@@ -171,7 +171,10 @@ class DictionaryApiService {
     }
   }
 
-  Future<String?> _translate(
+  /// Dịch thô [text] qua MyMemory — public vì cũng dùng làm nguồn dịch
+  /// "online" cho màn Dịch (FR-4, xem `translation_providers.dart`) khi
+  /// có mạng, thay cho model on-device (độ chính xác thấp hơn).
+  Future<String?> translate(
     String text, {
     required String from,
     required String to,
