@@ -5,6 +5,7 @@ import '../../data/repositories/translation_providers.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../domain/entities/translation_direction.dart';
 import 'widgets/model_download_prompt.dart';
+import 'widgets/model_status_row.dart';
 import 'widgets/translate_panels.dart';
 
 /// FR-4 — Dịch Anh↔Việt bằng máy dịch neural on-device (opus-mt, tải
@@ -50,10 +51,21 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
     // trước. Chỉ bắt tải model khi offline và chưa từng tải.
     final canTranslate = downloadState is ModelReady || isOnline;
 
+    // Khi dịch online (canTranslate == true nhờ có mạng, không phải nhờ
+    // model), user vẫn cần thấy tuỳ chọn tải model offline — trước đây bị
+    // ẩn hoàn toàn cùng với ModelDownloadPrompt. Không hiện khi đã
+    // ModelReady (không còn gì để tải) hoặc khi ModelDownloadPrompt đang
+    // là nội dung chính (offline, chưa tải) để tránh trùng lặp.
+    final showModelStatusRow = canTranslate && downloadState is! ModelReady;
+
     return Column(
       children: [
         _DirectionSwitch(direction: _direction, onSwap: _swapDirection),
         const Divider(height: 1),
+        if (showModelStatusRow) ...[
+          ModelStatusRow(key: ValueKey(_direction), direction: _direction),
+          const Divider(height: 1),
+        ],
         Expanded(
           child: canTranslate
               ? TranslatePanels(key: ValueKey(_direction), direction: _direction)
