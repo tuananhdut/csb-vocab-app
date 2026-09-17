@@ -10,11 +10,12 @@ Ghép các file theo đúng thứ tự dưới đây vào 1 file tài liệu ch�
 nội dung theo thứ tự, bỏ các dòng `# ` tiêu đề cấp file nếu muốn tự đánh
 số lại trong file đích):
 
-## Phần 1 — Đơn đăng ký sáng kiến
+## Phần 1 — Đơn đăng ký sáng kiến / Tóm tắt nội dung
 
 | # | File |
 |---|---|
-| 1 | [00_Don-dang-ky-tom-tat.md](00_Don-dang-ky-tom-tat.md) |
+| 1 | [00_Don-dang-ky-tom-tat.md](00_Don-dang-ky-tom-tat.md) — Đơn đăng ký sáng kiến (4 mục, văn phong tường thuật) |
+| 2 | [00b_Tom-tat-noi-dung-sang-kien.md](00b_Tom-tat-noi-dung-sang-kien.md) — Tóm tắt nội dung sáng kiến (cùng 4 mục, có tiêu đề/thể thức công văn riêng, văn phong gạch đầu dòng cô đọng hơn) |
 
 ## Phần 2 — Thuyết minh sáng kiến
 
