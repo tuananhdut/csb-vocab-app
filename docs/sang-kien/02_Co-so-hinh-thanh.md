@@ -1,0 +1,15 @@
+# II. CƠ SỞ HÌNH THÀNH
+
+## 1. Thực trạng trước khi có sáng kiến
+
+Trước khi có sáng kiến, việc học tập, tra cứu Tiếng Anh chuyên ngành của cán bộ, chiến sĩ Cảnh sát biển chủ yếu dựa vào giáo trình, tài liệu, từ điển in ấn dạng giấy, có khối lượng lớn, cồng kềnh, không thuận tiện mang theo trong quá trình thực hiện nhiệm vụ trên tàu. Khi cần tra cứu nhanh một thuật ngữ chuyên ngành trong tình huống thực tế (giao tiếp, xử lý tình huống trên biển, đọc tài liệu, trao đổi nghiệp vụ với đối tác nước ngoài), cán bộ, chiến sĩ thường mất nhiều thời gian tìm kiếm trong tài liệu giấy hoặc không có công cụ tra cứu phù hợp mang theo bên mình. Đối với các hình thức học trực tuyến, do đặc thù cán bộ, chiến sĩ trên tàu thường xuyên thực hiện nhiệm vụ dài ngày trên biển, không có kết nối Internet ổn định, nên hầu hết các nền tảng, ứng dụng học Tiếng Anh phổ biến hiện nay — vốn yêu cầu kết nối mạng thường xuyên để hoạt động — không thể phát huy hiệu quả trong điều kiện công tác thực tế của lực lượng. Thực trạng này dẫn đến việc học tập, bồi dưỡng Tiếng Anh chuyên ngành thiếu tính liên tục, không bảo đảm được cường độ ôn luyện cần thiết để ghi nhớ khối lượng lớn thuật ngữ chuyên ngành.
+
+## 2. Điều kiện hình thành sáng kiến
+
+Yêu cầu nhiệm vụ của lực lượng Cảnh sát biển ngày càng cao, đòi hỏi cán bộ, chiến sĩ, nhất là lực lượng trực tiếp thực hiện nhiệm vụ trên biển, phải có khả năng giao tiếp, đọc hiểu tài liệu Tiếng Anh chuyên ngành phục vụ công tác tuần tra, kiểm soát, thực thi pháp luật, hợp tác quốc tế và xử lý các tình huống có yếu tố nước ngoài trên biển. Cùng với đó, xu thế chuyển đổi số đang được Đảng, Nhà nước và Quân đội đẩy mạnh trên mọi lĩnh vực, trong đó có công tác giáo dục, đào tạo, bồi dưỡng; việc ứng dụng công nghệ thông tin vào công tác học tập, tự bồi dưỡng của cán bộ, chiến sĩ là hướng đi phù hợp với xu thế chung. Bên cạnh đó, hầu hết cán bộ, chiến sĩ hiện nay đều được trang bị hoặc sở hữu thiết bị di động cá nhân (điện thoại thông minh, máy tính), tạo điều kiện thuận lợi để triển khai các giải pháp tự học thông qua thiết bị di động mà không phụ thuộc hoàn toàn vào hạ tầng mạng hay các lớp học tập trung. Đây là những điều kiện thực tiễn quan trọng để hình thành ý tưởng nghiên cứu, xây dựng một phần mềm tự học Tiếng Anh chuyên ngành hoạt động ngoại tuyến, phù hợp với đặc thù công tác của lực lượng.
+
+## 3. Đối tượng và phạm vi áp dụng
+
+**Đối tượng áp dụng:** Sĩ quan, quân nhân chuyên nghiệp, công nhân và viên chức quốc phòng, hạ sĩ quan, binh sĩ đang công tác trong lực lượng Cảnh sát biển Việt Nam, đặc biệt là cán bộ, chiến sĩ trực tiếp thực hiện nhiệm vụ trên các tàu Cảnh sát biển có nhu cầu tự học, tự bồi dưỡng Tiếng Anh chuyên ngành; sáng kiến cũng có khả năng mở rộng áp dụng cho các đối tượng khác trong Quân đội nhân dân Việt Nam có nhu cầu tương tự.
+
+**Phạm vi áp dụng:** Trước mắt, sáng kiến được triển khai áp dụng tại các cơ quan, đơn vị thuộc Bộ Tư lệnh Vùng Cảnh sát biển 3; trên cơ sở kết quả áp dụng thực tế, sáng kiến có khả năng nhân rộng, triển khai áp dụng trong toàn lực lượng Cảnh sát biển Việt Nam.
