@@ -1,48 +1,65 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'notification_service.dart';
 
-const _keyEnabled = 'daily_reminder_enabled';
-const _keyHour = 'daily_reminder_hour';
-const _keyMinute = 'daily_reminder_minute';
-const _keyWeekdays = 'daily_reminder_weekdays';
+/// Khoá `shared_preferences` mới (khác 4 khoá phẳng của bản trước —
+/// `daily_reminder_enabled`/`hour`/`minute`/`weekdays`, nay không còn đọc) —
+/// đổi tên khoá là chủ đích để user nâng cấp từ bản cũ nhận đúng giá trị
+/// mặc định mới (đã chốt: không migrate, chấp nhận reset về mặc định vì cấu
+/// trúc dữ liệu đổi hẳn từ "1 giờ chung" sang "giờ riêng từng ngày").
+const _keyPerDay = 'reminder_per_day_v2';
 
 const _defaultHour = 20;
 const _defaultMinute = 0;
-final _defaultWeekdays = {1, 2, 3, 4, 5, 6, 7};
 
-/// Cấu hình nhắc ôn tập hàng tuần (đặt giờ tuỳ chỉnh, chọn theo thứ) —
-/// xem `docs/csb-vocab-analysis/tasks/05-dat-gio-nhac-on-tap/03-plan.md`.
-///
-/// [weekdays] dùng giá trị `DateTime.weekday` (1=Thứ Hai..7=Chủ Nhật).
-/// Bỏ chọn hết các thứ (nhưng [enabled] vẫn `true`) là trạng thái hợp lệ —
-/// tương đương không có lịch nào active, không cần chặn ở UI (quyết định
-/// đã chốt ở task-plan).
-class ReminderSettings {
-  const ReminderSettings({
+/// Cấu hình nhắc ôn tập của 1 ngày trong tuần — bật/tắt và giờ đều độc lập
+/// với các ngày khác.
+class DayReminder {
+  const DayReminder({
     required this.enabled,
     required this.hour,
     required this.minute,
-    required this.weekdays,
   });
 
   final bool enabled;
   final int hour;
   final int minute;
-  final Set<int> weekdays;
 
-  ReminderSettings copyWith({
-    bool? enabled,
-    int? hour,
-    int? minute,
-    Set<int>? weekdays,
-  }) {
-    return ReminderSettings(
+  DayReminder copyWith({bool? enabled, int? hour, int? minute}) {
+    return DayReminder(
       enabled: enabled ?? this.enabled,
       hour: hour ?? this.hour,
       minute: minute ?? this.minute,
-      weekdays: weekdays ?? this.weekdays,
+    );
+  }
+}
+
+final Map<int, DayReminder> _defaultPerDay = {
+  for (var weekday = 1; weekday <= 7; weekday++)
+    weekday: const DayReminder(
+      enabled: true,
+      hour: _defaultHour,
+      minute: _defaultMinute,
+    ),
+};
+
+/// Cấu hình nhắc ôn tập hàng tuần — giờ nhắc **riêng cho từng thứ** (khoá
+/// [perDay] theo `DateTime.weekday`, 1=Thứ Hai..7=Chủ Nhật), cộng công tắc
+/// [enabled] tổng tắt hết bất kể cấu hình từng ngày đang là gì. Xem
+/// `docs/csb-vocab-analysis/tasks/06-gio-nhac-rieng-theo-ngay/01-analysis.md`.
+class ReminderSettings {
+  const ReminderSettings({required this.enabled, required this.perDay});
+
+  final bool enabled;
+  final Map<int, DayReminder> perDay;
+
+  ReminderSettings copyWith({bool? enabled, Map<int, DayReminder>? perDay}) {
+    return ReminderSettings(
+      enabled: enabled ?? this.enabled,
+      perDay: perDay ?? this.perDay,
     );
   }
 }
@@ -58,62 +75,97 @@ class ReminderSettingsNotifier extends Notifier<ReminderSettings> {
   @override
   ReminderSettings build() {
     ready = _load();
-    return ReminderSettings(
-      enabled: true,
-      hour: _defaultHour,
-      minute: _defaultMinute,
-      weekdays: _defaultWeekdays,
-    );
+    return ReminderSettings(enabled: true, perDay: _defaultPerDay);
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final weekdayStrings = prefs.getStringList(_keyWeekdays);
-    state = ReminderSettings(
-      enabled: prefs.getBool(_keyEnabled) ?? true,
-      hour: prefs.getInt(_keyHour) ?? _defaultHour,
-      minute: prefs.getInt(_keyMinute) ?? _defaultMinute,
-      weekdays: weekdayStrings == null
-          ? _defaultWeekdays
-          : weekdayStrings.map(int.parse).toSet(),
+    final raw = prefs.getString(_keyPerDay);
+    state = raw == null ? state : _decode(raw);
+    await _applySchedule(state);
+  }
+
+  ReminderSettings _decode(String raw) {
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final perDayJson = json['perDay'] as Map<String, dynamic>? ?? const {};
+      return ReminderSettings(
+        enabled: json['enabled'] as bool? ?? true,
+        perDay: {
+          for (var weekday = 1; weekday <= 7; weekday++)
+            weekday: _decodeDay(perDayJson['$weekday']) ?? _defaultPerDay[weekday]!,
+        },
+      );
+    } catch (_) {
+      // Dữ liệu hỏng/không đọc được — coi như chưa từng cấu hình.
+      return ReminderSettings(enabled: true, perDay: _defaultPerDay);
+    }
+  }
+
+  DayReminder? _decodeDay(dynamic json) {
+    if (json is! Map<String, dynamic>) return null;
+    final hour = json['hour'] as int?;
+    final minute = json['minute'] as int?;
+    final enabled = json['enabled'] as bool?;
+    if (hour == null || minute == null || enabled == null) return null;
+    return DayReminder(enabled: enabled, hour: hour, minute: minute);
+  }
+
+  /// Bật/tắt công tắc tổng — không đổi cấu hình từng ngày đã lưu.
+  Future<void> setEnabled(bool enabled) async {
+    state = state.copyWith(enabled: enabled);
+    await _save();
+  }
+
+  /// Cập nhật 1+ trường của riêng [weekday], giữ nguyên các ngày khác.
+  Future<void> updateDay(
+    int weekday, {
+    bool? enabled,
+    int? hour,
+    int? minute,
+  }) async {
+    final current = state.perDay[weekday] ?? _defaultPerDay[weekday]!;
+    final nextPerDay = Map<int, DayReminder>.from(state.perDay);
+    nextPerDay[weekday] = current.copyWith(
+      enabled: enabled,
+      hour: hour,
+      minute: minute,
+    );
+    state = state.copyWith(perDay: nextPerDay);
+    await _save();
+  }
+
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _keyPerDay,
+      jsonEncode({
+        'enabled': state.enabled,
+        'perDay': {
+          for (final entry in state.perDay.entries)
+            '${entry.key}': {
+              'enabled': entry.value.enabled,
+              'hour': entry.value.hour,
+              'minute': entry.value.minute,
+            },
+        },
+      }),
     );
     await _applySchedule(state);
   }
 
-  /// Cập nhật 1+ trường, lưu lại và lên lịch/huỷ lịch tương ứng.
-  Future<void> update({
-    bool? enabled,
-    int? hour,
-    int? minute,
-    Set<int>? weekdays,
-  }) async {
-    final next = state.copyWith(
-      enabled: enabled,
-      hour: hour,
-      minute: minute,
-      weekdays: weekdays,
-    );
-    state = next;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyEnabled, next.enabled);
-    await prefs.setInt(_keyHour, next.hour);
-    await prefs.setInt(_keyMinute, next.minute);
-    await prefs.setStringList(
-      _keyWeekdays,
-      next.weekdays.map((w) => w.toString()).toList(),
-    );
-
-    await _applySchedule(next);
-  }
-
   Future<void> _applySchedule(ReminderSettings settings) async {
     await NotificationService.instance.cancelAllReminders();
-    if (settings.enabled && settings.weekdays.isNotEmpty) {
+    if (!settings.enabled) return;
+
+    final dayTimes = {
+      for (final entry in settings.perDay.entries)
+        if (entry.value.enabled)
+          entry.key: (hour: entry.value.hour, minute: entry.value.minute),
+    };
+    if (dayTimes.isNotEmpty) {
       await NotificationService.instance.scheduleWeeklyReminders(
-        hour: settings.hour,
-        minute: settings.minute,
-        weekdays: settings.weekdays,
+        dayTimes: dayTimes,
       );
     }
   }
@@ -124,7 +176,7 @@ final reminderSettingsProvider =
       ReminderSettingsNotifier.new,
     );
 
-/// Quyền thông báo hệ thống hiện tại — [DailyReminderSheet] chặn UI đặt
+/// Quyền thông báo hệ thống hiện tại — [ReminderSettingsScreen] chặn UI đặt
 /// lịch và chỉ hiện nút mở Cài đặt hệ thống khi `false` (lịch đặt trong
 /// app vô nghĩa nếu quyền bị từ chối, không có gì hiện ra ngoài). Không
 /// tự cập nhật khi user cấp quyền lại từ Cài đặt hệ thống rồi quay lại

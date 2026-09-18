@@ -1,112 +1,110 @@
 # SCR-02 — Tra cứu
 
-**FR:** FR-2 · **Trạng thái:** ✅ Đã code xong (chế độ Offline) · **Nguồn:** `lib/features/search/search_screen.dart`, `lib/features/vocab/word_widgets.dart`
+**FR:** FR-2 · **Trạng thái:** ✅ Đã code xong — offline + Online, phân
+trang · **Nguồn:** `lib/features/search/search_screen.dart`,
+`lib/features/vocab/word_widgets.dart`
 
-> ⚠️ **Định hướng mới — chưa code** (xem `00_Overview.md` mục "Mô hình dữ
-> liệu — định hướng mới", `docs/spec_history.md` [IMPL-005]): màn này sẽ có
-> **2 trạng thái** Offline/Online. Mục **Hành vi**, **Truy vấn dữ liệu**,
-> **Phụ thuộc** bên dưới mô tả đúng code thật hôm nay = **chế độ Offline**.
-> Mục **Chế độ Online — định hướng mới** ở cuối file mô tả phần mở rộng
-> chưa triển khai.
+> ⚠️ **Tài liệu này từng ghi chế độ Online là "chưa code"** (bản cũ hơn) —
+> **sai với thực tế**, phần Online đã được code từ trước, chỉ chưa được
+> cập nhật vào tài liệu. Bản hiện tại mô tả đúng code thật tại thời điểm
+> viết (2026-09-17), gồm cả debounce + phân trang thêm ở
+> `docs/spec_history.md` [IMPL-023]/[IMPL-024].
 
 ## Mục đích
 
-Tra cứu từ vựng 2 chiều (Anh → Việt hoặc Việt → Anh) trong phạm vi giáo
-trình đã đóng gói. Hiện tại hoàn toàn offline; định hướng mới sẽ bổ sung
-thêm nguồn online khi có mạng (xem mục cuối file).
+Tra cứu từ vựng 2 chiều (Anh → Việt hoặc Việt → Anh) trong phạm vi
+`vocab.db` (33.019 từ sau khi gộp thêm `Tu_dien.pdf`, xem [IMPL-021]),
+bổ sung thêm 1 kết quả tra Online khi không có sẵn local và đang có mạng.
 
-## Hành vi — Chế độ Offline [ĐÃ CODE]
+## Hành vi
 
-- `TextField` tự động focus khi vào màn (`autofocus: true`), gõ tới đâu tìm
-  tới đó (`onChanged` cập nhật `_query` → rebuild).
-- Không gõ gì → hiện `_Hint` (icon + gợi ý "Gõ từ tiếng Anh hoặc tiếng Việt để tìm").
-- Có gõ → `searchProvider(_query)` (FutureProvider.family) trả về danh sách
-  `VocabWord` khớp; 3 trạng thái xử lý qua `.when()`: loading (spinner),
-  error (hiện lỗi thô), data rỗng (hiện `"Không tìm thấy "$_query""`).
-- Mỗi kết quả hiện qua `WordTile`: từ (đậm) + phiên âm IPA (màu accent) +
-  loại từ (`Chip` nhỏ, viết tắt tiếng Việt: dt/đt/tt...) + nghĩa tiếng Việt +
-  tên chương gốc bên phải (`showChapter: true` — chỉ bật ở màn Tra cứu, tắt ở
-  màn Học vì ở đó chương đã hiển nhiên).
+- Dropdown chọn hướng tra (`SearchDirection`: Anh→Việt / Việt→Anh, tự
+  dựng bằng `showMenu` + `RenderBox` thay vì `DropdownButtonFormField`
+  mặc định) — bắt buộc chọn, không tự đoán ngôn ngữ từ nội dung gõ vào.
+- Gõ vào ô tìm kiếm → **debounce 300ms** trước khi gọi
+  `VocabRepository.search()` (không gọi lại mỗi ký tự gõ, xem
+  [IMPL-023]) — đổi hướng tra cũng huỷ debounce đang chờ trước khi tìm
+  lại, tránh 1 kết quả debounce cũ (hướng cũ) ghi đè lên kết quả của
+  hướng vừa đổi.
+- Không gõ gì → hiện `_Hint` (icon + gợi ý "Gõ từ tiếng Anh hoặc tiếng
+  Việt để tìm").
+- Kết quả local hiện qua `WordTile`: từ (đậm), phiên âm IPA (màu accent),
+  loại từ (`Chip` nhỏ, viết tắt tiếng Việt: dt/đt/tt...), nghĩa tiếng
+  Việt, và tên chương/bộ từ điển gốc bên phải (`showChapter: true` — chỉ
+  bật ở màn Tra cứu, tắt ở màn Học vì ở đó chương đã hiển nhiên).
+- **Phân trang (cuộn vô hạn, [IMPL-023])**: trang đầu tải qua
+  `VocabRepository.search(..., limit, offset: 0)`; cuộn gần cuối danh
+  sách tự tải thêm trang tiếp theo (`ScrollController`, ngưỡng gần đáy).
+  Có bộ đếm `_loadGeneration` chặn kết quả async trễ từ 1 lượt tải cũ ghi
+  đè lên danh sách đã bị reset bởi lượt tìm kiếm mới hơn.
 - Bấm vào 1 dòng → mở `WordDetailSheet` dạng bottom sheet kéo lên
   (`DraggableScrollableSheet`, cao 50–90% màn hình), tải thêm ví dụ
   (`wordExamplesProvider`) và trạng thái đã-học (`learnedStatusProvider`)
-  riêng theo `word.id`.
-- Trong sheet: nút "Đánh dấu đã học" / "Đã học" (disabled khi đã học) gọi
-  `markWordLearned(ref, word.id)` → ghi vào `learned_words` (user.db) và
-  invalidate 3 provider phụ thuộc (trạng thái đã-học, hàng đợi ôn tập, badge
-  số từ đến hạn trên `HomeShell`).
+  riêng theo `word.id`. Sheet có cả nút "Đánh dấu đã học" và **"Thêm vào
+  bộ"** (mở modal chọn/tạo bộ từ điển cá nhân — tính năng "Từ điển của
+  tôi" **đã có trong code**, `lib/features/my_dictionaries/`, dù chưa có
+  tài liệu phân tích riêng, xem mục Giả định/hạn chế).
 
-## Truy vấn dữ liệu — Chế độ Offline [ĐÃ CODE]
+## Chế độ Online
 
-`VocabRepository.search(query)` (`lib/data/repositories/vocab_repository.dart`):
-so khớp `word_lower LIKE %q%` HOẶC `lower(meaning_vi) LIKE %q%`, sắp xếp ưu
-tiên: khớp chính xác → khớp tiền tố → còn lại theo độ dài từ, giới hạn 50 kết
-quả.
+- **Kích hoạt:** `connectivity_plus` (`connectivityProvider`, `StreamProvider<bool>`)
+  phát hiện có kết nối mạng hay không.
+- **Khi nào gọi Online:** chỉ khi trang đầu của kết quả local **không có
+  khớp chính xác** (`hasExactMatch`) với từ đang gõ, và đang có mạng —
+  không gọi Online nếu đã có khớp chính xác trong `vocab.db`.
+- **Dịch vụ dùng:** **MyMemory Translation API**
+  (`https://api.mymemory.translated.net/get`, miễn phí, không cần key,
+  gọi thẳng từ Flutter client qua `dio`) để dịch en↔vi — xem
+  `lib/data/services/dictionary_api_service.dart`. Quota: 5.000 ký
+  tự/ngày/IP ẩn danh, hoặc 50.000 ký tự/ngày/IP nếu kèm tham số
+  `de=<email liên hệ>` (quota tính theo IP gọi API, không phải theo
+  user vì app không có backend/tài khoản để phân biệt). **Free
+  Dictionary API** (`https://api.dictionaryapi.dev`, miễn phí, không
+  cần key) bổ sung phiên âm/loại từ khi từ tra là tiếng Anh (không hỗ
+  trợ tiếng Việt nên không dùng để dịch) — lỗi khác 404 được log kèm từ
+  đang tra + loại lỗi + status code + URL ([IMPL-024]).
+- **Vị trí hiển thị:** kết quả Online chèn ở **cuối** danh sách kết quả
+  local (không phải đầu — đã đổi qua lại 1 lần theo yêu cầu, chốt cuối
+  cùng là cuối danh sách, [IMPL-024]); khi cuộn tải thêm trang local mới,
+  trang mới được chèn **trước** phần tử Online để nó luôn ở cuối cùng.
+- **Chỉ báo loading:** trong lúc đang gọi API Online (`_checkingOnline`),
+  hiện spinner ở footer danh sách (không hiện "Không tìm thấy" ngay rồi
+  lại có kết quả Online đến sau — tránh nhấp nháy mâu thuẫn).
+- **Từ mới tra được qua API ngoài:** không tự động lưu lại local. Chỉ
+  ghi vào DB khi user chủ động bấm "Thêm vào bộ" trong `WordDetailSheet`
+  — lúc đó mới chọn/tạo bộ từ điển cá nhân để gắn từ vào.
+- **Lỗi mạng chập chờn** (có kết nối nhưng API không phản hồi/timeout):
+  fallback êm về kết quả offline, không chặn UI bằng lỗi đỏ.
 
-## Phụ thuộc — Chế độ Offline [ĐÃ CODE]
+## Truy vấn dữ liệu
+
+- `VocabRepository.search(query, direction, {limit, offset})`
+  (`lib/data/repositories/vocab_repository.dart`): so khớp
+  `word_lower LIKE %q%` HOẶC `lower(meaning_vi) LIKE %q%`, sắp xếp ưu
+  tiên: khớp chính xác → khớp tiền tố → còn lại theo độ dài từ, cuối
+  cùng thêm `w.id` làm tie-breaker (đảm bảo thứ tự ổn định giữa các
+  trang khi nhiều headword trùng nhau, vd "RA" — xem [IMPL-023]).
+- `VocabRepository.findExactMatch(query, direction)` — dùng để quyết
+  định có cần gọi Online hay không (`hasExactMatch`), và ở "Tự điền" của
+  `AddWordScreen`.
+
+## Phụ thuộc
 
 - `vocabRepositoryProvider` → mở `vocab.db` qua `VocabDatabase.open()`.
 - `WordTile`, `WordDetailSheet` (dùng chung với màn Học, SCR-03).
 - `learnedStatusProvider`, `markWordLearned` (`lib/features/review/review_providers.dart`) — nối trực tiếp Tra cứu với hệ thống ôn tập SM-2.
-
-## Chế độ Online — định hướng mới [CHƯA CODE]
-
-> Nguồn: `00_Overview.md` mục "Mô hình dữ liệu — định hướng mới",
-> `docs/spec_history.md` [IMPL-005], **quyết định chốt ở [IMPL-013]**
-> (Q-CSB-04/05/06).
-
-- **Kích hoạt:** dùng gói **`connectivity_plus`** (đã chốt Q-CSB-06) để phát
-  hiện có kết nối mạng hay không, chuyển trạng thái Offline ⇄ Online tương
-  ứng. Cần hiển thị rõ cho người dùng đang ở trạng thái nào (badge/icon trên
-  AppBar, xem `.net-badge` trong mockup `screen-02.html`/`screen-02b.html`)
-  — UI cụ thể tham khảo mockup, chưa code.
-- **Hành vi tra cứu khi Online:** vẫn chạy `VocabRepository.search(query)`
-  trên `vocab.db` như bình thường trước; nếu không có kết quả, gọi thêm
-  **API từ điển ngoài** để bổ sung.
-  **[CẬP NHẬT — thay quyết định Q-CSB-04 cũ]**: LibreTranslate public
-  instance đã đổi chính sách, giờ bắt buộc API key (xác nhận trực tiếp
-  lúc khảo sát lại: gọi thử trả lỗi yêu cầu đăng ký key ở
-  `portal.libretranslate.com`), không còn miễn phí ẩn danh được nữa —
-  không dùng được như quyết định gốc. Chuyển sang **MyMemory
-  Translation API** (`https://api.mymemory.translated.net/get`, miễn
-  phí, không cần key, gọi thẳng từ Flutter client qua `dio`) để dịch
-  en↔vi trực tiếp — xem `lib/data/services/dictionary_api_service.dart`.
-  Quota: 5.000 ký tự/ngày/IP ẩn danh, hoặc 50.000 ký tự/ngày/IP nếu kèm
-  tham số `de=<email liên hệ>` (đã dùng `tuanhaoggg@gmail.com`, xem
-  comment trong service — quota tính theo IP gọi API, không phải theo
-  từng user vì app không có backend/tài khoản để phân biệt). **Free
-  Dictionary API** (`https://api.dictionaryapi.dev`, miễn phí, không
-  cần key) vẫn giữ nguyên vai trò bổ sung phiên âm/loại từ/ví dụ khi từ
-  tra là tiếng Anh (không hỗ trợ tiếng Việt nên không dùng để dịch).
-- **Từ mới tra được qua API ngoài:** đã chốt (Q-CSB-05) **không tự động lưu
-  lại local**. Chỉ ghi vào `user.db` khi user **chủ động bấm "Thêm vào bộ"**
-  trong `WordDetailSheet` (theo mockup `screen-04b-them-vao-bo-tu-dien.html`)
-  — lúc đó mới chọn/tạo bộ từ điển cá nhân để gắn từ vào. Không có khái
-  niệm "cache tự động kết quả online" — đơn giản hoá luồng ghi dữ liệu, xem
-  schema cụ thể ở `91_DB-design-new-model.md`.
-- **Lỗi mạng chập chờn** (có kết nối nhưng API không phản hồi/timeout): đã
-  chốt (Q-CSB-06) **fallback êm về kết quả offline** (chỉ `vocab.db`),
-  không chặn UI bằng lỗi đỏ; có thể hiện thông báo nhẹ (ví dụ snackbar) báo
-  không lấy được kết quả bổ sung.
-- **Ảnh hưởng tới code hiện tại:** cần thêm 1 tầng gọi API mới (ví dụ
-  `DictionaryApiRepository` gọi Free Dictionary API + `TranslationService`
-  gọi LibreTranslate) song song với `VocabRepository`, và `searchProvider`
-  cần biết trạng thái mạng (qua `connectivity_plus`) để quyết định có gọi
-  thêm tầng này không — hiện `searchProvider`/`VocabRepository` chỉ biết đọc
-  `vocab.db`, không có khái niệm mạng.
+- `dictionaryApiServiceProvider`, `connectivityProvider` — chế độ Online.
+- `lib/features/my_dictionaries/` — luồng "Thêm vào bộ" từ `WordDetailSheet`.
 
 ## Giả định / hạn chế
 
-- Không có debounce khi gõ — mỗi ký tự gõ vào kích hoạt truy vấn DB ngay.
-  Chấp nhận được vì `vocab.db` cỡ ~2.450 từ, chạy local, độ trễ không đáng kể.
 - Không có lịch sử tra cứu — bảng `search_history` (từng có schema trong
-  `user.db`, xem `lib/data/local/user_database.dart`) đã bị **bỏ hẳn**
-  khỏi thiết kế mới ([IMPL-016]): chưa từng được đọc/ghi ở bất kỳ đâu,
-  không mockup nào (kể cả `screen-02-tra-cuu.html`) thiết kế UI cho tính
-  năng này. Nếu sau này thực sự làm "lịch sử tra cứu gần đây", tạo lại
-  bảng bằng 1 migration khi đó — xem `91_DB-design-new-model.md` mục "Bỏ
-  hẳn bảng `review_logs`/`search_history`".
-
-> ⚠️ Mockup (`docs/artifact-design/screens/screen-02-tra-cuu.html`) đã thêm
-> nút "Thêm vào bộ" bên cạnh "Đã học" trong sheet chi tiết từ — tính năng bộ
-> từ điển cá nhân **chưa có trong code**, xem Q-CSB-02 (`docs/spec_history.md`).
+  `user.db`) đã bị **bỏ hẳn** khỏi thiết kế ([IMPL-016]): chưa từng được
+  đọc/ghi ở bất kỳ đâu, không mockup nào thiết kế UI cho tính năng này.
+- **Tính năng "Từ điển của tôi" / bộ từ điển cá nhân đã có trong code**
+  (`lib/features/my_dictionaries/`: danh sách bộ, chi tiết bộ (có phân
+  trang, xem [IMPL-023]), tự thêm từ mới, tự điền từ dữ liệu có sẵn) —
+  README của thư mục này (`docs/csb-vocab-analysis/README.md`) và
+  `90_Traceability-matrix.md` **vẫn ghi "❌ Chưa"**, cần cập nhật + viết
+  tài liệu phân tích riêng cho màn hình này (chưa làm trong đợt cập nhật
+  này, xem Q-CSB-10 ở `docs/spec_history.md`).

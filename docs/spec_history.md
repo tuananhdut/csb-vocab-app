@@ -4,6 +4,577 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-030] 2026-09-18 — Giờ nhắc riêng theo từng ngày, chuyển màn Cài đặt sang full-screen
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Yêu cầu ban đầu: *"tôi muốn setting thông báo của giờ theo từng ngày,
+UI hiện đại dễ dùng"* — mở rộng trực tiếp từ tính năng nhắc ôn tập đã
+implement ở `05-dat-gio-nhac-on-tap/` (IMPL-018 đến IMPL-020, IMPL-026),
+đảo ngược quyết định D3 đã chốt trước đó ("1 giờ chung cho mọi thứ được
+chọn") sang **giờ riêng độc lập cho từng ngày trong tuần**.
+
+Bắt đầu bằng task-analysis (`06-gio-nhac-rieng-theo-ngay/01-analysis.md`),
+nêu 4 điểm chờ; user chốt ngay cả 4 rồi yêu cầu implement thẳng (không
+qua brainstorm/plan riêng, không làm mockup HTML):
+
+1. **Chuyển từ `BottomSheet` sang route full-screen** (`/settings/reminders`).
+2. **UI "hiện đại, dễ dùng"**: tự nghiên cứu — không có mockup tham
+   chiếu nào cho màn này trong `docs/artifact-design/` (bộ mockup đó
+   còn dùng bảng màu navy/brass aspirational khác `AppColors` thật
+   trong code, và giả định bố cục 5-tab có tab "Cài đặt" riêng — mâu
+   thuẫn với quyết định D1 cũ là icon trong AppBar, không phải tab).
+   Quyết định dùng thẳng design token thật đang chạy trong app
+   (`AppColors`/`AppFonts`/`CardTheme` ở `app_theme.dart`) thay vì bám
+   theo bộ mockup cũ, tránh lệch thêm với code.
+3. **Không migrate dữ liệu cũ — chấp nhận reset về mặc định.**
+4. **Giữ công tắc bật/tắt tổng.**
+
+**Thay đổi kiến trúc:**
+
+- `NotificationService.scheduleWeeklyReminders`: đổi tham số từ `{hour,
+  minute, Set<int> weekdays}` (1 giờ dùng chung) sang `{Map<int weekday,
+  ({int hour, int minute})> dayTimes}` (giờ riêng từng thứ) — vòng lặp
+  lên lịch nội bộ (`id = 2001 + weekday`) giữ nguyên, chỉ đổi nguồn
+  giờ/phút truyền vào mỗi lần gọi `zonedSchedule`.
+- `ReminderSettings`: đổi từ `{enabled, hour, minute, weekdays}` sang
+  `{enabled, perDay: Map<int weekday, DayReminder>}` (`DayReminder =
+  {enabled, hour, minute}`). Lưu `shared_preferences` bằng **1 khoá JSON
+  mới** `reminder_per_day_v2` (khác hẳn 4 khoá phẳng cũ
+  `daily_reminder_*`) — đổi tên khoá là chủ đích để user nâng cấp nhận
+  đúng giá trị mặc định mới thay vì đọc nhầm dữ liệu cũ sai định dạng
+  (đúng quyết định #3, không cần code migrate).
+- `ReminderSettingsNotifier`: thêm `setEnabled(bool)` (công tắc tổng) +
+  `updateDay(weekday, {enabled, hour, minute})` (ghi từng ngày), thay
+  cho `update({enabled, hour, minute, weekdays})` cũ.
+
+**Thay đổi UI/điều hướng:**
+
+- File mới `lib/features/settings/reminder_settings_screen.dart` thay
+  hẳn `lib/features/settings/widgets/daily_reminder_sheet.dart` (đã
+  xoá) — full-screen: `SwitchListTile` tổng trong `Card` ở đầu, tiếp
+  theo 7 `Card`/`ListTile` (1 dòng/thứ) gồm huy hiệu tên ngày (`CircleAvatar`
+  đổi màu theo trạng thái bật/tắt), giờ đã chọn hiển thị mono
+  (`AppFonts.mono`, bấm mở `showTimePicker` riêng cho ngày đó), `Switch`
+  bật/tắt riêng ngày — disable khi công tắc tổng tắt. Giữ nguyên
+  `_PermissionDeniedPrompt` (quyền thông báo bị từ chối) từ bản cũ.
+- Route mới `/settings/reminders` trong `lib/core/router/app_router.dart`.
+- `home_shell.dart`: 2 chỗ mở cấu hình (icon `AppBar.actions` mobile +
+  nút nav-rail Windows — vẫn ẩn trên Windows như cũ) đổi từ
+  `showDailyReminderSheet(context)` sang `context.push('/settings/reminders')`.
+
+`flutter analyze lib/` sạch sau khi sửa (không lỗi/warning mới).
+
+### Tài liệu tạo mới
+
+| File | Nội dung |
+|---|---|
+| `docs/csb-vocab-analysis/tasks/06-gio-nhac-rieng-theo-ngay/01-analysis.md` | Task-analysis: Requirement Summary, UI/Backend Gap, Provider/Service Contract, Risk Analysis, 4 Open Questions (đã chốt, xem trên) |
+| `lib/features/settings/reminder_settings_screen.dart` | Màn full-screen mới thay `DailyReminderSheet` |
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `lib/data/services/notification_service.dart` | `scheduleWeeklyReminders` nhận `Map<weekday, {hour, minute}>` thay vì 1 cặp giờ/phút dùng chung |
+| `lib/data/services/reminder_settings_provider.dart` | Viết lại `ReminderSettings`/`ReminderSettingsNotifier` theo model giờ riêng từng ngày, đổi khoá `shared_preferences` sang `reminder_per_day_v2` (JSON, không migrate khoá cũ) |
+| `lib/core/router/app_router.dart` | Thêm route `/settings/reminders` |
+| `lib/features/home/home_shell.dart` | 2 điểm mở cấu hình đổi sang `context.push('/settings/reminders')` |
+
+### File đã xoá
+
+| File | Lý do |
+|---|---|
+| `lib/features/settings/widgets/daily_reminder_sheet.dart` | Thay hẳn bởi `reminder_settings_screen.dart` (full-screen) |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — cả 4 điểm treo ở task-analysis đã được
+user chốt trực tiếp trước khi implement (xem trên). Ghi nhận 1 điểm
+nhỏ chưa xử lý: khoá `shared_preferences` cũ (`daily_reminder_enabled`/
+`hour`/`minute`/`weekdays`) không còn được đọc nhưng cũng chưa bị xoá
+khỏi máy user cũ — rác vô hại (không tốn bộ nhớ đáng kể), có thể dọn ở
+lần sửa `reminder_settings_provider.dart` tiếp theo nếu cần.
+
+Chưa verify tay trên thiết bị thật (lên lịch theo giờ riêng từng ngày
+khó test tự động, kế thừa đúng khó khăn đã ghi ở IMPL-020/INT-02) — cần
+làm trước khi coi task này hoàn tất.
+
+---
+
+## [IMPL-029] 2026-09-17 — Audit toàn bộ doc màn hình còn lại (01/05/06/07/00_Overview)
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude (4 subagent song song kiểm tra, Claude tự sửa)
+
+### Nội dung
+
+Theo yêu cầu trực tiếp "kiểm tra cho tôi doc từng màn hình" — dùng 4
+subagent song song đối chiếu `01_Splash.md`, `05_Review.md`,
+`07_Home-shell.md`, `00_Overview.md` với code thật (3 file
+`02_Search.md`/`04_Translate.md`/`06_Settings.md` đã kiểm tra thủ công ở
+[IMPL-028]). Kết quả: lệch nặng hơn dự kiến, viết lại toàn bộ 4 file.
+
+- **`05_Review.md` (nặng nhất)**: bản cũ mô tả "1 kiểu: lật thẻ tự chấm"
+  4 mức Quên/Khó/Tốt/Dễ — **đã bị bỏ hoàn toàn**, thay bằng ôn tập khách
+  quan (trắc nghiệm + gõ chữ, hệ thống tự chấm đúng/sai,
+  `ReviewResultScreen` riêng, giới hạn 4 câu/phiên, hàng đợi theo từng
+  bộ từ điển, banner "trễ hạn 7+ ngày"/chip "từ khó") — không có dòng
+  nào trong nội dung cũ còn đúng ngoài thuật toán SM-2 gốc và 2 hàm truy
+  vấn cơ bản (`dueToday`/`markLearned`). `submitReview` cũng không còn
+  ghi `review_logs` (bảng đã bỏ từ [IMPL-016], bản cũ vẫn ghi có ghi).
+- **`07_Home-shell.md`**: bản cũ ghi 5 tab (có "Ôn tập", "Cài đặt") —
+  thực tế chỉ 4 tab (không có 2 tab đó). Badge số từ đến hạn gắn sai vào
+  "Ôn tập" thay vì "Từ điển của tôi". Nhầm `NavigationRail`/`NavigationBar`
+  của Flutter — thực tế là widget tự dựng. Desktop không dùng
+  `Scaffold.appBar` (dùng `_PageHeader` riêng) — bản cũ ghi sai là dùng
+  chung `AppBar` cho cả 2 layout. Thiếu hẳn 2 tính năng có thật: nút "Cài
+  đặt nhắc ôn tập" (ẩn trên Windows) và badge Online/Offline.
+- **`06_Settings.md` (phát hiện thêm khi audit lại chính bản mình vừa
+  sửa ở [IMPL-028])**: `settings_screen.dart` và `theme_mode_provider.dart`
+  — nguồn gốc toàn bộ nội dung "chọn Sáng/Tối" — **đã bị xoá khỏi code**,
+  `app.dart` dùng theme cố định. Viết lại: bỏ hẳn mục theme, giữ nguyên
+  mục "Nhắc ôn tập" đã thêm ở [IMPL-028] (vẫn đúng), thêm cảnh báo rõ về
+  việc màn Cài đặt không còn tồn tại.
+- **`01_Splash.md` (nhẹ)**: vẫn ghi ảnh slide là placeholder chờ khách
+  cung cấp — thực tế đã dùng ảnh CSB thật từ lâu ([IMPL-009]).
+- **`00_Overview.md`**: 2 mục lớn "Bộ từ điển N-N" và "Section/Chapter
+  dạng bài báo" từng ghi "[ĐỊNH HƯỚNG MỚI — CHƯA CODE]" nhưng **đã code
+  xong từ trước** (`lib/features/my_dictionaries/`,
+  `lib/features/lessons/` với `ChapterContentScreen` đọc PDF) — relabel
+  lại thành `[ĐÃ CODE]`. Sửa: `vocab.db` không còn read-only (mở
+  read-write cho bảng `dictionaries`); LibreTranslate (dự kiến ban đầu)
+  → MyMemory (thực tế dùng, đã đổi từ [IMPL-013] nhưng tài liệu này
+  chưa cập nhật theo); "5 tab" → "4 tab"; mục "Cài đặt" cập nhật theo
+  phát hiện ở `06_Settings.md`.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/01_Splash.md` | Sửa đoạn ảnh placeholder |
+| `docs/csb-vocab-analysis/05_Review.md` | Viết lại toàn bộ cho khớp ôn tập trắc nghiệm/gõ chữ |
+| `docs/csb-vocab-analysis/06_Settings.md` | Viết lại — bỏ mục theme đã xoá, giữ mục Nhắc ôn tập |
+| `docs/csb-vocab-analysis/07_Home-shell.md` | Viết lại toàn bộ cho khớp 4 tab + các tính năng còn thiếu |
+| `docs/csb-vocab-analysis/00_Overview.md` | Relabel 2 mục lớn CHƯA CODE → ĐÃ CODE, sửa LibreTranslate/vocab.db/5 tab/Cài đặt |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| Q-CSB-11 | Màn "Cài đặt" (chọn Sáng/Tối, `settings_screen.dart`/`theme_mode_provider.dart`) đã biến mất khỏi code mà không có entry nào trong `spec_history.md` ghi lại quyết định này — cố ý gỡ bỏ hay mất do lỗi merge/rebase? Nếu cố ý, có cần viết lại tính năng này hay chính thức đóng SCR-06/FR-7? |
+
+Kế thừa Q-CSB-10 từ [IMPL-028] (chưa viết tài liệu SCR riêng cho "Từ
+điển của tôi") — vẫn chưa làm trong đợt audit này, cùng lý do đã nêu (cần
+1 lượt phân tích đầy đủ riêng).
+
+---
+
+## [IMPL-028] 2026-09-17 — Cập nhật `docs/csb-vocab-analysis/` cho khớp code thật
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Theo yêu cầu trực tiếp "cập nhật specs lại cho tôi" — rà lại toàn bộ tài
+liệu phân tích màn hình, phát hiện độ lệch với code thật lớn hơn dự kiến
+ban đầu (hỏi lại user, chọn phạm vi "Toàn bộ"):
+
+- `02_Search.md` từng ghi chế độ Online là "[CHƯA CODE]" — **sai với
+  thực tế**, tính năng này đã code từ trước, chỉ chưa cập nhật tài liệu.
+  Viết lại toàn bộ mục Hành vi/Chế độ Online/Truy vấn dữ liệu cho khớp
+  code thật hôm nay, gồm cả debounce + phân trang mới thêm
+  ([IMPL-023]/[IMPL-024]).
+- `04_Translate.md` cập nhật cho luồng online-first mới ([IMPL-025]).
+- `06_Settings.md` **thiếu hẳn** mục "Nhắc ôn tập" (đặt giờ + thứ trong
+  tuần, implement từ [IMPL-018]-[IMPL-020], gia cố quyền thông báo ở
+  [IMPL-026]) — chưa từng được ghi vào tài liệu này dù đã có code. Thêm
+  mới toàn bộ mục này.
+- `90_Traceability-matrix.md`: bỏ 2 dòng `review_logs`/`search_history`
+  (đã bỏ hẳn khỏi schema từ [IMPL-016], bảng vẫn ghi như còn tồn tại);
+  sửa 2 dòng "Bộ từ điển cá nhân"/"Tra cứu Online" từ ❌ sang ✅ (đã có
+  code, tài liệu ghi sai).
+- `README.md`: cập nhật bảng trạng thái (SCR-04 done, "Bộ từ vựng cá
+  nhân" đã có code), bump version log.
+- **`03_Lessons-by-chapter.md` (SCR-03) — không sửa**: ban đầu định gán
+  nhầm phần phân trang "Chi tiết bộ từ điển" vào đây, rà lại phát hiện
+  file này chỉ nói về `lib/features/lessons/` (duyệt theo chương giáo
+  trình gốc) — hoàn toàn khác `lib/features/my_dictionaries/` (nơi thực
+  sự có phân trang mới thêm). Đã sửa lại đúng chỗ trong `spec_history.md`
+  ([IMPL-023]) thay vì viết nhầm vào SCR-03.
+
+**Việc cố tình không làm trong đợt này** (phát sinh trong lúc rà soát,
+nhưng vượt quá phạm vi "cập nhật theo thay đổi trong phiên" — cần 1 lượt
+phân tích riêng, đầy đủ, thay vì viết vội):
+
+- Chưa viết tài liệu SCR mới cho "Từ điển của tôi"
+  (`lib/features/my_dictionaries/`: danh sách bộ, chi tiết bộ, tự thêm
+  từ, tự điền dữ liệu) — feature này tồn tại đầy đủ trong code nhưng
+  **chưa từng có tài liệu phân tích riêng nào**, kể cả trước phiên này.
+- Chưa rà lại `00_Overview.md`, `05_Review.md`, `07_Home-shell.md`,
+  `91_DB-design-new-model.md` — có thể còn độ lệch tương tự nhưng chưa
+  kiểm tra kỹ trong đợt này (chỉ đọc lướt để xác nhận 2 điểm liên quan
+  trực tiếp tới các mục đã sửa).
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/02_Search.md` | Viết lại mục Hành vi/Chế độ Online/Truy vấn dữ liệu cho khớp code thật |
+| `docs/csb-vocab-analysis/04_Translate.md` | Cập nhật luồng online-first ([IMPL-025]) |
+| `docs/csb-vocab-analysis/06_Settings.md` | Thêm mới mục "Nhắc ôn tập — đặt giờ + thứ trong tuần" |
+| `docs/csb-vocab-analysis/90_Traceability-matrix.md` | Bỏ `review_logs`/`search_history`; sửa 2 dòng ❌→✅ |
+| `docs/csb-vocab-analysis/README.md` | Cập nhật bảng trạng thái, bump version log lên 1.5 |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| Q-CSB-10 | "Từ điển của tôi" (`lib/features/my_dictionaries/`) chưa có tài liệu SCR phân tích riêng dù đã có code đầy đủ (danh sách bộ, chi tiết bộ có phân trang, tự thêm từ, tự điền dữ liệu) — có cần viết 1 tài liệu SCR-08 riêng cho màn này không, và nếu có thì ưu tiên khi nào? |
+
+---
+
+## [IMPL-027] 2026-09-17 — CI build tự động cho iOS/Windows/Android + nhánh release
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Máy dev là Windows, không có Xcode để tự verify build iOS, và bản Windows
+build ra là 1 thư mục (exe + DLL + data) không tiện gửi khách. Thêm 3
+GitHub Actions workflow (`.github/workflows/`), mỗi cái build + đóng gói
+thành 1 artifact tải về được:
+
+- **`ios-build.yml`** (`macos-latest`) — `flutter build ios --no-codesign`
+  (chỉ verify build pass, không ký code) rồi đóng gói `Payload/Runner.app`
+  thành `.ipa` upload artifact — để tự ký lại bằng Apple ID cá nhân qua
+  Sideloadly/AltStore (miễn phí, hết hạn 7 ngày) hoặc Apple Developer
+  Program ($99/năm, hiệu lực 1 năm) khi cần cài lâu dài.
+  - Phát sinh lỗi thật khi chạy thử: `flutter_onnxruntime` yêu cầu tối
+    thiểu iOS 16.0 (xác nhận: **mọi** version đã publish của package này,
+    kể cả bản 1.0.0 đầu tiên, đều yêu cầu 16.0 — không phải lỗi cấu hình
+    của app) nhưng `ios/Runner.xcodeproj/project.pbxproj` vẫn đang set
+    13.0 → nâng `IPHONEOS_DEPLOYMENT_TARGET` lên 16.0 ở cả 3 build config
+    (Debug/Release/Profile). Hệ quả: app không cài được trên iOS < 16.
+- **`windows-build.yml`** (`windows-latest`) — `flutter build windows
+  --release` rồi đóng gói bằng **Inno Setup** thành 1 file
+  `csb-vocab-app-setup-<version>.exe` duy nhất (cài vào Program Files, có
+  shortcut Start Menu, uninstaller) — script tại
+  `windows/installer/csb_vocab_app.iss`.
+  - 2 lỗi toolchain phát sinh khi chạy thử, cả 2 đều do phiên bản công cụ
+    mới trên runner chứ không phải lỗi code app: (1) `pdfx` tải `pdfium`
+    qua 1 sub-project CMake khai `cmake_minimum_required` quá cũ, CMake
+    4.x trên runner từ chối thẳng — fix bằng biến môi trường
+    `CMAKE_POLICY_VERSION_MINIMUM=3.5` (cơ chế chính thức CMake ≥3.31 cho
+    đúng tình huống này); (2) `permission_handler_windows` dùng C++/WinRT
+    (`winrt::fire_and_forget`) kéo theo header `<experimental/coroutine>`
+    cũ, MSVC mới trên runner nâng cảnh báo này thành lỗi cứng — fix bằng
+    biến môi trường `CL=/D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS`
+    (MSVC tự đọc biến `CL` cho mọi lệnh `cl.exe`, không cần sửa CMake của
+    plugin bên thứ 3).
+- **`android-build.yml`** (`ubuntu-latest`) — `flutter build apk
+  --release` upload thẳng `app-release.apk` làm artifact. Pass ngay lần
+  đầu, không gặp lỗi toolchain nào. Ký bằng debug key (cấu hình mặc định
+  có sẵn từ trước trong `android/app/build.gradle.kts`, chưa đổi) — dùng
+  để cài thử/gửi khách được, **chưa nộp được lên Google Play** (cần
+  keystore release riêng, ngoài phạm vi việc này).
+
+Cả 3 workflow trigger trên `push`/`pull_request` vào `main` + thủ công
+qua `workflow_dispatch`.
+
+Ngoài ra, tạo nhánh **`release/phase-1-2026-09`** từ `main` theo yêu cầu
+trực tiếp — quy ước đặt tên nhánh trong `.claude/rules/git-conventions.md`
+chỉ định nghĩa cho `feature.<type>.<mô tả>`, không có mục riêng cho nhánh
+release nên đặt theo style tương tự (tiếng Anh, chữ thường,
+`release/<mô tả>`).
+
+### Tài liệu tạo mới
+
+| File | Nội dung |
+|---|---|
+| `.github/workflows/ios-build.yml` | Build + đóng gói `.ipa` chưa ký trên `macos-latest` |
+| `.github/workflows/windows-build.yml` | Build + đóng gói installer `.exe` (Inno Setup) trên `windows-latest` |
+| `.github/workflows/android-build.yml` | Build `.apk` (debug-signed) trên `ubuntu-latest` |
+| `windows/installer/csb_vocab_app.iss` | Script Inno Setup — cấu hình cài đặt/shortcut/uninstaller |
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `ios/Runner.xcodeproj/project.pbxproj` | `IPHONEOS_DEPLOYMENT_TARGET`: 13.0 → 16.0 (cả 3 build config) |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| Q-CSB-08 | Nâng min iOS lên 16.0 (bắt buộc bởi `flutter_onnxruntime`) có chấp nhận được lâu dài không, hay cần tính phương án khác (bỏ dịch on-device trên iOS, tự build lại ONNX Runtime binary min-OS thấp hơn...) nếu sau này cần hỗ trợ máy iOS cũ? |
+| Q-CSB-09 | Bản Android/Windows hiện chỉ ký bằng debug key/không ký — có cần thiết lập keystore release thật + ký code Windows (certificate) khi tiến tới bản phát hành chính thức cho khách hàng, không chỉ bản test? |
+
+---
+
+## [IMPL-026] 2026-09-16 — Gật quyền thông báo trước khi cho đặt lịch nhắc ôn tập
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Phát hiện qua báo cáo trực tiếp: nếu user từ chối quyền thông báo hệ
+thống, `DailyReminderSheet` (modal đặt giờ/thứ nhắc ôn tập, implement từ
+plan [IMPL-020]) vẫn cho đặt lịch bình thường — lịch được lưu trong app
+nhưng **không bao giờ hiện thông báo thật ra ngoài**, không có gì báo cho
+user biết vì sao.
+
+Thêm dependency `permission_handler` (mới, chưa có trong `pubspec.yaml`
+trước đó). `NotificationService.areNotificationsEnabled()` kiểm tra
+`Permission.notification.status` (Windows luôn trả `true` — không có khái
+niệm quyền thông báo kiểu Android/iOS trong luồng này, và nút mở
+`DailyReminderSheet` vốn đã bị ẩn trên Windows từ trước). Provider
+`notificationPermissionGrantedProvider` (`FutureProvider<bool>`) gate UI:
+quyền bị từ chối → `DailyReminderSheet` thay hẳn phần điều khiển giờ/thứ
+bằng `_PermissionDeniedPrompt` (giải thích + nút "Mở Cài đặt" gọi
+`openAppSettings()`). `DailyReminderSheet` đổi sang
+`ConsumerStatefulWidget` + `WidgetsBindingObserver` để tự
+`ref.invalidate(notificationPermissionGrantedProvider)` khi app resume —
+user cấp quyền xong quay lại app không cần tự đóng/mở lại sheet.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `pubspec.yaml` | Thêm `permission_handler: ^11.3.1` |
+| `lib/data/services/notification_service.dart` | Thêm `areNotificationsEnabled()` |
+| `lib/data/services/reminder_settings_provider.dart` | Thêm `notificationPermissionGrantedProvider` |
+| `lib/features/settings/widgets/daily_reminder_sheet.dart` | Chuyển `ConsumerWidget` → `ConsumerStatefulWidget` + `WidgetsBindingObserver`; thêm `_PermissionDeniedPrompt` |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới.
+
+---
+
+## [IMPL-025] 2026-09-16 — Đổi hướng Dịch (FR-4) lần 2: ưu tiên Online khi có mạng
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Theo phản ánh trực tiếp: model on-device (opus-mt, [IMPL-017]) độ chính
+xác còn thấp so với dịch vụ online thật. Trong khi đó `DictionaryApiService`
+(dùng cho Tra cứu — SCR-02) đã có sẵn tích hợp **MyMemory Translation
+API** miễn phí — tái dùng luôn cho màn Dịch thay vì thêm dịch vụ mới:
+
+- `DictionaryApiService._translate` đổi thành method public
+  `translate(text, {from, to})`.
+- `translateProvider` (`translation_providers.dart`): có mạng
+  (`connectivityProvider`) → gọi MyMemory **trước**; chỉ rơi về model
+  on-device nếu API lỗi/timeout hoặc không có mạng. Không còn bắt buộc
+  tải model trước khi dịch nếu đang online (`canTranslate = downloadState
+  is ModelReady || isOnline` ở `translate_screen.dart`).
+- Vì `ModelDownloadPrompt` (chặn cả màn, chỉ hiện khi offline + chưa tải)
+  giờ bị bỏ qua lúc online, user mất hẳn nút tải model để dùng offline
+  sau này — thêm `ModelStatusRow` (widget mới, cố định dưới thanh chọn
+  chiều dịch) hiện trạng thái tải/nút Tải khi đang online mà model chưa
+  sẵn sàng; tự ẩn khi `ModelReady`.
+- Sửa kèm 2 lỗi UI phát hiện qua ảnh chụp: tràn layout ~5px khi bàn phím
+  mở (bọc `SingleChildScrollView`) và spinner loading trơ trọi lúc đang
+  dịch (đổi thành spinner nhỏ + chữ "Đang dịch…" cùng style placeholder).
+- Tách widget dùng chung **`DismissKeyboardOnTap`**
+  (`lib/core/widgets/dismiss_keyboard_on_tap.dart`, chạm ra ngoài ô nhập
+  để đóng bàn phím) — áp dụng cho cả màn Dịch và "Tự thêm từ mới"
+  (trước đó chỉ viết tay riêng cho màn Dịch, "Tự thêm từ mới" chưa có).
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/04_Translate.md` | Cập nhật lại toàn bộ mục Hành vi/Kiến trúc cho luồng online-first, xem entry này |
+| `lib/data/services/dictionary_api_service.dart` | `_translate` → `translate` (public) |
+| `lib/data/repositories/translation_providers.dart` | `translateProvider` ưu tiên online |
+| `lib/features/translate/translate_screen.dart` | Bỏ ép buộc tải model khi online; thêm `ModelStatusRow` |
+| `lib/features/translate/widgets/model_status_row.dart` | Mới |
+| `lib/features/translate/widgets/translate_panels.dart` | Sửa tràn layout, loading indicator, dùng `DismissKeyboardOnTap` |
+| `lib/core/widgets/dismiss_keyboard_on_tap.dart` | Mới — widget dùng chung |
+| `lib/features/my_dictionaries/add_word_screen.dart` | Áp dụng `DismissKeyboardOnTap` |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — kế thừa 2 hạn chế đã ghi ở [IMPL-017]
+(model tổng quát không fine-tune thuật ngữ chuyên ngành, greedy decoding
+không ổn định tuyệt đối) — nay chỉ còn áp dụng cho nhánh fallback
+offline.
+
+---
+
+## [IMPL-024] 2026-09-15 — Sửa UI Tra cứu/Dịch, nén ảnh PDF bài đọc, log lỗi API chi tiết hơn
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Gộp nhiều sửa lỗi/tinh chỉnh UI nhỏ phát hiện qua phản ánh trực tiếp và
+ảnh chụp màn hình:
+
+- **Kết quả tra Online trong SCR-02**: đổi vị trí hiện ở **cuối** danh
+  sách kết quả (không phải đầu) — giữ nguyên khi phân trang thêm (chèn
+  ngay trước phần tử online thay vì `addAll` đơn thuần). Thêm chỉ báo
+  loading (`_checkingOnline`) trong lúc đang gọi API online, tránh hiện
+  "Không tìm thấy" rồi lại có kết quả ngay sau đó (nhấp nháy mâu thuẫn).
+- **Log lỗi Free Dictionary API** (`dictionary_api_service.dart`): thay
+  `debugPrint('...— $e')` chung chung bằng log có từ đang tra + loại lỗi
+  (`DioExceptionType`) + status code + URL — dễ phân biệt lượt tra nào
+  lỗi khi nhiều log liền nhau.
+- **Nén ảnh trong `assets/pdf/section-1-unit-1.pdf` và
+  `section-1-unit-3.pdf`** (PyMuPDF, giảm 35-40%) — chỉ thay ảnh nếu bản
+  nén thực sự nhỏ hơn bản gốc, và bắt buộc `use_objstms=1` lúc lưu (thiếu
+  cờ này thì resave lại làm phình file dù từng ảnh đã nhỏ hơn).
+- **Status bar Android** đổi nền trắng + icon tối (`SystemUiOverlayStyle`
+  trong `AppTheme.appBarTheme`) thay vì mặc định trong suốt tràn lên nền
+  navy của AppBar.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `lib/features/search/search_screen.dart` | Vị trí kết quả online, loading indicator |
+| `lib/data/services/dictionary_api_service.dart` | Log lỗi chi tiết hơn |
+| `assets/pdf/section-1-unit-1.pdf`, `section-1-unit-3.pdf` | Nén ảnh |
+| `lib/core/theme/app_theme.dart` | `systemOverlayStyle` cho status bar |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới.
+
+---
+
+## [IMPL-023] 2026-09-15 — Tối ưu hiệu năng: debounce tìm kiếm, phân trang Tra cứu + Chi tiết bộ từ điển
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Sau khi gộp thêm ~31.000 từ từ `Tu_dien.pdf` vào `vocab.db` ([IMPL-021]),
+tốc độ tra cứu/duyệt danh sách chậm hẳn đi — 2 nguyên nhân:
+
+1. **Gõ tới đâu query DB ngay tới đó** (không debounce) — thêm debounce
+   300ms (`search_screen.dart`) trước khi gọi `VocabRepository.search()`.
+2. **Tải hết 1 lần** — cả kết quả tìm kiếm (trước đó cắt cứng `LIMIT 50`,
+   không phân trang thêm được) lẫn danh sách từ trong 1 bộ từ điển
+   (`DictionaryDetailScreen`, có thể lên tới ~32.000 từ với bộ "Military
+   Dictionary" mới) đều nạp toàn bộ vào `ListView` cùng lúc.
+
+Thêm phân trang kiểu cuộn vô hạn (infinite scroll, ngưỡng gần cuối danh
+sách tự nạp thêm) cho cả 2 màn — dùng chung pattern
+`ScrollController` + `_loadGeneration` (bộ đếm tăng dần, chặn kết quả
+async trễ từ 1 lượt tải cũ ghi đè lên danh sách đã bị reset bởi lượt tải
+mới hơn, vd khi user đổi hướng tìm kiếm ngay khi 1 request cũ chưa kịp
+trả về). `VocabRepository.search()`/`wordsByChapterPage()` thêm tham số
+`limit`/`offset`; `ORDER BY` thêm `w.id` làm tie-breaker cuối để đảm bảo
+thứ tự ổn định giữa các trang (nhiều headword trùng nhau, vd "RA", có thể
+đổi thứ tự giữa 2 lần gọi nếu không có tie-breaker).
+
+Benchmark trước/sau (trang đầu, bộ 31.000 từ): 251ms → 15ms.
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `docs/csb-vocab-analysis/02_Search.md` | Thêm debounce + phân trang vào mục Hành vi/Truy vấn dữ liệu, xem entry này |
+| `lib/data/repositories/vocab_repository.dart` | `search()` thêm `offset`; thêm `wordsByChapterPage()`, `countWordsByChapter()` |
+| `lib/features/search/search_screen.dart` | Debounce 300ms, bỏ `searchProvider`, quản lý phân trang bằng state cục bộ |
+| `lib/features/my_dictionaries/dictionary_detail_screen.dart` | Quản lý phân trang bằng state cục bộ (trước đó dùng `chapterWordsProvider` tải hết 1 lần) |
+| `lib/data/repositories/vocab_providers.dart` | Xoá `searchProvider`/`SearchQuery` (không còn dùng) |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — đã tự rà lại 2 lần theo yêu cầu trực tiếp
+(phát hiện + sửa 1 race condition giữa `_loadInitial`/`_loadMore` và 1
+race condition giữa debounce/đổi hướng tìm kiếm, cả 2 đã fix trước khi
+merge).
+
+---
+
+## [IMPL-022] 2026-09-15 — Sửa UI hiển thị từ + bug "Tự điền" ở Tự thêm từ mới
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+2 sửa lỗi UI phát hiện qua ảnh chụp màn hình gửi trực tiếp:
+
+- **`WordDetailContent`**: bỏ khung "NO PHOTO" hiện mặc định khi từ không
+  có ảnh (phần lớn ~31.000 từ gộp từ `Tu_dien.pdf` không có ảnh minh
+  hoạ) — chỉ hiện khối ảnh khi `word.imagePath` thực sự có giá trị. Nút
+  "Thêm vào bộ" đổi từ full-width cố định sang giới hạn tối đa 360px
+  trên pane rộng (desktop), vẫn full-width trên mobile hẹp.
+- **`AddWordScreen` ("Tự thêm từ mới")**: bug — bấm "Tự điền" tra ra dữ
+  liệu theo từ A, rồi đổi ý sửa lại ô nguồn thành từ B, nhưng
+  nghĩa/phiên âm/loại từ hiển thị **vẫn giữ nguyên của từ A** (chỉ mất
+  liên kết `_linkedWordId`, không xoá dữ liệu suy ra sai). Thêm
+  `_autofillSourceDirection` theo dõi ô nào là nguồn của lần tự điền gần
+  nhất — sửa ô đó sau khi đã tự điền thì xoá luôn 3 ô suy ra
+  (nghĩa/phiên âm/loại từ), kèm snackbar giải thích. Thêm: nút "Tự điền"
+  tự disable khi cả 2 ô Từ tiếng Anh + Nghĩa tiếng Việt đã có chữ (không
+  còn gì để tự điền).
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `lib/features/vocab/word_widgets.dart` | Ẩn khung ảnh khi không có `imagePath`; giới hạn width nút "Thêm vào bộ" |
+| `lib/features/my_dictionaries/add_word_screen.dart` | `_autofillSourceDirection`, `_onWordEdited`/`_onMeaningEdited`, disable nút "Tự điền" khi cả 2 ô đã điền |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới.
+
+---
+
+## [IMPL-021] 2026-09-14 — Gộp từ điển scan `Tu_dien.pdf` (Cảnh sát biển/quân sự) vào `vocab.db`
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude (+ 1 phiên song song, cùng hội thoại)
+
+### Nội dung
+
+`Tu_dien.pdf` (977 trang, từ điển quân sự/hàng hải scan) được transcribe
+bằng đọc-trực-tiếp-bằng-vision (không dùng OCR, để phân biệt chính xác
+chữ đậm = tiếng Anh / chữ nhạt = nghĩa tiếng Việt) qua nhiều subagent
+chạy song song — kết quả 2 phần (phần chính + phần phụ lục viết tắt)
+được merge thành 1 CSV chuẩn duy nhất (`Tu_dien_full.csv`, 31.997 dòng),
+rồi merge tiếp vào `assets/db/vocab.db` thực tế đang dùng trong app:
+
+- Dedup với dữ liệu cũ (so khớp `word` không phân biệt hoa/thường, bỏ
+  qua nếu trùng) và dedup nội bộ (trùng cả `word` lẫn `meaning`).
+- `image_path` để trống (dữ liệu scan không có ảnh minh hoạ).
+- Tạo bộ từ điển mới **"Military Dictionary"** (8 bộ tổng, trước đó 7 —
+  6 chương gốc + "Chưa phân loại").
+- Backup `vocab.db` bản cũ trước khi ghi đè
+  (`docs/db/import/vocab.db.backup-before-tudien-merge`).
+
+Kết quả: 33.019 từ tổng (từ ~2.450 trước đó) — kéo theo nhu cầu tối ưu
+hiệu năng tra cứu/duyệt danh sách ở [IMPL-023].
+
+### Tài liệu tạo mới
+
+| File | Nội dung |
+|---|---|
+| `docs/source-materials/Tu_dien_full.csv` | 31.997 dòng, kết quả transcribe đầy đủ `Tu_dien.pdf` |
+| `docs/db/import/build_combined_vocab_db.py` | Script build `vocab.db` cuối (cũ + Tu_dien, dedup, chuẩn hoá) |
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `assets/db/vocab.db` | 33.019 từ, 8 bộ từ điển (thêm "Military Dictionary") |
+
+### Điểm chờ xác nhận còn mở
+
+| # | Câu hỏi |
+|---|---|
+| Q-CSB-07 (bổ sung) | Chưa xác nhận lại chính sách dedup/chuẩn hoá đã dùng (case-insensitive theo `word`, giữ nguyên nếu `meaning` khác) có đúng ý muốn lâu dài không — hiện chỉ là lựa chọn mặc định hợp lý được disclose công khai, không phải quyết định user chốt trực tiếp câu chữ. |
+
+---
+
 ## [IMPL-020] 2026-08-16 — Task-plan: đặt giờ nhắc ôn tập tuỳ chỉnh (chưa implement)
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude

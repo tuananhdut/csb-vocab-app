@@ -1,0 +1,5 @@
+# XI. KHẢ NĂNG NHÂN RỘNG
+
+Phần mềm được xây dựng theo hướng độc lập, không phụ thuộc vào hạ tầng máy chủ hay hệ thống mạng nội bộ riêng của bất kỳ đơn vị nào, mỗi thiết bị cài đặt là một không gian dữ liệu hoạt động độc lập. Do đó, sáng kiến hoàn toàn có khả năng nhân rộng, triển khai áp dụng thống nhất cho toàn lực lượng Cảnh sát biển Việt Nam, không chỉ giới hạn trong phạm vi Bộ Tư lệnh Vùng Cảnh sát biển 3 nơi sáng kiến được xây dựng và thử nghiệm ban đầu.
+
+Về hướng phát triển mở rộng, phần mềm có thể được bổ sung thêm các bộ từ vựng chuyên ngành khác phù hợp với đặc thù của các lực lượng vũ trang khác (Hải quân, Bộ đội Biên phòng...), hoặc mở rộng thêm cặp ngôn ngữ khác ngoài Anh - Việt khi có nhu cầu thực tế phát sinh, trên cùng một nền tảng kỹ thuật đã xây dựng. Nhờ cơ chế hoạt động ngoại tuyến (offline) và không đòi hỏi đầu tư máy chủ, đường truyền hay nhân lực vận hành hệ thống, chi phí nhân rộng gần như không đáng kể — đơn vị tiếp nhận chỉ cần sao chép và cài đặt bộ file cài đặt lên thiết bị (máy tính, điện thoại, máy tính bảng) là có thể đưa vào sử dụng ngay.
