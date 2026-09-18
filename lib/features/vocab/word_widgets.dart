@@ -62,26 +62,40 @@ class WordImage extends StatelessWidget {
   }
 }
 
-/// Nhãn loại từ (dt/đt/tt...) kiểu viền bo góc nhỏ, monospace — khớp
-/// `.pos-tag` trong mockup (`docs/artifact-design-windows/styles.css`).
+/// Tên đầy đủ của các viết tắt loại từ lưu trong `VocabWord.partOfSpeech`
+/// (xem `VocabRepository._posLabels`) — [PosTag] hiện tên đầy đủ thay vì
+/// viết tắt cho dễ đọc, viết tắt không rõ nghĩa với người không chuyên ngữ.
+const _posFullLabels = {
+  'dt': 'Danh từ',
+  'đt': 'Động từ',
+  'tt': 'Tính từ',
+  'trt': 'Trạng từ',
+  'gt': 'Giới từ',
+};
+
+/// Nhãn loại từ — hiện tên đầy đủ (vd "Danh từ" thay vì "dt") dạng tag bo
+/// tròn nền màu, nổi bật hơn kiểu viền mảnh trước đây.
 class PosTag extends StatelessWidget {
   const PosTag(this.label, {super.key});
+
+  /// Viết tắt lưu trong dữ liệu (`dt`/`đt`/`tt`/`trt`/`gt`) — không nhận
+  /// diện được thì hiện nguyên văn thay vì ẩn hẳn.
   final String label;
 
   @override
   Widget build(BuildContext context) {
     const color = AppColors.brand;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       margin: const EdgeInsets.only(right: 4),
       decoration: BoxDecoration(
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        label,
+        _posFullLabels[label] ?? label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontFamily: AppFonts.mono,
+              fontWeight: FontWeight.bold,
               color: color,
             ),
       ),
@@ -260,11 +274,17 @@ class WordDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.sizeOf(context).height * 0.7,
+    // Co gian theo do dai noi dung that su (vd tu khong co vi du/anh minh
+    // hoa) thay vi luon chiem co dinh 70% man hinh, gay khoang trong lon
+    // o day sheet voi nhung tu ngan.
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+      ),
       child: WordDetailContent(
         word: word,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        shrinkWrap: true,
       ),
     );
   }
@@ -280,6 +300,7 @@ class WordDetailContent extends ConsumerWidget {
     this.scrollController,
     this.padding = const EdgeInsets.all(20),
     this.leadingAction,
+    this.shrinkWrap = false,
   });
 
   final VocabWord word;
@@ -290,6 +311,17 @@ class WordDetailContent extends ConsumerWidget {
   /// dùng cho nút sửa/xoá của từ tự thêm ở pane chi tiết desktop, xem
   /// `_DesktopWordDetail` trong `dictionary_detail_screen.dart`.
   final Widget? leadingAction;
+
+  /// `true` khi bọc trong 1 `ConstrainedBox` co giãn theo nội dung (bottom
+  /// sheet mobile, xem [WordDetailSheet]) — `false` (mặc định) khi nằm
+  /// trong `Expanded` chiều cao cố định (pane chi tiết desktop).
+  final bool shrinkWrap;
+
+  /// Từ nhiều mục "Military Dictionary" ở dạng `VIẾT TẮT (giải thích đầy
+  /// đủ)` — tách riêng phần trong ngoặc để hiện nhỏ/phụ bên dưới thay vì
+  /// nhét chung vào tiêu đề lớn (`headlineMedium`), tránh tiêu đề dài tràn
+  /// 2 dòng trông thô (vd "JAR (joint activity report)").
+  static final _abbreviationExpansion = RegExp(r'^(.*?)\s*\(([^)]+)\)\s*$');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -302,10 +334,15 @@ class WordDetailContent extends ConsumerWidget {
     final examples = word.isOnline
         ? const AsyncValue<List<WordExample>>.data([])
         : ref.watch(wordExamplesProvider(word.id));
+    final abbreviationMatch = _abbreviationExpansion.firstMatch(word.word);
+    final headword = abbreviationMatch?.group(1) ?? word.word;
+    final expansion = abbreviationMatch?.group(2);
 
     return ListView(
       controller: scrollController,
       padding: padding,
+      shrinkWrap: shrinkWrap,
+      physics: shrinkWrap ? const ClampingScrollPhysics() : null,
       children: [
         if (leadingAction != null) ...[
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [leadingAction!]),
@@ -319,11 +356,21 @@ class WordDetailContent extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Text(word.word, style: textTheme.headlineMedium),
+              child: Text(headword, style: textTheme.headlineMedium),
             ),
             if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
           ],
         ),
+        if (expansion != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            expansion,
+            style: textTheme.bodyMedium?.copyWith(
+              color: scheme.outline,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
         if (word.phonetic.isNotEmpty) ...[
           const SizedBox(height: 6),
           Row(
