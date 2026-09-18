@@ -636,10 +636,16 @@ class _PaneDetailEmpty extends StatelessWidget {
 class _SearchEmptyCarousel extends StatelessWidget {
   const _SearchEmptyCarousel();
 
+  // Bo anh rieng cho carousel man Tra cuu — tach khoi 3 anh cua Splash
+  // (csb-slide-0X.jpg) theo yeu cau truc tiep, tranh nguoi dung thay lap
+  // lai dung anh vua xem luc mo app.
   static const _images = [
-    'assets/images/coast_guard/csb-slide-01.jpg',
-    'assets/images/coast_guard/csb-slide-02.jpg',
-    'assets/images/coast_guard/csb-slide-03.jpg',
+    'assets/images/coast_guard/csb-search-01.jpg',
+    'assets/images/coast_guard/csb-search-02.jpg',
+    'assets/images/coast_guard/csb-search-03.jpg',
+    'assets/images/coast_guard/csb-search-04.jpg',
+    'assets/images/coast_guard/csb-search-05.jpg',
+    'assets/images/coast_guard/csb-search-06.jpg',
   ];
 
   @override
