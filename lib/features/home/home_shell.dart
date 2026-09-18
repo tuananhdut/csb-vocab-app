@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -11,7 +12,6 @@ import '../lessons/lessons_screen.dart';
 import '../my_dictionaries/my_dictionaries_screen.dart';
 import '../review/review_providers.dart';
 import '../search/search_screen.dart';
-import '../settings/widgets/daily_reminder_sheet.dart';
 import '../translate/translate_screen.dart';
 
 const _myDictionariesDestinationIndex = 3;
@@ -107,12 +107,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 ),
                 // Windows không hỗ trợ nhắc nền theo lịch (chỉ nhắc tức thời
                 // lúc mở app, tự chạy không cần cấu hình) nên không có gì để
-                // cài đặt qua nút này — xem `daily_reminder_sheet.dart`.
+                // cài đặt qua nút này — xem `reminder_settings_screen.dart`.
                 if (!Platform.isWindows)
                   IconButton(
                     icon: const Icon(Icons.settings_outlined),
                     tooltip: 'Cài đặt nhắc ôn tập',
-                    onPressed: () => showDailyReminderSheet(context),
+                    onPressed: () => context.push('/settings/reminders'),
                   ),
               ],
             ),
@@ -141,7 +141,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                       ),
                       if (!Platform.isWindows)
                         _NavRailSettingsButton(
-                          onTap: () => showDailyReminderSheet(context),
+                          onTap: () => context.push('/settings/reminders'),
                         ),
                       const _NavRailConnectivityFooter(),
                     ],

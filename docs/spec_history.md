@@ -4,6 +4,106 @@ Lịch sử thay đổi đặc tả. Mỗi entry: bối cảnh → nội dung th
 
 ---
 
+## [IMPL-030] 2026-09-18 — Giờ nhắc riêng theo từng ngày, chuyển màn Cài đặt sang full-screen
+
+**Người yêu cầu:** User · **Người thực hiện:** Claude
+
+### Nội dung
+
+Yêu cầu ban đầu: *"tôi muốn setting thông báo của giờ theo từng ngày,
+UI hiện đại dễ dùng"* — mở rộng trực tiếp từ tính năng nhắc ôn tập đã
+implement ở `05-dat-gio-nhac-on-tap/` (IMPL-018 đến IMPL-020, IMPL-026),
+đảo ngược quyết định D3 đã chốt trước đó ("1 giờ chung cho mọi thứ được
+chọn") sang **giờ riêng độc lập cho từng ngày trong tuần**.
+
+Bắt đầu bằng task-analysis (`06-gio-nhac-rieng-theo-ngay/01-analysis.md`),
+nêu 4 điểm chờ; user chốt ngay cả 4 rồi yêu cầu implement thẳng (không
+qua brainstorm/plan riêng, không làm mockup HTML):
+
+1. **Chuyển từ `BottomSheet` sang route full-screen** (`/settings/reminders`).
+2. **UI "hiện đại, dễ dùng"**: tự nghiên cứu — không có mockup tham
+   chiếu nào cho màn này trong `docs/artifact-design/` (bộ mockup đó
+   còn dùng bảng màu navy/brass aspirational khác `AppColors` thật
+   trong code, và giả định bố cục 5-tab có tab "Cài đặt" riêng — mâu
+   thuẫn với quyết định D1 cũ là icon trong AppBar, không phải tab).
+   Quyết định dùng thẳng design token thật đang chạy trong app
+   (`AppColors`/`AppFonts`/`CardTheme` ở `app_theme.dart`) thay vì bám
+   theo bộ mockup cũ, tránh lệch thêm với code.
+3. **Không migrate dữ liệu cũ — chấp nhận reset về mặc định.**
+4. **Giữ công tắc bật/tắt tổng.**
+
+**Thay đổi kiến trúc:**
+
+- `NotificationService.scheduleWeeklyReminders`: đổi tham số từ `{hour,
+  minute, Set<int> weekdays}` (1 giờ dùng chung) sang `{Map<int weekday,
+  ({int hour, int minute})> dayTimes}` (giờ riêng từng thứ) — vòng lặp
+  lên lịch nội bộ (`id = 2001 + weekday`) giữ nguyên, chỉ đổi nguồn
+  giờ/phút truyền vào mỗi lần gọi `zonedSchedule`.
+- `ReminderSettings`: đổi từ `{enabled, hour, minute, weekdays}` sang
+  `{enabled, perDay: Map<int weekday, DayReminder>}` (`DayReminder =
+  {enabled, hour, minute}`). Lưu `shared_preferences` bằng **1 khoá JSON
+  mới** `reminder_per_day_v2` (khác hẳn 4 khoá phẳng cũ
+  `daily_reminder_*`) — đổi tên khoá là chủ đích để user nâng cấp nhận
+  đúng giá trị mặc định mới thay vì đọc nhầm dữ liệu cũ sai định dạng
+  (đúng quyết định #3, không cần code migrate).
+- `ReminderSettingsNotifier`: thêm `setEnabled(bool)` (công tắc tổng) +
+  `updateDay(weekday, {enabled, hour, minute})` (ghi từng ngày), thay
+  cho `update({enabled, hour, minute, weekdays})` cũ.
+
+**Thay đổi UI/điều hướng:**
+
+- File mới `lib/features/settings/reminder_settings_screen.dart` thay
+  hẳn `lib/features/settings/widgets/daily_reminder_sheet.dart` (đã
+  xoá) — full-screen: `SwitchListTile` tổng trong `Card` ở đầu, tiếp
+  theo 7 `Card`/`ListTile` (1 dòng/thứ) gồm huy hiệu tên ngày (`CircleAvatar`
+  đổi màu theo trạng thái bật/tắt), giờ đã chọn hiển thị mono
+  (`AppFonts.mono`, bấm mở `showTimePicker` riêng cho ngày đó), `Switch`
+  bật/tắt riêng ngày — disable khi công tắc tổng tắt. Giữ nguyên
+  `_PermissionDeniedPrompt` (quyền thông báo bị từ chối) từ bản cũ.
+- Route mới `/settings/reminders` trong `lib/core/router/app_router.dart`.
+- `home_shell.dart`: 2 chỗ mở cấu hình (icon `AppBar.actions` mobile +
+  nút nav-rail Windows — vẫn ẩn trên Windows như cũ) đổi từ
+  `showDailyReminderSheet(context)` sang `context.push('/settings/reminders')`.
+
+`flutter analyze lib/` sạch sau khi sửa (không lỗi/warning mới).
+
+### Tài liệu tạo mới
+
+| File | Nội dung |
+|---|---|
+| `docs/csb-vocab-analysis/tasks/06-gio-nhac-rieng-theo-ngay/01-analysis.md` | Task-analysis: Requirement Summary, UI/Backend Gap, Provider/Service Contract, Risk Analysis, 4 Open Questions (đã chốt, xem trên) |
+| `lib/features/settings/reminder_settings_screen.dart` | Màn full-screen mới thay `DailyReminderSheet` |
+
+### Tài liệu đã cập nhật
+
+| File | Thay đổi |
+|---|---|
+| `lib/data/services/notification_service.dart` | `scheduleWeeklyReminders` nhận `Map<weekday, {hour, minute}>` thay vì 1 cặp giờ/phút dùng chung |
+| `lib/data/services/reminder_settings_provider.dart` | Viết lại `ReminderSettings`/`ReminderSettingsNotifier` theo model giờ riêng từng ngày, đổi khoá `shared_preferences` sang `reminder_per_day_v2` (JSON, không migrate khoá cũ) |
+| `lib/core/router/app_router.dart` | Thêm route `/settings/reminders` |
+| `lib/features/home/home_shell.dart` | 2 điểm mở cấu hình đổi sang `context.push('/settings/reminders')` |
+
+### File đã xoá
+
+| File | Lý do |
+|---|---|
+| `lib/features/settings/widgets/daily_reminder_sheet.dart` | Thay hẳn bởi `reminder_settings_screen.dart` (full-screen) |
+
+### Điểm chờ xác nhận còn mở
+
+Không phát sinh câu hỏi mới — cả 4 điểm treo ở task-analysis đã được
+user chốt trực tiếp trước khi implement (xem trên). Ghi nhận 1 điểm
+nhỏ chưa xử lý: khoá `shared_preferences` cũ (`daily_reminder_enabled`/
+`hour`/`minute`/`weekdays`) không còn được đọc nhưng cũng chưa bị xoá
+khỏi máy user cũ — rác vô hại (không tốn bộ nhớ đáng kể), có thể dọn ở
+lần sửa `reminder_settings_provider.dart` tiếp theo nếu cần.
+
+Chưa verify tay trên thiết bị thật (lên lịch theo giờ riêng từng ngày
+khó test tự động, kế thừa đúng khó khăn đã ghi ở IMPL-020/INT-02) — cần
+làm trước khi coi task này hoàn tất.
+
+---
+
 ## [IMPL-029] 2026-09-17 — Audit toàn bộ doc màn hình còn lại (01/05/06/07/00_Overview)
 
 **Người yêu cầu:** User · **Người thực hiện:** Claude (4 subagent song song kiểm tra, Claude tự sửa)

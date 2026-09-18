@@ -108,27 +108,26 @@ class NotificationService {
     );
   }
 
-  /// Lên lịch nhắc theo các thứ trong tuần đã chọn cho Android/iOS (nhắc cả
-  /// khi app đã đóng) — 1 giờ chung áp dụng cho mọi thứ trong [weekdays]
-  /// (theo `DateTime.weekday`, 1=Thứ Hai..7=Chủ Nhật). Vì
+  /// Lên lịch nhắc theo từng thứ trong tuần cho Android/iOS (nhắc cả khi
+  /// app đã đóng) — mỗi thứ trong [dayTimes] có giờ/phút **riêng độc lập**
+  /// (khoá là `DateTime.weekday`, 1=Thứ Hai..7=Chủ Nhật). Vì
   /// `flutter_local_notifications` chỉ khớp được 1 thứ/lịch
   /// (`DateTimeComponents.dayOfWeekAndTime`), nhắc nhiều thứ cần nhiều lịch
   /// song song — mỗi thứ 1 `id` riêng (`_weeklyReminderIdBase + weekday`) để
   /// huỷ/lên lịch lại độc lập được. Windows không hỗ trợ nhắc nền khi app
   /// tắt hẳn — ngoài phạm vi MVP (đã chốt D2, plan 06).
   Future<void> scheduleWeeklyReminders({
-    required int hour,
-    required int minute,
-    required Set<int> weekdays,
+    required Map<int, ({int hour, int minute})> dayTimes,
   }) async {
     if (Platform.isWindows) return;
 
-    for (final weekday in weekdays) {
+    for (final entry in dayTimes.entries) {
+      final weekday = entry.key;
       await _plugin.zonedSchedule(
         id: _weeklyReminderIdBase + weekday,
         title: 'Đến giờ ôn từ vựng',
         body: 'Đừng quên ôn lại các từ đã học hôm nay nhé!',
-        scheduledDate: _nextInstanceOf(weekday, hour, minute),
+        scheduledDate: _nextInstanceOf(weekday, entry.value.hour, entry.value.minute),
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             _dailyChannelId,
