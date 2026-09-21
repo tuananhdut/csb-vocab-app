@@ -55,7 +55,7 @@ class DictionaryDetailScreen extends ConsumerStatefulWidget {
 
 class _DictionaryDetailScreenState
     extends ConsumerState<DictionaryDetailScreen> {
-  static const _pageSize = 10;
+  static const _pageSize = 100;
   // Bat dau tai trang tiep theo TRUOC khi cham day danh sach, tranh
   // khoang trong ngan khi cuon nhanh.
   static const _loadMoreThreshold = 400.0;
@@ -123,6 +123,7 @@ class _DictionaryDetailScreenState
         _hasMore = page.length == _pageSize;
         _initialLoading = false;
       });
+      _scheduleFillCheck();
     } catch (e) {
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
@@ -130,6 +131,23 @@ class _DictionaryDetailScreenState
         _initialLoading = false;
       });
     }
+  }
+
+  /// 1 trang có thể không đủ lấp đầy khung nhìn (vd `_pageSize` từ vừa
+  /// khít hoặc ít hơn chiều cao màn desktop) -> `ScrollController` không
+  /// có scroll extent -> `_onScroll` không bao giờ được gọi vì user
+  /// không tạo ra sự kiện cuộn nào, danh sách kẹt mãi ở trang đầu dù
+  /// `_hasMore` vẫn true. Sau mỗi lần tải, kiểm tra lại sau khi frame vẽ
+  /// xong; nếu vẫn chưa cuộn được mà còn trang tiếp theo thì tự tải
+  /// thêm (đệ quy qua `_loadMore` -> `_scheduleFillCheck` tới khi lấp
+  /// đầy hoặc hết dữ liệu).
+  void _scheduleFillCheck() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_hasMore || _loadingMore || _initialLoading) return;
+      if (!_scrollController.hasClients) return;
+      if (_scrollController.position.maxScrollExtent > 0) return;
+      _loadMore();
+    });
   }
 
   Future<void> _loadMore() async {
@@ -149,6 +167,7 @@ class _DictionaryDetailScreenState
         _hasMore = page.length == _pageSize;
         _loadingMore = false;
       });
+      _scheduleFillCheck();
     } catch (_) {
       // Loi tai them: giu danh sach da co, chi tat co xoay, user cuon
       // lai la thu lai duoc (khong chan ca man vi 1 loi tam thoi o 1 trang).
