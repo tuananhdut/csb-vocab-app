@@ -9,6 +9,7 @@ import '../../domain/entities/translation_direction.dart';
 import '../services/connectivity_service.dart';
 import '../services/llm_model_download_service.dart';
 import '../services/llm_translation_service.dart';
+import '../services/mlkit_translation_service.dart';
 import '../services/model_download_service.dart';
 import '../services/translation_service.dart';
 import 'vocab_providers.dart' show dictionaryApiServiceProvider;
@@ -18,6 +19,13 @@ import 'vocab_providers.dart' show dictionaryApiServiceProvider;
 /// cho macOS/Linux dù `llamadart` hỗ trợ đa nền tảng, và không dùng
 /// trên mobile (RAM/CPU không phù hợp, xem brainstorm).
 bool get isLlmTranslationSupportedPlatform => !kIsWeb && Platform.isWindows;
+
+/// ML Kit Translation (Google, on-device) — offline fallback cho mobile,
+/// thay thế vai trò của [isLlmTranslationSupportedPlatform] trên desktop
+/// nhưng dùng SDK dịch chuyên biệt nhỏ gọn thay vì LLM (RAM/pin di động
+/// không phù hợp chạy LLM, xem brainstorm).
+bool get isMlKitTranslationSupportedPlatform =>
+    !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
 /// Trạng thái tải model dịch cho 1 chiều — sealed vì cần phân biệt rõ
 /// "đang tải X/Y byte" là 1 trạng thái riêng, khác data/error/loading mà
@@ -158,6 +166,38 @@ Future<void> deleteLlmModel(WidgetRef ref) async {
   ref.read(llmModelDownloadStateProvider.notifier).state = const ModelNotDownloaded();
 }
 
+/// Trạng thái tải model ML Kit (mobile) — KHÔNG family theo
+/// [TranslationDirection] cùng lý do như [llmModelDownloadStateProvider]:
+/// ML Kit tải model theo NGÔN NGỮ (Anh, Việt), dùng chung cho cả 2 chiều.
+final mlkitModelDownloadStateProvider = StateProvider<ModelDownloadState>(
+  (ref) => const ModelNotDownloaded(),
+);
+
+final mlkitModelExistsOnDiskProvider = FutureProvider<bool>((ref) {
+  return MlKitTranslationService.instance.isDownloaded(TranslationDirection.enToVi);
+});
+
+/// ML Kit không báo tiến độ theo byte (chỉ trả về xong/lỗi) - khác
+/// opus-mt/LLM có callback `onProgress`, nên giữ nguyên [ModelDownloading]
+/// ở dạng "không xác định" (0, 0) suốt quá trình tải, UI tự hiển thị
+/// spinner không có % (xem `LlmModelRow`/`ModelStatusRow` đã xử lý case
+/// `progress <= 0` sẵn).
+Future<void> downloadMlKitModel(WidgetRef ref) async {
+  final notifier = ref.read(mlkitModelDownloadStateProvider.notifier);
+  notifier.state = const ModelDownloading(0, 0);
+  try {
+    await MlKitTranslationService.instance.download();
+    notifier.state = const ModelReady();
+  } catch (e) {
+    notifier.state = ModelDownloadFailed(e.toString());
+  }
+}
+
+Future<void> deleteMlKitModel(WidgetRef ref) async {
+  await MlKitTranslationService.instance.delete();
+  ref.read(mlkitModelDownloadStateProvider.notifier).state = const ModelNotDownloaded();
+}
+
 /// Kết quả dịch [text] theo [direction] — `FutureProvider.family` tận
 /// dụng cache tự nhiên của Riverpod (dịch lại cùng câu không chạy lại
 /// inference). Model được nạp lười (lazy) trong lần dịch đầu tiên; ném
@@ -207,6 +247,17 @@ final translateProvider =
       // khác cho user (xem doc-comment exception).
       debugPrint('[translateProvider] LLM degenerate, falling back to opus-mt: $e');
     }
+  }
+
+  // Cùng logic ở trên nhưng cho mobile (ML Kit thay vì LLM) - 2 nhánh
+  // loại trừ lẫn nhau theo platform (isLlmTranslationSupportedPlatform
+  // chỉ true trên Windows, isMlKitTranslationSupportedPlatform chỉ true
+  // trên Android/iOS) nên không có trường hợp cả 2 cùng chạy.
+  if (isMlKitTranslationSupportedPlatform &&
+      ref.watch(mlkitModelDownloadStateProvider) is ModelReady) {
+    final result = await MlKitTranslationService.instance.translate(direction, text);
+    debugPrint('[translateProvider] served by ML Kit: "$text" -> "$result"');
+    return result;
   }
 
   final service = ref.watch(translationServiceProvider);
