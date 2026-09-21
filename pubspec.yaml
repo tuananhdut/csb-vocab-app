@@ -58,6 +58,7 @@ dependencies:
   permission_handler: ^11.3.1
   llamadart: ^0.8.24
   google_mlkit_translation: ^0.15.1
+  system_info3: ^4.0.2
 
 dev_dependencies:
   flutter_test:

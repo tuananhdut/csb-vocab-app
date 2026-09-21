@@ -11,6 +11,7 @@ import '../services/llm_model_download_service.dart';
 import '../services/llm_translation_service.dart';
 import '../services/mlkit_translation_service.dart';
 import '../services/model_download_service.dart';
+import '../services/system_resources_service.dart';
 import '../services/translation_service.dart';
 import 'vocab_providers.dart' show dictionaryApiServiceProvider;
 
@@ -138,13 +139,20 @@ Future<void> downloadLlmModel(WidgetRef ref, {CancelToken? cancelToken}) async {
     );
     // Warm-up: nạp model ngay sau khi tải xong thay vì đợi lần dịch đầu
     // tiên mới nạp (lazy) - tránh cold-start (~vài giây load 2.1GB GGUF)
-    // làm chậm bản dịch đầu tiên. Không chặn luồng "tải xong" nếu warm-up
-    // lỗi (vd RAM tạm thiếu) - `LlmTranslationService.translate()` vẫn
-    // tự nạp lại (lazy) khi cần, đây chỉ là tối ưu, không phải bắt buộc.
-    try {
-      await LlmTranslationService.instance.load();
-    } catch (e) {
-      debugPrint('[downloadLlmModel] warm-up load thất bại (sẽ nạp lười khi dịch): $e');
+    // làm chậm bản dịch đầu tiên. Kiểm tra RAM RẢNH HIỆN TẠI trước khi
+    // thử (không chỉ RAM tổng đã gate ở UI `LlmModelRow`) - máy đủ cấu
+    // hình nhưng đang bận app khác lúc này thì bỏ qua warm-up, để
+    // `translateProvider` tự nạp lười (và tự kiểm tra RAM lại) khi thật
+    // sự cần. Không chặn luồng "tải xong" nếu warm-up lỗi/bị bỏ qua -
+    // đây chỉ là tối ưu, không phải bắt buộc.
+    if (SystemResourcesService.hasEnoughRamForLlm()) {
+      try {
+        await LlmTranslationService.instance.load();
+      } catch (e) {
+        debugPrint('[downloadLlmModel] warm-up load thất bại (sẽ nạp lười khi dịch): $e');
+      }
+    } else {
+      debugPrint('[downloadLlmModel] RAM rảnh không đủ, bỏ qua warm-up (sẽ nạp lười khi dịch)');
     }
     notifier.state = const ModelReady();
   } on LlmChecksumMismatchException catch (e) {
@@ -174,7 +182,7 @@ final mlkitModelDownloadStateProvider = StateProvider<ModelDownloadState>(
 );
 
 final mlkitModelExistsOnDiskProvider = FutureProvider<bool>((ref) {
-  return MlKitTranslationService.instance.isDownloaded(TranslationDirection.enToVi);
+  return MlKitTranslationService.instance.isDownloaded();
 });
 
 /// ML Kit không báo tiến độ theo byte (chỉ trả về xong/lỗi) - khác
@@ -234,18 +242,27 @@ final translateProvider =
   // model AI cục bộ (Qwen2.5-3B) -> ưu tiên dùng thay vì opus-mt (chất
   // lượng cao hơn rõ rệt, xem SUMMARY.md), nhưng CHƯA bắt buộc tải: nếu
   // chưa tải, rơi về opus-mt như hành vi cũ, không đổi gì cho user chưa
-  // biết tới tính năng mới này.
-  if (isLlmTranslationSupportedPlatform &&
-      ref.watch(llmModelDownloadStateProvider) is ModelReady) {
-    try {
-      await LlmTranslationService.instance.load();
-      final result = await LlmTranslationService.instance.translate(direction, text);
-      debugPrint('[translateProvider] served by LLM: "$text" -> "$result"');
-      return result;
-    } on LlmDegenerateOutputException catch (e) {
-      // Rơi về opus-mt bên dưới thay vì hiện thẳng output lẫn ngôn ngữ
-      // khác cho user (xem doc-comment exception).
-      debugPrint('[translateProvider] LLM degenerate, falling back to opus-mt: $e');
+  // biết tới tính năng mới này. Kiểm tra RAM MỖI LẦN dịch (không chỉ lúc
+  // tải) - máy đủ RAM lúc tải nhưng đang chạy nhiều app khác lúc dịch
+  // vẫn nên rơi về opus-mt thay vì cố load model nặng gây treo máy.
+  if (isLlmTranslationSupportedPlatform && ref.watch(llmModelDownloadStateProvider) is ModelReady) {
+    if (!SystemResourcesService.hasEnoughRamForLlm()) {
+      debugPrint('[translateProvider] RAM không đủ cho LLM, dùng opus-mt thay thế');
+    } else {
+      try {
+        await LlmTranslationService.instance.load();
+        final result = await LlmTranslationService.instance.translate(direction, text);
+        debugPrint('[translateProvider] served by LLM: "$text" -> "$result"');
+        return result;
+      } catch (e) {
+        // Bắt MỌI lỗi từ LLM (không chỉ LlmDegenerateOutputException) -
+        // model có thể bị xoá ngoài ý muốn dù marker `.ready` còn (đĩa
+        // hỏng/antivirus quarantine), lỗi native llama.cpp lúc load/gen,
+        // v.v. Đây là lưới an toàn, không rơi về opus-mt sẽ để lỗi lọt
+        // thẳng lên UI như crash trước đây (LlamaException hiện trực
+        // tiếp cho user) thay vì tự phục hồi.
+        debugPrint('[translateProvider] LLM lỗi, fallback opus-mt: $e');
+      }
     }
   }
 
@@ -255,9 +272,16 @@ final translateProvider =
   // trên Android/iOS) nên không có trường hợp cả 2 cùng chạy.
   if (isMlKitTranslationSupportedPlatform &&
       ref.watch(mlkitModelDownloadStateProvider) is ModelReady) {
-    final result = await MlKitTranslationService.instance.translate(direction, text);
-    debugPrint('[translateProvider] served by ML Kit: "$text" -> "$result"');
-    return result;
+    try {
+      final result = await MlKitTranslationService.instance.translate(direction, text);
+      debugPrint('[translateProvider] served by ML Kit: "$text" -> "$result"');
+      return result;
+    } catch (e) {
+      // Cùng lý do như nhánh LLM - model ML Kit có thể bị hệ điều hành tự
+      // xoá (dọn dẹp bộ nhớ khi thiếu dung lượng) dù state provider vẫn
+      // nghĩ là ModelReady, không nên để lỗi lọt thẳng lên UI.
+      debugPrint('[translateProvider] ML Kit lỗi, fallback opus-mt: $e');
+    }
   }
 
   final service = ref.watch(translationServiceProvider);

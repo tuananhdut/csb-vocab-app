@@ -29,7 +29,10 @@ class MlKitTranslationService {
   final _modelManager = OnDeviceTranslatorModelManager();
   final _translators = <TranslationDirection, OnDeviceTranslator>{};
 
-  Future<bool> isDownloaded(TranslationDirection direction) async {
+  /// Không nhận [TranslationDirection] - ML Kit tải model theo NGÔN NGỮ,
+  /// dùng chung cho cả 2 chiều (khớp [download]/[delete] bên dưới), nên
+  /// luôn kiểm tra đủ cả Anh lẫn Việt bất kể đang hỏi chiều nào.
+  Future<bool> isDownloaded() async {
     final en = await _modelManager.isModelDownloaded(_enBcp);
     final vi = await _modelManager.isModelDownloaded(_viBcp);
     return en && vi;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/repositories/translation_providers.dart';
+import '../../../data/services/system_resources_service.dart';
 
 /// Hàng nhỏ cho phép tải model AI cục bộ (Qwen2.5-3B-Instruct, ~2.1GB)
 /// làm fallback offline chất lượng cao hơn opus-mt hiện tại (xem
@@ -52,29 +53,42 @@ class _LlmModelRowState extends ConsumerState<LlmModelRow> {
 
     final state = ref.watch(llmModelDownloadStateProvider);
 
+    // RAM tổng không đủ VÀ chưa có gì để dùng (chưa tải/tải lỗi) -> chặn
+    // ngay từ đây, không cho bắt đầu tải 2.1GB rồi mới phát hiện không
+    // dùng được (kiểm tra động ở `translateProvider` chỉ bảo vệ lúc DỊCH,
+    // không nên là nơi user lần đầu biết máy không đủ cấu hình). Nếu đã
+    // tải sẵn từ trước (vd copy dữ liệu từ máy khác, hoặc nâng RAM sau)
+    // vẫn cho hiển thị bình thường - `translateProvider` tự lo phần an
+    // toàn lúc dùng thật.
+    final blockedByRam =
+        !SystemResourcesService.hasEnoughTotalRamForLlm() &&
+        (state is ModelNotDownloaded || state is ModelDownloadFailed);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
           Icon(Icons.memory, size: 16, color: scheme.outline),
           const SizedBox(width: 8),
-          Expanded(child: _statusText(context, state)),
-          _action(state),
+          Expanded(child: _statusText(context, state, blockedByRam)),
+          if (!blockedByRam) _action(state),
         ],
       ),
     );
   }
 
-  Widget _statusText(BuildContext context, ModelDownloadState state) {
-    final text = switch (state) {
-      ModelNotDownloaded() =>
-        'AI cục bộ (Qwen2.5-3B, ~2.1GB) — dịch offline chính xác hơn khi mất mạng',
-      ModelDownloading(:final progress) => progress <= 0
-          ? 'Đang chuẩn bị tải AI cục bộ…'
-          : 'Đang tải AI cục bộ… ${(progress * 100).round()}%',
-      ModelDownloadFailed() => 'Tải AI cục bộ thất bại',
-      ModelReady() => 'Đã sẵn sàng AI cục bộ (Qwen2.5-3B) — ưu tiên dùng khi offline',
-    };
+  Widget _statusText(BuildContext context, ModelDownloadState state, bool blockedByRam) {
+    final text = blockedByRam
+        ? 'AI cục bộ (Qwen2.5-3B) cần tối thiểu ~6GB RAM — máy này không đủ cấu hình, dùng dịch offline nhẹ hơn'
+        : switch (state) {
+            ModelNotDownloaded() =>
+              'AI cục bộ (Qwen2.5-3B, ~2.1GB) — dịch offline chính xác hơn khi mất mạng',
+            ModelDownloading(:final progress) => progress <= 0
+                ? 'Đang chuẩn bị tải AI cục bộ…'
+                : 'Đang tải AI cục bộ… ${(progress * 100).round()}%',
+            ModelDownloadFailed() => 'Tải AI cục bộ thất bại',
+            ModelReady() => 'Đã sẵn sàng AI cục bộ (Qwen2.5-3B) — ưu tiên dùng khi offline',
+          };
     return Text(
       text,
       overflow: TextOverflow.ellipsis,
