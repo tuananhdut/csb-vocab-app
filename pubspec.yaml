@@ -56,6 +56,7 @@ dependencies:
   pdfx: ^2.9.1
   shared_preferences: ^2.5.3
   permission_handler: ^11.3.1
+  llamadart: ^0.8.24
 
 dev_dependencies:
   flutter_test:

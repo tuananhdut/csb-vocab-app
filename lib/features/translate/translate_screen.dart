@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/translation_providers.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../domain/entities/translation_direction.dart';
+import 'widgets/llm_model_row.dart';
 import 'widgets/model_download_prompt.dart';
 import 'widgets/model_status_row.dart';
 import 'widgets/translate_panels.dart';
@@ -56,12 +57,20 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
     // ẩn hoàn toàn cùng với ModelDownloadPrompt. Không hiện khi đã
     // ModelReady (không còn gì để tải) hoặc khi ModelDownloadPrompt đang
     // là nội dung chính (offline, chưa tải) để tránh trùng lặp.
-    final showModelStatusRow = canTranslate && downloadState is! ModelReady;
+    //
+    // Trên desktop, [LlmModelRow] đã đóng vai trò hàng trạng thái model
+    // offline chính (Qwen2.5-3B) - ẩn luôn hàng opus-mt để đỡ trùng lặp 2
+    // hàng model cùng lúc; opus-mt vẫn hoạt động bình thường như fallback
+    // cuối (ModelDownloadPrompt/canTranslate không đổi), chỉ ẩn dòng
+    // trạng thái nhỏ này.
+    final showModelStatusRow =
+        canTranslate && downloadState is! ModelReady && !isLlmTranslationSupportedPlatform;
 
     return Column(
       children: [
         _DirectionSwitch(direction: _direction, onSwap: _swapDirection),
         const Divider(height: 1),
+        const LlmModelRow(),
         if (showModelStatusRow) ...[
           ModelStatusRow(key: ValueKey(_direction), direction: _direction),
           const Divider(height: 1),
