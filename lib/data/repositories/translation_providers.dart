@@ -109,6 +109,12 @@ Future<void> deleteTranslationModel(WidgetRef ref, TranslationDirection directio
   await TranslationService.instance.unloadDirection(direction);
   await ModelDownloadService.instance.deleteDirection(direction);
   ref.read(modelDownloadStateProvider(direction).notifier).state = const ModelNotDownloaded();
+  // Invalidate cache "đã có file trên đĩa" - không làm bước này thì
+  // `FutureProvider` vẫn giữ kết quả cũ (true, từ trước khi xoá), khiến
+  // logic seed-từ-đĩa ở `translate_screen.dart` tự set NGƯỢC lại
+  // ModelReady ngay sau khi vừa xoá xong (bug đã gặp thực tế: bấm Xoá
+  // như không có tác dụng gì).
+  ref.invalidate(modelExistsOnDiskProvider(direction));
 }
 
 final translationServiceProvider = Provider<TranslationService>((ref) {
@@ -169,9 +175,19 @@ Future<void> downloadLlmModel(WidgetRef ref, {CancelToken? cancelToken}) async {
 }
 
 Future<void> deleteLlmModel(WidgetRef ref) async {
-  await LlmTranslationService.instance.unload();
+  try {
+    await LlmTranslationService.instance.unload();
+  } catch (e) {
+    // Không để lỗi unload (vd llama.cpp đang dở 1 generation) chặn việc
+    // xoá file - user bấm Xoá là muốn giải phóng dung lượng, ưu tiên đó
+    // hơn unload "sạch sẽ" engine đang chạy.
+    debugPrint('[deleteLlmModel] unload lỗi (vẫn tiếp tục xoá file): $e');
+  }
   await LlmModelDownloadService.instance.delete();
   ref.read(llmModelDownloadStateProvider.notifier).state = const ModelNotDownloaded();
+  // Cùng lý do như [deleteTranslationModel] - tránh logic seed-từ-đĩa ở
+  // `LlmModelRow` tự set ngược lại ModelReady bằng cache cũ.
+  ref.invalidate(llmModelExistsOnDiskProvider);
 }
 
 /// Trạng thái tải model ML Kit (mobile) — KHÔNG family theo
@@ -204,6 +220,8 @@ Future<void> downloadMlKitModel(WidgetRef ref) async {
 Future<void> deleteMlKitModel(WidgetRef ref) async {
   await MlKitTranslationService.instance.delete();
   ref.read(mlkitModelDownloadStateProvider.notifier).state = const ModelNotDownloaded();
+  // Cùng lý do như [deleteTranslationModel]/[deleteLlmModel].
+  ref.invalidate(mlkitModelExistsOnDiskProvider);
 }
 
 /// Kết quả dịch [text] theo [direction] — `FutureProvider.family` tận
