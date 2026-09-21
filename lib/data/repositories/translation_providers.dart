@@ -128,6 +128,16 @@ Future<void> downloadLlmModel(WidgetRef ref, {CancelToken? cancelToken}) async {
       },
       cancelToken: cancelToken,
     );
+    // Warm-up: nạp model ngay sau khi tải xong thay vì đợi lần dịch đầu
+    // tiên mới nạp (lazy) - tránh cold-start (~vài giây load 2.1GB GGUF)
+    // làm chậm bản dịch đầu tiên. Không chặn luồng "tải xong" nếu warm-up
+    // lỗi (vd RAM tạm thiếu) - `LlmTranslationService.translate()` vẫn
+    // tự nạp lại (lazy) khi cần, đây chỉ là tối ưu, không phải bắt buộc.
+    try {
+      await LlmTranslationService.instance.load();
+    } catch (e) {
+      debugPrint('[downloadLlmModel] warm-up load thất bại (sẽ nạp lười khi dịch): $e');
+    }
     notifier.state = const ModelReady();
   } on LlmChecksumMismatchException catch (e) {
     notifier.state = ModelDownloadFailed(e.toString());
