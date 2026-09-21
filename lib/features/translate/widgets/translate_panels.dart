@@ -9,9 +9,10 @@ import '../../../data/repositories/translation_providers.dart';
 import '../../../domain/entities/translation_direction.dart';
 
 /// Khung nguồn/kết quả khi model [direction] đã sẵn sàng ([ModelReady]) —
-/// debounce input 500ms trước khi gọi [translateProvider] vì suy luận
-/// ONNX không rẻ như tra DB, không được chạy lại mỗi keystroke (xem
-/// ghi chú tại `translation_providers.dart`).
+/// debounce input 1200ms trước khi gọi [translateProvider] vì suy luận
+/// ONNX/LLM không rẻ như tra DB, không được chạy lại mỗi keystroke (xem
+/// ghi chú tại `translation_providers.dart`). 1200ms (thay vì 500ms ban
+/// đầu) để user gõ chậm không bị bắn nhiều request dở dang giữa chừng.
 class TranslatePanels extends ConsumerStatefulWidget {
   const TranslatePanels({super.key, required this.direction});
 
@@ -35,7 +36,7 @@ class _TranslatePanelsState extends ConsumerState<TranslatePanels> {
 
   void _onChanged(String value) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    _debounce = Timer(const Duration(milliseconds: 1200), () {
       setState(() => _debouncedText = value);
     });
   }

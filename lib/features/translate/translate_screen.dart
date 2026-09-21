@@ -47,10 +47,18 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
 
     final downloadState = ref.watch(modelDownloadStateProvider(_direction));
     final isOnline = ref.watch(connectivityProvider).value ?? false;
+    // Model AI cục bộ (Qwen2.5-3B, desktop) dùng chung cho cả 2 chiều -
+    // sẵn sàng thì cũng đủ để dịch offline, KHÔNG cần opus-mt của chiều
+    // đang chọn phải tải riêng nữa (bug đã gặp thực tế: LlmModelRow báo
+    // "Đã sẵn sàng" nhưng màn vẫn chặn đòi tải opus-mt vì trước đây
+    // canTranslate chỉ nhìn state opus-mt).
+    final llmReady =
+        isLlmTranslationSupportedPlatform && ref.watch(llmModelDownloadStateProvider) is ModelReady;
     // Có mạng -> dịch qua MyMemory (translateProvider tự ưu tiên online,
     // xem translation_providers.dart), không cần tải model on-device
-    // trước. Chỉ bắt tải model khi offline và chưa từng tải.
-    final canTranslate = downloadState is ModelReady || isOnline;
+    // trước. Chỉ bắt tải model khi offline và chưa từng tải (opus-mt lẫn
+    // AI cục bộ đều chưa sẵn sàng).
+    final canTranslate = downloadState is ModelReady || isOnline || llmReady;
 
     // Khi dịch online (canTranslate == true nhờ có mạng, không phải nhờ
     // model), user vẫn cần thấy tuỳ chọn tải model offline — trước đây bị

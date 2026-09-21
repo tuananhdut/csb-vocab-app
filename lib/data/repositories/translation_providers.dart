@@ -1,7 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 
@@ -189,14 +189,19 @@ final translateProvider =
       ref.watch(llmModelDownloadStateProvider) is ModelReady) {
     try {
       await LlmTranslationService.instance.load();
-      return await LlmTranslationService.instance.translate(direction, text);
-    } on LlmDegenerateOutputException {
+      final result = await LlmTranslationService.instance.translate(direction, text);
+      debugPrint('[translateProvider] served by LLM: "$text" -> "$result"');
+      return result;
+    } on LlmDegenerateOutputException catch (e) {
       // Rơi về opus-mt bên dưới thay vì hiện thẳng output lẫn ngôn ngữ
       // khác cho user (xem doc-comment exception).
+      debugPrint('[translateProvider] LLM degenerate, falling back to opus-mt: $e');
     }
   }
 
   final service = ref.watch(translationServiceProvider);
   await service.loadDirection(direction);
-  return service.translate(direction, text);
+  final result = await service.translate(direction, text);
+  debugPrint('[translateProvider] served by opus-mt: "$text" -> "$result"');
+  return result;
 });
