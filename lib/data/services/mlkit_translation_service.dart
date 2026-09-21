@@ -1,9 +1,17 @@
+import 'dart:async';
+
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 
 import '../../domain/entities/translation_direction.dart';
 
 const _enBcp = 'en';
 const _viBcp = 'vi';
+
+// ML Kit mac dinh cho isWifiRequired=true VA khong tu timeout - offline
+// hoan toan (khong chi thieu WiFi) khien cuoc goi native cu treo vo thoi
+// han thay vi bao loi, UI ket spinner mai (bug gap thuc te). Chan bang
+// timeout o day + isWifiRequired: false (cho dung mobile data).
+const _downloadTimeout = Duration(seconds: 60);
 
 TranslateLanguage _langFor(TranslationDirection direction, {required bool source}) {
   final isEnToVi = direction == TranslationDirection.enToVi;
@@ -40,10 +48,16 @@ class MlKitTranslationService {
 
   /// Tải model 2 ngôn ngữ (Anh + Việt) — dùng chung cho cả 2 chiều dịch
   /// (khác opus-mt cần model riêng/chiều), ML Kit chỉ cần model theo
-  /// NGÔN NGỮ chứ không theo CHIỀU.
+  /// NGÔN NGỮ chứ không theo CHIỀU. Ném [TimeoutException] nếu quá
+  /// [_downloadTimeout] - caller (`downloadMlKitModel`) bắt lỗi chung,
+  /// hiển thị [ModelDownloadFailed] cho user thử lại thay vì kẹt spinner.
   Future<void> download() async {
-    await _modelManager.downloadModel(_enBcp);
-    await _modelManager.downloadModel(_viBcp);
+    await _modelManager
+        .downloadModel(_enBcp, isWifiRequired: false)
+        .timeout(_downloadTimeout);
+    await _modelManager
+        .downloadModel(_viBcp, isWifiRequired: false)
+        .timeout(_downloadTimeout);
   }
 
   Future<void> delete() async {
