@@ -93,6 +93,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _runSearch(value, _direction);
       return;
     }
+    // Dat _searching=true NGAY, truoc khi debounce fire - khong thi
+    // trong luc cho 300ms, _query da doi (khong rong) nhung _results van
+    // rong tu truoc (hoac cua truy van cu), khien _buildResultsArea hieu
+    // nham la "da tim xong, khong co ket qua" va hien "Khong tim thay"
+    // ngay khi vua go, truoc khi search that su chay (bug thuc te da gap).
+    setState(() => _searching = true);
     _debounce = Timer(_searchDebounce, () {
       if (!mounted) return;
       _runSearch(value, _direction);

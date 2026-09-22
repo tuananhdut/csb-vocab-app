@@ -1,0 +1,7 @@
+.venv/
+models/
+__pycache__/
+*.pyc
+pip_install_log.txt
+qwen_download_log.txt
+results/*-detail.jsonl

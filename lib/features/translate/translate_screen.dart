@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/translation_providers.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../domain/entities/translation_direction.dart';
+import 'widgets/llm_model_row.dart';
+import 'widgets/mlkit_model_row.dart';
 import 'widgets/model_download_prompt.dart';
 import 'widgets/model_status_row.dart';
 import 'widgets/translate_panels.dart';
@@ -46,22 +48,48 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
 
     final downloadState = ref.watch(modelDownloadStateProvider(_direction));
     final isOnline = ref.watch(connectivityProvider).value ?? false;
+    // Model AI cục bộ (Qwen2.5-3B, desktop) dùng chung cho cả 2 chiều -
+    // sẵn sàng thì cũng đủ để dịch offline, KHÔNG cần opus-mt của chiều
+    // đang chọn phải tải riêng nữa (bug đã gặp thực tế: LlmModelRow báo
+    // "Đã sẵn sàng" nhưng màn vẫn chặn đòi tải opus-mt vì trước đây
+    // canTranslate chỉ nhìn state opus-mt).
+    final llmReady =
+        isLlmTranslationSupportedPlatform && ref.watch(llmModelDownloadStateProvider) is ModelReady;
+    // Cùng lý do như llmReady nhưng cho mobile (ML Kit) - dùng chung cho
+    // cả 2 chiều, sẵn sàng thì đủ dịch offline không cần opus-mt riêng.
+    final mlkitReady =
+        isMlKitTranslationSupportedPlatform &&
+        ref.watch(mlkitModelDownloadStateProvider) is ModelReady;
     // Có mạng -> dịch qua MyMemory (translateProvider tự ưu tiên online,
     // xem translation_providers.dart), không cần tải model on-device
-    // trước. Chỉ bắt tải model khi offline và chưa từng tải.
-    final canTranslate = downloadState is ModelReady || isOnline;
+    // trước. Chỉ bắt tải model khi offline và chưa từng tải (opus-mt lẫn
+    // AI cục bộ/ML Kit đều chưa sẵn sàng).
+    final canTranslate = downloadState is ModelReady || isOnline || llmReady || mlkitReady;
 
     // Khi dịch online (canTranslate == true nhờ có mạng, không phải nhờ
     // model), user vẫn cần thấy tuỳ chọn tải model offline — trước đây bị
     // ẩn hoàn toàn cùng với ModelDownloadPrompt. Không hiện khi đã
     // ModelReady (không còn gì để tải) hoặc khi ModelDownloadPrompt đang
     // là nội dung chính (offline, chưa tải) để tránh trùng lặp.
-    final showModelStatusRow = canTranslate && downloadState is! ModelReady;
+    //
+    // Trên desktop, [LlmModelRow] đã đóng vai trò hàng trạng thái model
+    // offline chính (Qwen2.5-3B); trên mobile, [MlKitModelRow] đóng vai
+    // trò tương tự - ẩn luôn hàng opus-mt để đỡ trùng lặp 2 hàng model
+    // cùng lúc; opus-mt vẫn hoạt động bình thường như fallback cuối
+    // (ModelDownloadPrompt/canTranslate không đổi), chỉ ẩn dòng trạng
+    // thái nhỏ này.
+    final showModelStatusRow =
+        canTranslate &&
+        downloadState is! ModelReady &&
+        !isLlmTranslationSupportedPlatform &&
+        !isMlKitTranslationSupportedPlatform;
 
     return Column(
       children: [
         _DirectionSwitch(direction: _direction, onSwap: _swapDirection),
         const Divider(height: 1),
+        const LlmModelRow(),
+        const MlKitModelRow(),
         if (showModelStatusRow) ...[
           ModelStatusRow(key: ValueKey(_direction), direction: _direction),
           const Divider(height: 1),

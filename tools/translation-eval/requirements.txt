@@ -1,0 +1,6 @@
+requests>=2.31
+onnxruntime>=1.17
+sentencepiece>=0.2
+sacrebleu>=2.4
+llama-cpp-python>=0.3
+psutil>=5.9
