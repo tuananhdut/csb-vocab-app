@@ -1,10 +1,7 @@
-import 'dart:io' show Platform;
-import 'dart:typed_data' show Uint8List;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pdfx/pdfx.dart';
+import 'package:pdfrx/pdfrx.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -295,161 +292,27 @@ class _ChapterPdfBodyState extends State<_ChapterPdfBody> {
   }
 }
 
-class _PdfAssetView extends StatefulWidget {
+/// Renders the PDF with a real text layer (selectable, copyable) on every
+/// platform including Windows — unlike pdfx (previous library), which only
+/// rasterizes pages to bitmaps and has no text API at all. pdfrx already
+/// ships a default long-press/selection context menu with "Copy" wired to
+/// the clipboard, so no extra UI is needed here.
+class _PdfAssetView extends StatelessWidget {
   const _PdfAssetView({required this.assetPath});
   final String assetPath;
 
   @override
-  State<_PdfAssetView> createState() => _PdfAssetViewState();
-}
-
-class _PdfAssetViewState extends State<_PdfAssetView> {
-  // pdfx's pinch viewer (PdfViewPinch) throws UnimplementedError on
-  // Windows. Its paged PdfView (PageView-based) is an alternative, but
-  // pages snap to the full viewport instead of scrolling continuously,
-  // so mouse-wheel scrolling still feels stuck. Windows instead renders
-  // pages to images and lays them out in a plain ListView, which scrolls
-  // like any other Flutter list.
-  final bool _usePinch = !Platform.isWindows;
-
-  PdfControllerPinch? _controllerPinch;
-  Future<PdfDocument>? _documentFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    if (_usePinch) {
-      _controllerPinch = PdfControllerPinch(
-        document: PdfDocument.openAsset(widget.assetPath),
-      );
-    } else {
-      _documentFuture = PdfDocument.openAsset(widget.assetPath);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controllerPinch?.dispose();
-    _documentFuture?.then((document) => document.close());
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_usePinch) {
-      return PdfViewPinch(controller: _controllerPinch!);
-    }
-    return FutureBuilder<PdfDocument>(
-      future: _documentFuture,
-      builder: (context, snapshot) {
-        final document = snapshot.data;
-        if (document == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        return _PdfPageScrollList(document: document);
-      },
-    );
-  }
-}
-
-/// Continuous, mouse-wheel-friendly page list used on Windows in place of
-/// pdfx's PdfView/PdfViewPinch (see [_PdfAssetViewState]). Pages are capped
-/// to a reading-width column on a grey backdrop instead of stretching
-/// edge-to-edge, so each page reads like a sheet of paper.
-class _PdfPageScrollList extends StatelessWidget {
-  const _PdfPageScrollList({required this.document});
-  final PdfDocument document;
-
-  static const _maxPageWidth = 820.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppColors.pageBg,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-        itemCount: document.pagesCount,
-        separatorBuilder: (_, _) => const SizedBox(height: 16),
-        itemBuilder: (_, index) => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _maxPageWidth),
-            child: _PdfPageImage(document: document, pageNumber: index + 1),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PdfPageImage extends StatefulWidget {
-  const _PdfPageImage({required this.document, required this.pageNumber});
-  final PdfDocument document;
-  final int pageNumber;
-
-  @override
-  State<_PdfPageImage> createState() => _PdfPageImageState();
-}
-
-class _PdfPageImageState extends State<_PdfPageImage>
-    with AutomaticKeepAliveClientMixin<_PdfPageImage> {
-  Uint8List? _bytes;
-  double _aspectRatio = 1 / 1.4142; // A4 fallback while the page renders.
-
-  // Without this, ListView disposes pages once they scroll past the cache
-  // extent and re-renders them from scratch (a fresh pdfx render call)
-  // every time they scroll back into view — the jank the user reported.
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  void initState() {
-    super.initState();
-    _render();
-  }
-
-  Future<void> _render() async {
-    final page = await widget.document.getPage(widget.pageNumber);
-    try {
-      final image = await page.render(
-        width: page.width * 2,
-        height: page.height * 2,
-        format: PdfPageImageFormat.jpeg,
-        backgroundColor: '#ffffff',
-      );
-      if (mounted && image != null) {
-        setState(() {
-          _bytes = image.bytes;
-          _aspectRatio = page.width / page.height;
-        });
-      }
-    } finally {
-      await page.close();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.panel,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: AspectRatio(
-          aspectRatio: _aspectRatio,
-          child: _bytes == null
-              ? const Center(child: CircularProgressIndicator())
-              : Image.memory(_bytes!, fit: BoxFit.contain),
+    return PdfViewer.asset(
+      assetPath,
+      params: PdfViewerParams(
+        backgroundColor: AppColors.pageBg,
+        // Clamp zoom-out at "cover the viewport" (the page's larger-fit
+        // dimension matches the screen) instead of pdfrx's plain default
+        // (min zoom 0.1, page can shrink well below screen size) - user
+        // asked for the page to never end up smaller than the screen.
+        sizeDelegateProvider: const PdfViewerSizeDelegateProviderLegacy(
+          useAlternativeFitScaleAsMinScale: true,
         ),
       ),
     );
