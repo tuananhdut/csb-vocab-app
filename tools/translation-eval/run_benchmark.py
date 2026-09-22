@@ -32,6 +32,7 @@ _SOURCE_MODULES = {
     "mymemory": "sources.mymemory",
     "opus_mt": "sources.opus_mt",
     "qwen2.5-3b": "sources.qwen_llm",
+    "envit5": "sources.envit5",
 }
 
 
