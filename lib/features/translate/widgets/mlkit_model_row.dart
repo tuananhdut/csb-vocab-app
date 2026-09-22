@@ -65,7 +65,10 @@ class _MlKitModelRowState extends ConsumerState<MlKitModelRow> {
           ? 'Dịch offline ML Kit (Google, ~30-150MB) — chính xác hơn khi mất mạng'
           : 'Dịch offline ML Kit — cần có mạng để tải lần đầu',
       ModelDownloading() => 'Đang tải gói ngôn ngữ ML Kit…',
-      ModelDownloadFailed() => 'Tải ML Kit thất bại',
+      // Hiện message thật (e.toString() từ downloadMlKitModel) thay vì
+      // chỉ báo chung chung — cần để biết lý do thật trên máy lỗi (thiếu
+      // Google Play Services, timeout, mất mạng...) khi tester báo lại.
+      ModelDownloadFailed(:final message) => 'Tải ML Kit thất bại: $message',
       ModelReady() => 'Đã sẵn sàng dịch offline ML Kit — ưu tiên dùng khi mất mạng',
     };
     return Text(
