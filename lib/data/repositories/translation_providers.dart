@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 
 import '../../domain/entities/translation_direction.dart';
 import '../services/connectivity_service.dart';
+import '../services/envit5_model_download_service.dart';
+import '../services/envit5_translation_service.dart';
 import '../services/llm_model_download_service.dart';
 import '../services/llm_translation_service.dart';
 import '../services/mlkit_translation_service.dart';
@@ -26,6 +28,15 @@ bool get isLlmTranslationSupportedPlatform => !kIsWeb && Platform.isWindows;
 /// không phù hợp chạy LLM, xem brainstorm).
 bool get isMlKitTranslationSupportedPlatform =>
     !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+/// envit5 (VietAI, T5-base, on-device qua ONNX) — thay thế Qwen2.5-3B
+/// làm offline fallback CHÍNH trên desktop (benchmark:
+/// `tools/translation-eval/results/` - chrF 73.66 vs 51.7, term accuracy
+/// 67.5% vs 50%, nhanh hơn ~1.75x). Code Qwen ([isLlmTranslationSupportedPlatform]
+/// và các provider/service liên quan) CỐ Ý giữ nguyên, không xoá - chỉ
+/// không còn là lựa chọn ưu tiên/hiện trên UI, để có thể dùng lại sau
+/// (theo yêu cầu, không phải bug sót lại).
+bool get isEnvit5TranslationSupportedPlatform => !kIsWeb && Platform.isWindows;
 
 /// Trạng thái tải model dịch cho 1 chiều — sealed vì cần phân biệt rõ
 /// "đang tải X/Y byte" là 1 trạng thái riêng, khác data/error/loading mà
@@ -217,6 +228,56 @@ Future<void> deleteMlKitModel(WidgetRef ref) async {
   ref.invalidate(mlkitModelExistsOnDiskProvider);
 }
 
+/// Trạng thái tải model envit5 (desktop) — KHÔNG family theo
+/// [TranslationDirection], cùng lý do như [mlkitModelDownloadStateProvider]:
+/// 1 model dùng chung cho cả 2 chiều dịch qua prefix văn bản.
+final envit5ModelDownloadStateProvider = StateProvider<ModelDownloadState>(
+  (ref) => const ModelNotDownloaded(),
+);
+
+final envit5ModelExistsOnDiskProvider = FutureProvider<bool>((ref) {
+  return Envit5ModelDownloadService.instance.isDownloaded();
+});
+
+Future<void> downloadEnvit5Model(
+  WidgetRef ref, {
+  CancelToken? cancelToken,
+}) async {
+  final notifier = ref.read(envit5ModelDownloadStateProvider.notifier);
+  notifier.state = const ModelDownloading(0, 0);
+  try {
+    await Envit5ModelDownloadService.instance.download(
+      onProgress: (received, total) {
+        notifier.state = ModelDownloading(received, total);
+      },
+      cancelToken: cancelToken,
+    );
+    notifier.state = const ModelReady();
+  } on Envit5ChecksumMismatchException catch (e) {
+    notifier.state = ModelDownloadFailed(e.toString());
+  } on DioException catch (e) {
+    if (e.type == DioExceptionType.cancel) {
+      notifier.state = const ModelNotDownloaded();
+      return;
+    }
+    notifier.state = ModelDownloadFailed(e.message ?? 'Lỗi tải model');
+  } catch (e) {
+    notifier.state = ModelDownloadFailed(e.toString());
+  }
+}
+
+Future<void> deleteEnvit5Model(WidgetRef ref) async {
+  try {
+    await Envit5TranslationService.instance.unload();
+  } catch (e) {
+    debugPrint('[deleteEnvit5Model] unload lỗi (vẫn tiếp tục xoá file): $e');
+  }
+  await Envit5ModelDownloadService.instance.delete();
+  ref.read(envit5ModelDownloadStateProvider.notifier).state = const ModelNotDownloaded();
+  // Cùng lý do như [deleteTranslationModel]/[deleteLlmModel]/[deleteMlKitModel].
+  ref.invalidate(envit5ModelExistsOnDiskProvider);
+}
+
 /// Kết quả dịch [text] theo [direction] — `FutureProvider.family` tận
 /// dụng cache tự nhiên của Riverpod (dịch lại cùng câu không chạy lại
 /// inference). Model được nạp lười (lazy) trong lần dịch đầu tiên; ném
@@ -270,6 +331,23 @@ final translateProvider =
       // thẳng lên UI như crash trước đây (LlamaException hiện trực
       // tiếp cho user) thay vì tự phục hồi.
       debugPrint('[translateProvider] LLM lỗi, fallback opus-mt: $e');
+    }
+  }
+
+  // envit5 (VietAI, T5-base) thay Qwen làm fallback CHÍNH trên desktop -
+  // kiểm tra TRƯỚC nhánh Qwen bên dưới. Qwen vẫn giữ nguyên, chỉ không
+  // còn ưu tiên/hiện trên UI (xem [isEnvit5TranslationSupportedPlatform]).
+  if (isEnvit5TranslationSupportedPlatform &&
+      ref.watch(envit5ModelDownloadStateProvider) is ModelReady) {
+    try {
+      await Envit5TranslationService.instance.load();
+      final result = await Envit5TranslationService.instance.translate(direction, text);
+      debugPrint('[translateProvider] served by envit5: "$text" -> "$result"');
+      return result;
+    } catch (e) {
+      // Lưới an toàn cùng lý do như nhánh Qwen/ML Kit bên dưới - không để
+      // lỗi native ONNX lọt thẳng lên UI, rơi về opus-mt.
+      debugPrint('[translateProvider] envit5 lỗi, fallback opus-mt: $e');
     }
   }
 

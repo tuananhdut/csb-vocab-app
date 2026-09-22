@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/translation_providers.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../domain/entities/translation_direction.dart';
-import 'widgets/llm_model_row.dart';
+import 'widgets/envit5_model_row.dart';
 import 'widgets/mlkit_model_row.dart';
 import 'widgets/model_download_prompt.dart';
 import 'widgets/model_status_row.dart';
@@ -53,8 +53,15 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
     // đang chọn phải tải riêng nữa (bug đã gặp thực tế: LlmModelRow báo
     // "Đã sẵn sàng" nhưng màn vẫn chặn đòi tải opus-mt vì trước đây
     // canTranslate chỉ nhìn state opus-mt).
+    // envit5 thay Qwen làm fallback chính desktop (LlmModelRow không còn
+    // hiện trên UI - xem [isEnvit5TranslationSupportedPlatform]); vẫn
+    // watch llmModelDownloadStateProvider vì code Qwen giữ nguyên, có thể
+    // ready nếu re-enable UI sau này, không muốn hành vi cũ mất đột ngột.
     final llmReady =
         isLlmTranslationSupportedPlatform && ref.watch(llmModelDownloadStateProvider) is ModelReady;
+    final envit5Ready =
+        isEnvit5TranslationSupportedPlatform &&
+        ref.watch(envit5ModelDownloadStateProvider) is ModelReady;
     // Cùng lý do như llmReady nhưng cho mobile (ML Kit) - dùng chung cho
     // cả 2 chiều, sẵn sàng thì đủ dịch offline không cần opus-mt riêng.
     final mlkitReady =
@@ -63,8 +70,9 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
     // Có mạng -> dịch qua MyMemory (translateProvider tự ưu tiên online,
     // xem translation_providers.dart), không cần tải model on-device
     // trước. Chỉ bắt tải model khi offline và chưa từng tải (opus-mt lẫn
-    // AI cục bộ/ML Kit đều chưa sẵn sàng).
-    final canTranslate = downloadState is ModelReady || isOnline || llmReady || mlkitReady;
+    // AI cục bộ/ML Kit/envit5 đều chưa sẵn sàng).
+    final canTranslate =
+        downloadState is ModelReady || isOnline || llmReady || envit5Ready || mlkitReady;
 
     // Khi dịch online (canTranslate == true nhờ có mạng, không phải nhờ
     // model), user vẫn cần thấy tuỳ chọn tải model offline — trước đây bị
@@ -82,13 +90,14 @@ class _TranslateScreenState extends ConsumerState<TranslateScreen> {
         canTranslate &&
         downloadState is! ModelReady &&
         !isLlmTranslationSupportedPlatform &&
+        !isEnvit5TranslationSupportedPlatform &&
         !isMlKitTranslationSupportedPlatform;
 
     return Column(
       children: [
         _DirectionSwitch(direction: _direction, onSwap: _swapDirection),
         const Divider(height: 1),
-        const LlmModelRow(),
+        const Envit5ModelRow(),
         const MlKitModelRow(),
         if (showModelStatusRow) ...[
           ModelStatusRow(key: ValueKey(_direction), direction: _direction),
