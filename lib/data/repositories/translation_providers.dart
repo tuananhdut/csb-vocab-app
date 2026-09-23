@@ -107,7 +107,12 @@ Future<void> downloadTranslationModel(
       notifier.state = const ModelNotDownloaded();
       return;
     }
-    notifier.state = ModelDownloadFailed(e.message ?? 'Lỗi tải model');
+    // e.message thường null cho DioExceptionType.unknown (lỗi mạng tầng
+    // thấp: DNS fail, socket, TLS...) - Dio giữ lỗi thật trong e.error,
+    // rơi về fallback tĩnh "Lỗi tải model" mất hết thông tin nếu chỉ đọc
+    // e.message (bug thật đã gặp: máy khác báo lỗi này, không tra được
+    // nguyên nhân vì message bị nuốt mất).
+    notifier.state = ModelDownloadFailed(e.message ?? e.error?.toString() ?? e.toString());
   } catch (e) {
     notifier.state = ModelDownloadFailed(e.toString());
   }
@@ -172,7 +177,9 @@ Future<void> downloadLlmModel(WidgetRef ref, {CancelToken? cancelToken}) async {
       notifier.state = const ModelNotDownloaded();
       return;
     }
-    notifier.state = ModelDownloadFailed(e.message ?? 'Lỗi tải model');
+    // Cùng lý do như [downloadTranslationModel] - e.message thường null
+    // cho lỗi mạng tầng thấp, lỗi thật nằm ở e.error.
+    notifier.state = ModelDownloadFailed(e.message ?? e.error?.toString() ?? e.toString());
   } catch (e) {
     notifier.state = ModelDownloadFailed(e.toString());
   }
@@ -260,7 +267,9 @@ Future<void> downloadEnvit5Model(
       notifier.state = const ModelNotDownloaded();
       return;
     }
-    notifier.state = ModelDownloadFailed(e.message ?? 'Lỗi tải model');
+    // Cùng lý do như [downloadTranslationModel] - e.message thường null
+    // cho lỗi mạng tầng thấp, lỗi thật nằm ở e.error.
+    notifier.state = ModelDownloadFailed(e.message ?? e.error?.toString() ?? e.toString());
   } catch (e) {
     notifier.state = ModelDownloadFailed(e.toString());
   }

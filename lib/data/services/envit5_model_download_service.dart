@@ -6,6 +6,8 @@ import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'github_release_trust.dart';
+
 /// Model VietAI/envit5-translation (T5-base), export ONNX cộng đồng
 /// (`phatjk/envit5-translation-onnx`) — tự quantize INT8
 /// (`tools/translation-eval/quantize_envit5.py`) rồi host lại trên
@@ -53,10 +55,20 @@ class Envit5ChecksumMismatchException implements Exception {
 }
 
 class Envit5ModelDownloadService {
-  Envit5ModelDownloadService._();
+  Envit5ModelDownloadService._() {
+    trustGitHubReleaseAssetHosts(_dio);
+  }
   static final Envit5ModelDownloadService instance = Envit5ModelDownloadService._();
 
-  final _dio = Dio();
+  // connectTimeout/receiveTimeout dùng để bắt kết nối treo (mạng chập
+  // chờn: TCP vẫn mở nhưng ngừng gửi dữ liệu) - không có thì tải có thể
+  // đứng vô thời hạn ở ModelDownloading mà không bao giờ báo lỗi (đã gặp
+  // thực tế trên máy khác). receiveTimeout là khoảng nghỉ tối đa GIỮA 2
+  // lần nhận dữ liệu (không phải tổng thời gian tải), nên an toàn cho
+  // file lớn miễn dữ liệu còn chảy đều.
+  final _dio = Dio(
+    BaseOptions(connectTimeout: const Duration(seconds: 30), receiveTimeout: const Duration(seconds: 30)),
+  );
   static const _manifest = Envit5ModelManifest.v1;
 
   Future<Directory> _modelDir() async {

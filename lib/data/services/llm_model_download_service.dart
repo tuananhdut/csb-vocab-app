@@ -56,7 +56,13 @@ class LlmModelDownloadService {
   LlmModelDownloadService._();
   static final LlmModelDownloadService instance = LlmModelDownloadService._();
 
-  final _dio = Dio();
+  // Cùng lý do như Envit5ModelDownloadService - bắt kết nối treo thay vì
+  // đứng vô thời hạn ở ModelDownloading. receiveTimeout là khoảng nghỉ
+  // tối đa GIỮA 2 lần nhận dữ liệu, an toàn cho file 2.1GB miễn dữ liệu
+  // còn chảy đều.
+  final _dio = Dio(
+    BaseOptions(connectTimeout: const Duration(seconds: 30), receiveTimeout: const Duration(seconds: 30)),
+  );
   static const _manifest = LlmModelManifest.qwen25_3bInstructQ4;
 
   Future<Directory> _modelsDir() async {
