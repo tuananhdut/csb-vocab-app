@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/entities/translation_direction.dart';
+import 'github_release_trust.dart';
 
 /// URL gốc GitHub Release chứa model dịch đã quantize (xem
 /// `tools/onnx-model-conversion/README.md`, [IMPL-017]).
@@ -47,7 +48,9 @@ class ChecksumMismatchException implements Exception {
 /// pattern với [VocabDatabase] (copy asset ra thư mục ghi được), nhưng
 /// nguồn là tải mạng thay vì asset đóng gói sẵn.
 class ModelDownloadService {
-  ModelDownloadService._();
+  ModelDownloadService._() {
+    trustGitHubReleaseAssetHosts(_dio);
+  }
   static final ModelDownloadService instance = ModelDownloadService._();
 
   // Cùng lý do như Envit5ModelDownloadService/LlmModelDownloadService -
