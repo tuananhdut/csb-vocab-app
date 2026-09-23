@@ -50,7 +50,12 @@ class ModelDownloadService {
   ModelDownloadService._();
   static final ModelDownloadService instance = ModelDownloadService._();
 
-  final _dio = Dio();
+  // Cùng lý do như Envit5ModelDownloadService/LlmModelDownloadService -
+  // bắt kết nối treo thay vì đứng vô thời hạn. receiveTimeout là khoảng
+  // nghỉ tối đa GIỮA 2 lần nhận dữ liệu, không phải tổng thời gian tải.
+  final _dio = Dio(
+    BaseOptions(connectTimeout: const Duration(seconds: 30), receiveTimeout: const Duration(seconds: 30)),
+  );
 
   Future<Directory> _modelsRootDir() async {
     final dir = await getApplicationSupportDirectory();

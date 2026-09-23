@@ -56,7 +56,15 @@ class Envit5ModelDownloadService {
   Envit5ModelDownloadService._();
   static final Envit5ModelDownloadService instance = Envit5ModelDownloadService._();
 
-  final _dio = Dio();
+  // connectTimeout/receiveTimeout dùng để bắt kết nối treo (mạng chập
+  // chờn: TCP vẫn mở nhưng ngừng gửi dữ liệu) - không có thì tải có thể
+  // đứng vô thời hạn ở ModelDownloading mà không bao giờ báo lỗi (đã gặp
+  // thực tế trên máy khác). receiveTimeout là khoảng nghỉ tối đa GIỮA 2
+  // lần nhận dữ liệu (không phải tổng thời gian tải), nên an toàn cho
+  // file lớn miễn dữ liệu còn chảy đều.
+  final _dio = Dio(
+    BaseOptions(connectTimeout: const Duration(seconds: 30), receiveTimeout: const Duration(seconds: 30)),
+  );
   static const _manifest = Envit5ModelManifest.v1;
 
   Future<Directory> _modelDir() async {
