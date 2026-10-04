@@ -500,7 +500,12 @@ class _InlineTranslateCardState extends ConsumerState<_InlineTranslateCard> {
               const SizedBox(height: 6),
               Flexible(
                 child: detailWord == null
-                    ? _buildTranslateBody(context)
+                    // Column thường (khác `WordDetailContent` là
+                    // `ListView`) không tự cuộn — câu được bôi đen dài
+                    // (cả đoạn văn) cộng bản dịch dễ vượt quá
+                    // `_popupMaxHeight` và TRÀN ra ngoài khung (bug thực
+                    // tế đã gặp) nếu không bọc trong `SingleChildScrollView`.
+                    ? SingleChildScrollView(child: _buildTranslateBody(context))
                     : WordDetailContent(
                         word: detailWord,
                         padding: EdgeInsets.zero,

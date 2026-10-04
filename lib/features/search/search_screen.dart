@@ -105,6 +105,51 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  /// Đếm số sheet đã mở qua [_showWordSheet] (0 = không có sheet nào
+  /// đang mở). KHÔNG dùng `bool` đơn giản: đóng sheet cũ (gọi `pop()`)
+  /// rồi mở sheet mới ngay trong cùng 1 lệnh gọi khiến future của sheet
+  /// CŨ chỉ hoàn tất (và chạy `whenComplete`) SAU KHI sheet MỚI đã mở —
+  /// nếu chỉ dùng `bool`, nhánh `whenComplete` của sheet cũ sẽ ghi đè
+  /// `false` lên trạng thái "đang mở" của sheet mới (race condition, gây
+  /// lại đúng bug chồng sheet ở lần bấm tiếp theo). So khớp generation
+  /// để `whenComplete` chỉ coi là "đã đóng" đúng sheet CUỐI CÙNG, không
+  /// bị ghi đè bởi sheet cũ hơn.
+  int _wordSheetGeneration = 0;
+
+  /// Desktop: bấm 1 dòng trong danh sách HOẶC 1 chip TỪ ĐỒNG NGHĨA ở
+  /// pane chi tiết — chỉ đổi từ đang xem ở pane phải, GIỮ NGUYÊN ô tìm
+  /// kiếm/danh sách bên trái (đã có sẵn đủ dữ liệu thật của [word], kể
+  /// cả khi [word] là 1 từ đồng nghĩa không nằm trong [_results]).
+  void _selectWord(VocabWord word) {
+    setState(() => _selected = word);
+  }
+
+  /// Mobile: mở bottom sheet chi tiết của [w] — dùng cho CẢ bấm 1 dòng
+  /// bình thường trong danh sách LẪN bấm chip TỪ ĐỒNG NGHĨA bên trong
+  /// sheet đang mở (truyền lại chính hàm này làm `onWordTap`). Không
+  /// đụng tới ô tìm kiếm/`_results` ở cả 2 trường hợp — chỉ đổi NỘI DUNG
+  /// sheet đang xem, giữ nguyên trạng thái tìm kiếm phía sau.
+  ///
+  /// [showModalBottomSheet] luôn ĐẨY THÊM 1 route mới — gọi liên tiếp
+  /// (bấm đồng nghĩa trong sheet đang mở) sẽ chồng nhiều sheet lên nhau
+  /// (bug thực tế đã gặp) thay vì thay nội dung sheet hiện có. Đóng sheet
+  /// đang mở (nếu có) TRƯỚC khi mở sheet mới để luôn chỉ có 1 sheet.
+  void _showWordSheet(VocabWord w) {
+    // `Navigator.pop()` tự PHỤC HỒI focus trước đó của route bên dưới
+    // (ô tìm kiếm) ngay khi sheet cũ đóng — bàn phím ảo bật lên rồi tắt
+    // ngay gần như cùng lúc khi sheet mới mở đè lên (bug thực tế đã gặp
+    // khi bấm chip đồng nghĩa). Unfocus TRƯỚC `pop()` không đủ (unfocus
+    // lúc đó rồi `pop()` vẫn phục hồi lại ngay sau) — phải unfocus SAU
+    // `pop()`, ngay trước khi mở sheet mới, để ghi đè lại focus vừa bị
+    // phục hồi.
+    if (_wordSheetGeneration > 0) Navigator.of(context).pop();
+    FocusScope.of(context).unfocus();
+    final generation = ++_wordSheetGeneration;
+    showWordDetail(context, w, onWordTap: _showWordSheet).whenComplete(() {
+      if (_wordSheetGeneration == generation) _wordSheetGeneration = 0;
+    });
+  }
+
   void _setDirection(SearchDirection direction) {
     // Huy debounce dang cho (neu co) - khong thi timer cu no muon se
     // tim lai bang GIA TRI GO CU, de len ket qua vua tim theo huong moi.
@@ -338,7 +383,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (_, i) => i >= words.length
           ? _LoadMoreFooter(loading: _loadingMore || _checkingOnline)
-          : WordTile(word: words[i], showChapter: true),
+          : WordTile(
+              word: words[i],
+              showChapter: true,
+              onTap: () => _showWordSheet(words[i]),
+            ),
     );
   }
 
@@ -396,8 +445,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 word: word,
                                 showChapter: true,
                                 selected: _selected?.id == word.id,
-                                onTap: () =>
-                                    setState(() => _selected = word),
+                                onTap: () => _selectWord(word),
                               );
                             },
                           ),
@@ -415,6 +463,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       key: ValueKey(_selected!.id),
                       word: _selected!,
                       padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+                      onWordTap: _selectWord,
                     ),
             ),
           ),

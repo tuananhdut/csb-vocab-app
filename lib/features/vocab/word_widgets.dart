@@ -196,7 +196,7 @@ class WordTile extends StatelessWidget {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Flexible(
-                          child: SelectableText(word.word, style: textTheme.bodyLarge),
+                          child: Text(word.word, style: textTheme.bodyLarge),
                         ),
                         if (word.phonetic.isNotEmpty) ...[
                           const SizedBox(width: 8),
@@ -216,13 +216,13 @@ class WordTile extends StatelessWidget {
                       children: [
                         if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
                         Expanded(
-                          child: SelectableText(
+                          child: Text(
                             word.meaningVi,
                             style: textTheme.bodySmall?.copyWith(
                               color: scheme.outline,
                               fontWeight: FontWeight.w600,
                             ),
-                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (word.isOnline) ...[
@@ -258,19 +258,28 @@ class WordTile extends StatelessWidget {
   }
 }
 
-/// Mở chi tiết từ dạng bottom sheet (kèm ví dụ, nạp theo id).
-void showWordDetail(BuildContext context, VocabWord word) {
-  showModalBottomSheet<void>(
+/// Mở chi tiết từ dạng bottom sheet (kèm ví dụ, nạp theo id). [onWordTap]
+/// (tuỳ chọn) chuyển tiếp xuống [WordDetailContent] — truyền vào khi màn
+/// gọi muốn tự xử lý việc "đi tới 1 từ khác" (vd bấm chip đồng nghĩa) thay
+/// vì hành vi mặc định (mở thêm 1 bottom sheet mới đè lên, xem
+/// [WordDetailContent.onWordTap]).
+Future<void> showWordDetail(
+  BuildContext context,
+  VocabWord word, {
+  ValueChanged<VocabWord>? onWordTap,
+}) {
+  return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (_) => WordDetailSheet(word: word),
+    builder: (_) => WordDetailSheet(word: word, onWordTap: onWordTap),
   );
 }
 
 class WordDetailSheet extends StatelessWidget {
-  const WordDetailSheet({super.key, required this.word});
+  const WordDetailSheet({super.key, required this.word, this.onWordTap});
   final VocabWord word;
+  final ValueChanged<VocabWord>? onWordTap;
 
   @override
   Widget build(BuildContext context) {
@@ -285,6 +294,7 @@ class WordDetailSheet extends StatelessWidget {
         word: word,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         shrinkWrap: true,
+        onWordTap: onWordTap,
       ),
     );
   }
@@ -301,6 +311,7 @@ class WordDetailContent extends ConsumerWidget {
     this.padding = const EdgeInsets.all(20),
     this.leadingAction,
     this.shrinkWrap = false,
+    this.onWordTap,
   });
 
   final VocabWord word;
@@ -316,6 +327,14 @@ class WordDetailContent extends ConsumerWidget {
   /// sheet mobile, xem [WordDetailSheet]) — `false` (mặc định) khi nằm
   /// trong `Expanded` chiều cao cố định (pane chi tiết desktop).
   final bool shrinkWrap;
+
+  /// Gọi khi bấm 1 chip TỪ ĐỒNG NGHĨA — `null` (mặc định) thì mở thêm 1
+  /// bottom sheet mới qua [showWordDetail] (hành vi cũ, phù hợp khi
+  /// không có màn cha nào theo dõi "từ đang xem"). Truyền vào khi màn
+  /// gọi (vd [SearchScreen] layout desktop 2 cột) muốn tự xử lý — ví dụ
+  /// cập nhật ô tìm kiếm + pane chi tiết thay vì chồng thêm 1 sheet lên
+  /// trên pane đã có sẵn.
+  final ValueChanged<VocabWord>? onWordTap;
 
   /// Từ nhiều mục "Military Dictionary" ở dạng `VIẾT TẮT (giải thích đầy
   /// đủ)` — tách riêng phần trong ngoặc để hiện nhỏ/phụ bên dưới thay vì
@@ -334,6 +353,9 @@ class WordDetailContent extends ConsumerWidget {
     final examples = word.isOnline
         ? const AsyncValue<List<WordExample>>.data([])
         : ref.watch(wordExamplesProvider(word.id));
+    final synonyms = word.isOnline
+        ? const AsyncValue<List<VocabWord>>.data([])
+        : ref.watch(synonymsProvider((word.id, word.meaningVi)));
     final abbreviationMatch = _abbreviationExpansion.firstMatch(word.word);
     final headword = abbreviationMatch?.group(1) ?? word.word;
     final expansion = abbreviationMatch?.group(2);
@@ -523,6 +545,42 @@ class WordDetailContent extends ConsumerWidget {
                       ],
                     ),
                   ),
+              ],
+            );
+          },
+        ),
+        synonyms.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+          data: (list) {
+            if (list.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Icon(Icons.swap_horiz, size: 14, color: scheme.outline),
+                    const SizedBox(width: 6),
+                    Text('TỪ ĐỒNG NGHĨA',
+                        style: textTheme.labelMedium
+                            ?.copyWith(color: scheme.outline)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final syn in list)
+                      ActionChip(
+                        label: Text(syn.word),
+                        onPressed: () => onWordTap != null
+                            ? onWordTap!(syn)
+                            : showWordDetail(context, syn),
+                      ),
+                  ],
+                ),
               ],
             );
           },
