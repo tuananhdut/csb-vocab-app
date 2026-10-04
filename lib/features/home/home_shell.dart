@@ -46,7 +46,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   List<_Destination> _destinations(bool isDesktop) => <_Destination>[
         const _Destination('Tra cứu', Icons.explore_outlined, SearchScreen()),
         _Destination(
-          'Học',
+          'Bài học',
           Icons.menu_book_outlined,
           isDesktop
               ? Navigator(

@@ -49,6 +49,18 @@ final chapterWordsProvider = FutureProvider.family<List<VocabWord>, int>((
   return repo.wordsByChapter(chapterId);
 });
 
+/// Tra CHÍNH XÁC 1 từ/cụm Anh trong từ điển giáo trình (không phải tìm
+/// gần đúng như [chapterWordsProvider]) — dùng cho dịch nhanh từ chọn
+/// trong PDF (`lessons_screen.dart`): nếu từ đã có sẵn trong giáo trình
+/// thì ưu tiên lấy nghĩa đã biên soạn thay vì gọi máy dịch ngoài.
+final exactWordLookupProvider = FutureProvider.family<VocabWord?, String>((
+  ref,
+  text,
+) async {
+  final repo = await ref.watch(vocabRepositoryProvider.future);
+  return repo.findExactMatch(text, direction: SearchDirection.enToVi);
+});
+
 /// Ví dụ của một từ (nạp khi mở chi tiết).
 final wordExamplesProvider = FutureProvider.family<List<WordExample>, int>((
   ref,

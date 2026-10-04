@@ -196,7 +196,7 @@ class WordTile extends StatelessWidget {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Flexible(
-                          child: Text(word.word, style: textTheme.bodyLarge),
+                          child: SelectableText(word.word, style: textTheme.bodyLarge),
                         ),
                         if (word.phonetic.isNotEmpty) ...[
                           const SizedBox(width: 8),
@@ -216,13 +216,13 @@ class WordTile extends StatelessWidget {
                       children: [
                         if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
                         Expanded(
-                          child: Text(
+                          child: SelectableText(
                             word.meaningVi,
                             style: textTheme.bodySmall?.copyWith(
                               color: scheme.outline,
                               fontWeight: FontWeight.w600,
                             ),
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                         if (word.isOnline) ...[
@@ -356,7 +356,7 @@ class WordDetailContent extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Text(headword, style: textTheme.headlineMedium),
+              child: SelectableText(headword, style: textTheme.headlineMedium),
             ),
             if (word.partOfSpeech.isNotEmpty) PosTag(word.partOfSpeech),
           ],
@@ -428,7 +428,7 @@ class WordDetailContent extends ConsumerWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
           ),
-          child: Text(word.meaningVi,
+          child: SelectableText(word.meaningVi,
               style: textTheme.bodyLarge
                   ?.copyWith(fontWeight: FontWeight.normal, height: 1.4)),
         ),
@@ -513,11 +513,11 @@ class WordDetailContent extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (ex.en.isNotEmpty)
-                          Text(ex.en,
+                          SelectableText(ex.en,
                               style: textTheme.bodySmall
                                   ?.copyWith(fontStyle: FontStyle.italic)),
                         if (ex.vi.isNotEmpty)
-                          Text(ex.vi,
+                          SelectableText(ex.vi,
                               style: textTheme.bodySmall
                                   ?.copyWith(color: scheme.outline)),
                       ],
