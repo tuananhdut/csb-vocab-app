@@ -112,7 +112,7 @@ class _TranslatePanelsState extends ConsumerState<TranslatePanels> {
                           ),
                         ],
                       ),
-                      error: (e, _) => Text(
+                      error: (e, _) => SelectableText(
                         'Lỗi dịch: $e',
                         style: TextStyle(color: scheme.error),
                       ),
