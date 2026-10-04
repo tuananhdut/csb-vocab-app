@@ -61,6 +61,16 @@ final exactWordLookupProvider = FutureProvider.family<VocabWord?, String>((
   return repo.findExactMatch(text, direction: SearchDirection.enToVi);
 });
 
+/// Các từ đồng nghĩa (cùng `meaning_vi`) của 1 từ — key là
+/// `(wordId, meaningVi)` vì [VocabRepository.synonymsOf] cần cả 2 (loại
+/// trừ chính nó + so khớp nghĩa), xem ghi chú tại đó.
+final synonymsProvider =
+    FutureProvider.family<List<VocabWord>, (int, String)>((ref, args) async {
+      final (wordId, meaningVi) = args;
+      final repo = await ref.watch(vocabRepositoryProvider.future);
+      return repo.synonymsOf(meaningVi, excludeWordId: wordId);
+    });
+
 /// Ví dụ của một từ (nạp khi mở chi tiết).
 final wordExamplesProvider = FutureProvider.family<List<WordExample>, int>((
   ref,

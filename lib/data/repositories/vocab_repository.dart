@@ -130,6 +130,34 @@ class VocabRepository {
     return _wordFromRow(rows.first);
   }
 
+  /// Các từ tiếng Anh KHÁC cùng chia sẻ CHÍNH XÁC 1 `meaning_vi` với
+  /// [excludeWordId] — coi là từ đồng nghĩa. Dữ liệu này đã có sẵn, KHÔNG
+  /// cần nguồn/cột mới: nguyên bản giáo trình/Tu_dien.pdf (xem
+  /// `docs/db/import/build_combined_vocab_db.py`) thường liệt kê nhiều
+  /// headword tiếng Anh cho cùng 1 nghĩa tiếng Việt khi chuyển sang
+  /// `words` (vd "ác liệt" ứng với cả "fierce" lẫn "violent", "thủy thủ"
+  /// ứng với 5 từ khác nhau) — chính là cách từ điển gốc trình bày nhóm
+  /// từ đồng nghĩa. Chỉ xét `source=0` (SEED): dữ liệu ONLINE_LOOKUP/
+  /// MANUAL không có đặc tính "nhiều headword cùng nghĩa" này (mỗi từ tự
+  /// thêm/tra Online là 1 dòng độc lập), trùng `meaning_vi` ở đó chỉ là
+  /// trùng hợp ngẫu nhiên, không phải đồng nghĩa thật.
+  List<VocabWord> synonymsOf(
+    String meaningVi, {
+    required int excludeWordId,
+    int limit = 8,
+  }) {
+    final trimmed = meaningVi.trim();
+    if (trimmed.isEmpty) return const [];
+    final rows = _db.select(
+      '''$_selectWord
+         WHERE w.source = 0 AND w.meaning_vi = ? AND w.id != ?
+         ORDER BY w.word_lower
+         LIMIT ?''',
+      [trimmed, excludeWordId, limit],
+    );
+    return rows.map(_wordFromRow).toList();
+  }
+
   /// Tra 1 từ theo id (dùng khi ghép dữ liệu ôn tập từ `user.db`).
   VocabWord? wordById(int id) {
     final rows = _db.select('$_selectWord WHERE w.id = ?', [id]);

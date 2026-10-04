@@ -105,6 +105,54 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  /// Nhảy tới [w] như thể user vừa gõ đúng từ đó vào ô tìm kiếm — dùng
+  /// khi bấm 1 chip TỪ ĐỒNG NGHĨA trong [WordDetailContent] (luôn là
+  /// headword tiếng Anh -> ép cứng [SearchDirection.enToVi]). Cập nhật
+  /// [_selected] NGAY bằng chính [w] (đã có đủ dữ liệu thật từ
+  /// `synonymsOf`, không cần đợi [_runSearch] trả về) để pane chi tiết
+  /// (desktop) hiện ngay lập tức, đồng thời chạy lại tìm kiếm thật để ô
+  /// tìm kiếm + danh sách bên trái khớp đúng trạng thái mới.
+  void _goToWord(VocabWord w) {
+    _debounce?.cancel();
+    _controller.text = w.word;
+    _controller.selection = TextSelection.collapsed(offset: w.word.length);
+    setState(() {
+      _query = w.word;
+      _direction = SearchDirection.enToVi;
+      _selected = w;
+    });
+    _runSearch(w.word, SearchDirection.enToVi);
+  }
+
+  /// Đếm số sheet đã mở qua [_openWordDetail] (0 = không có sheet nào
+  /// đang mở). KHÔNG dùng `bool` đơn giản: đóng sheet cũ (gọi `pop()`)
+  /// rồi mở sheet mới ngay trong cùng 1 lệnh gọi khiến future của sheet
+  /// CŨ chỉ hoàn tất (và chạy `whenComplete`) SAU KHI sheet MỚI đã mở —
+  /// nếu chỉ dùng `bool`, nhánh `whenComplete` của sheet cũ sẽ ghi đè
+  /// `false` lên trạng thái "đang mở" của sheet mới (race condition, gây
+  /// lại đúng bug chồng sheet ở lần bấm tiếp theo). So khớp generation
+  /// để `whenComplete` chỉ coi là "đã đóng" đúng sheet CUỐI CÙNG, không
+  /// bị ghi đè bởi sheet cũ hơn.
+  int _wordSheetGeneration = 0;
+
+  /// Mobile: mở bottom sheet chi tiết của [w] VÀ đồng bộ ô tìm kiếm/danh
+  /// sách phía sau qua [_goToWord] — không có pane chi tiết cố định như
+  /// desktop nên vẫn cần mở sheet, nhưng [onWordTap] truyền vào để bấm
+  /// tiếp 1 chip đồng nghĩa KHÁC bên trong sheet đó.
+  ///
+  /// [showModalBottomSheet] luôn ĐẨY THÊM 1 route mới — gọi liên tiếp
+  /// (bấm đồng nghĩa trong sheet đang mở) sẽ chồng nhiều sheet lên nhau
+  /// (bug thực tế đã gặp) thay vì thay nội dung sheet hiện có. Đóng sheet
+  /// đang mở (nếu có) TRƯỚC khi mở sheet mới để luôn chỉ có 1 sheet.
+  void _openWordDetail(VocabWord w) {
+    _goToWord(w);
+    if (_wordSheetGeneration > 0) Navigator.of(context).pop();
+    final generation = ++_wordSheetGeneration;
+    showWordDetail(context, w, onWordTap: _openWordDetail).whenComplete(() {
+      if (_wordSheetGeneration == generation) _wordSheetGeneration = 0;
+    });
+  }
+
   void _setDirection(SearchDirection direction) {
     // Huy debounce dang cho (neu co) - khong thi timer cu no muon se
     // tim lai bang GIA TRI GO CU, de len ket qua vua tim theo huong moi.
@@ -338,7 +386,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (_, i) => i >= words.length
           ? _LoadMoreFooter(loading: _loadingMore || _checkingOnline)
-          : WordTile(word: words[i], showChapter: true),
+          : WordTile(
+              word: words[i],
+              showChapter: true,
+              onTap: () => _openWordDetail(words[i]),
+            ),
     );
   }
 
@@ -415,6 +467,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       key: ValueKey(_selected!.id),
                       word: _selected!,
                       padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+                      onWordTap: _goToWord,
                     ),
             ),
           ),
