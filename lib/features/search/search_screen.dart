@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +9,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/repositories/vocab_providers.dart';
 import '../../data/services/connectivity_service.dart';
+import '../../data/services/dictionary_api_service.dart' show OnlineLookupResult;
 import '../../domain/entities/word.dart';
 import '../vocab/word_widgets.dart';
 
@@ -57,6 +59,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   // tu khoa khac truoc khi ket qua cu kip ve).
   int _searchGeneration = 0;
 
+  // Aborts the in-flight Online lookup when a newer search starts, so stale
+  // requests stop eating bandwidth and MyMemory quota.
+  CancelToken? _onlineCancel;
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +72,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _onlineCancel?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _controller.dispose();
@@ -163,6 +170,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   /// [_maybeAppendOnline].
   Future<void> _runSearch(String query, SearchDirection direction) async {
     final generation = ++_searchGeneration;
+    _onlineCancel?.cancel();
     final trimmed = query.trim();
     setState(() {
       _results.clear();
@@ -219,29 +227,44 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     setState(() => _checkingOnline = true);
     final apiService = ref.read(dictionaryApiServiceProvider);
+    final cancelToken = _onlineCancel = CancelToken();
+
+    // Insert the Online row on the first call and update it in place on the
+    // second (once phonetics/part of speech arrive).
+    void showOnline(OnlineLookupResult result) {
+      if (!mounted || generation != _searchGeneration) return;
+      final word = VocabWord(
+        id: onlineWordSentinelId,
+        word: result.word,
+        phonetic: result.phonetic,
+        partOfSpeech: result.partOfSpeech,
+        meaningVi: result.meaningVi,
+        chapterTitle: '',
+        isOnline: true,
+      );
+      setState(() {
+        _checkingOnline = false;
+        final index = _results.indexWhere((w) => w.isOnline);
+        if (index == -1) {
+          _results.add(word);
+        } else {
+          _results[index] = word;
+        }
+      });
+    }
+
     final onlineResult = await apiService.lookup(
       query.trim(),
       direction: direction,
+      cancelToken: cancelToken,
+      onTranslated: showOnline,
     );
     if (!mounted || generation != _searchGeneration) return;
     if (onlineResult == null) {
       setState(() => _checkingOnline = false);
       return;
     }
-    setState(() {
-      _checkingOnline = false;
-      _results.add(
-        VocabWord(
-          id: onlineWordSentinelId,
-          word: onlineResult.word,
-          phonetic: onlineResult.phonetic,
-          partOfSpeech: onlineResult.partOfSpeech,
-          meaningVi: onlineResult.meaningVi,
-          chapterTitle: '',
-          isOnline: true,
-        ),
-      );
-    });
+    showOnline(onlineResult);
   }
 
   Future<void> _loadMore() async {
@@ -298,9 +321,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 style: Theme.of(context).textTheme.bodyMedium,
                 decoration: InputDecoration(
                   hintText: 'Nhập từ tiếng Anh hoặc tiếng Việt…',
-                  prefixIcon: const Icon(Icons.search, size: 18),
                   suffixIcon: _query.isEmpty
-                      ? null
+                      ? const Icon(Icons.search, size: 18)
                       : IconButton(
                           icon: const Icon(Icons.clear),
                           onPressed: () {

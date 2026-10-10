@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/dictionary.dart';
 import '../../domain/entities/section.dart';
+import '../../domain/entities/translation_direction.dart';
 import '../../domain/entities/word.dart';
 import '../local/vocab_database.dart';
 import '../services/dictionary_api_service.dart';
@@ -59,6 +60,22 @@ final exactWordLookupProvider = FutureProvider.family<VocabWord?, String>((
 ) async {
   final repo = await ref.watch(vocabRepositoryProvider.future);
   return repo.findExactMatch(text, direction: SearchDirection.enToVi);
+});
+
+/// Same exact-match lookup as [exactWordLookupProvider] but for the
+/// Translate tab, where the direction can be flipped: Vietnamese input
+/// matches `meaning_vi`, so the dictionary entry can still win over the
+/// machine translator.
+final exactTranslateLookupProvider =
+    FutureProvider.family<VocabWord?, (TranslationDirection, String)>((ref, args) async {
+  final (direction, text) = args;
+  final repo = await ref.watch(vocabRepositoryProvider.future);
+  return repo.findExactMatch(
+    text,
+    direction: direction == TranslationDirection.viToEn
+        ? SearchDirection.viToEn
+        : SearchDirection.enToVi,
+  );
 });
 
 /// Các từ đồng nghĩa (cùng `meaning_vi`) của 1 từ — key là
