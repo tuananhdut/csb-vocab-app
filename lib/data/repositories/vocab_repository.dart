@@ -1,5 +1,6 @@
 import 'package:sqlite3/sqlite3.dart';
 
+import '../../core/utils/vietnamese_text.dart';
 import '../../domain/entities/dictionary.dart';
 import '../../domain/entities/section.dart';
 import '../../domain/entities/word.dart';
@@ -70,14 +71,19 @@ class VocabRepository {
   }) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
-    final like = '%$q%';
     final prefix = '$q%';
 
+    // Vietnamese input matches under either tone placement ("thuỷ"/"thủy").
+    final likes = switch (direction) {
+      SearchDirection.enToVi => ['%$q%'],
+      SearchDirection.viToEn => toneStyleVariants(q).map((v) => '%$v%').toList(),
+    };
     final matchColumn = switch (direction) {
       SearchDirection.enToVi => 'w.word_lower LIKE ?',
-      SearchDirection.viToEn => 'lower(w.meaning_vi) LIKE ?',
+      SearchDirection.viToEn =>
+        '(${List.filled(likes.length, 'lower(w.meaning_vi) LIKE ?').join(' OR ')})',
     };
-    final matchParams = [like];
+    final matchParams = likes;
 
     // "w.id" o cuoi ORDER BY chi de PHA THE HOA - cac dong khac deu
     // trung word_lower/do dai (vd nhieu muc viet tat trung headword nhu
@@ -114,9 +120,14 @@ class VocabRepository {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return null;
 
+    final variants = switch (direction) {
+      SearchDirection.enToVi => [q],
+      SearchDirection.viToEn => toneStyleVariants(q),
+    };
+    final inList = List.filled(variants.length, '?').join(', ');
     final matchColumn = switch (direction) {
-      SearchDirection.enToVi => 'w.word_lower = ?',
-      SearchDirection.viToEn => 'lower(w.meaning_vi) = ?',
+      SearchDirection.enToVi => 'w.word_lower IN ($inList)',
+      SearchDirection.viToEn => 'lower(w.meaning_vi) IN ($inList)',
     };
 
     final rows = _db.select(
@@ -124,7 +135,7 @@ class VocabRepository {
          WHERE $matchColumn
          ORDER BY w.id
          LIMIT 1''',
-      [q],
+      variants,
     );
     if (rows.isEmpty) return null;
     return _wordFromRow(rows.first);
