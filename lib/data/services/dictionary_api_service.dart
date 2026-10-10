@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -26,9 +28,30 @@ import '../../domain/entities/word.dart';
 /// [_contactEmail]) — quota tính theo IP gọi API, không phải theo
 /// user trong app (app không có backend/tài khoản để phân biệt).
 class DictionaryApiService {
-  DictionaryApiService({Dio? dio}) : _dio = dio ?? Dio();
+  DictionaryApiService({
+    Dio? dio,
+    Duration translateTimeout = const Duration(seconds: 6),
+    this.detailsTimeout = const Duration(seconds: 3),
+  }) : _dio =
+           dio ??
+           Dio(
+             BaseOptions(
+               connectTimeout: translateTimeout,
+               receiveTimeout: translateTimeout,
+             ),
+           );
 
   final Dio _dio;
+
+  /// api.dictionaryapi.dev is often unreachable (522 / hangs), and it only
+  /// adds phonetics, so it gets far less patience than MyMemory.
+  final Duration detailsTimeout;
+
+  /// MyMemory answers cached for the app session — re-typing a word skips
+  /// the ~1s round trip and does not spend daily quota. Phonetics are not
+  /// cached so a transient outage does not stick.
+  final Map<String, String> _translationCache = {};
+  static const _translationCacheLimit = 200;
 
   static const _baseUrl = 'https://api.mymemory.translated.net/get';
   static const _dictionaryApiBaseUrl =
@@ -70,9 +93,16 @@ class DictionaryApiService {
   /// chỉ ghi log ([debugPrint]), không throw ra ngoài để không chặn UI
   /// bằng lỗi đỏ (đã chốt Q-CSB-06: fallback êm về kết quả offline khi
   /// mạng chập chờn).
+  ///
+  /// [onTranslated] fires as soon as the translation is known, before the
+  /// (slow, optional) phonetics arrive, so the UI can show the meaning
+  /// right away; the returned future then resolves with the enriched
+  /// result. [cancelToken] aborts both requests when the query is stale.
   Future<OnlineLookupResult?> lookup(
     String text, {
     required SearchDirection direction,
+    CancelToken? cancelToken,
+    void Function(OnlineLookupResult partial)? onTranslated,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return null;
@@ -81,32 +111,41 @@ class DictionaryApiService {
     final from = isVietnamese ? 'vi' : 'en';
     final to = isVietnamese ? 'en' : 'vi';
 
+    OnlineLookupResult build(String translated, _EnglishDetails? details) =>
+        OnlineLookupResult(
+          queryText: trimmed,
+          translatedText: translated,
+          // Kết quả hiển thị luôn theo thứ tự (Anh, Việt) khớp WordTile/
+          // WordDetailContent hiện có — đảo lại nếu query gốc là tiếng Việt.
+          word: isVietnamese ? translated : trimmed,
+          meaningVi: isVietnamese ? trimmed : translated,
+          phonetic: details?.phonetic ?? '',
+          partOfSpeech: details?.partOfSpeech ?? '',
+        );
+
     String? translated;
     _EnglishDetails? details;
     if (isVietnamese) {
       // Chưa biết từ tiếng Anh là gì cho tới khi có bản dịch -> tuần tự.
-      translated = await translate(trimmed, from: from, to: to);
-      if (translated != null) details = await _lookupEnglishDetails(translated);
+      translated = await translate(trimmed, from: from, to: to, cancelToken: cancelToken);
+      if (translated == null) return null;
+      onTranslated?.call(build(translated, null));
+      details = await _lookupEnglishDetails(translated, cancelToken);
     } else {
       // [text] đã là tiếng Anh -> bắt đầu cả 2 request trước khi await
       // cái nào, chạy song song thật (không phải tuần tự).
-      final translateFuture = translate(trimmed, from: from, to: to);
-      final detailsFuture = _lookupEnglishDetails(trimmed);
-      translated = await translateFuture;
+      final detailsFuture = _lookupEnglishDetails(trimmed, cancelToken);
+      translated = await translate(trimmed, from: from, to: to, cancelToken: cancelToken);
+      if (translated == null) {
+        // Let the details request finish (it never throws) instead of
+        // leaving it dangling.
+        await detailsFuture;
+        return null;
+      }
+      onTranslated?.call(build(translated, null));
       details = await detailsFuture;
     }
-    if (translated == null) return null;
-
-    return OnlineLookupResult(
-      queryText: trimmed,
-      translatedText: translated,
-      // Kết quả hiển thị luôn theo thứ tự (Anh, Việt) khớp WordTile/
-      // WordDetailContent hiện có — đảo lại nếu query gốc là tiếng Việt.
-      word: isVietnamese ? translated : trimmed,
-      meaningVi: isVietnamese ? trimmed : translated,
-      phonetic: details?.phonetic ?? '',
-      partOfSpeech: details?.partOfSpeech ?? '',
-    );
+    return build(translated, details);
   }
 
   /// Gọi Free Dictionary API lấy phiên âm IPA + loại từ đầu tiên cho 1
@@ -115,10 +154,19 @@ class DictionaryApiService {
   /// hợp ngôn ngữ không hỗ trợ). 1 từ có thể có nhiều `partOfSpeech`
   /// (vd "chair" vừa là danh từ vừa là động từ) — chỉ lấy loại đầu
   /// tiên, đủ dùng cho 1 dòng [PosTag] hiện có, không cần hiện đủ.
-  Future<_EnglishDetails?> _lookupEnglishDetails(String word) async {
+  Future<_EnglishDetails?> _lookupEnglishDetails(
+    String word,
+    CancelToken? parentToken,
+  ) async {
+    // Own token so the short timeout can abort just this request; it also
+    // follows [parentToken] when the whole lookup is cancelled.
+    final token = CancelToken();
+    final timer = Timer(detailsTimeout, () => token.cancel('details timeout'));
+    parentToken?.whenCancel.then((e) => token.cancel(e.error));
     try {
       final response = await _dio.get<List<dynamic>>(
         '$_dictionaryApiBaseUrl/$word',
+        cancelToken: token,
       );
       final entry = response.data?.firstOrNull as Map<String, dynamic>?;
       if (entry == null) return null;
@@ -146,6 +194,8 @@ class DictionaryApiService {
       if (phonetic.isEmpty && posLabel.isEmpty) return null;
       return _EnglishDetails(phonetic: phonetic, partOfSpeech: posLabel);
     } on DioException catch (e) {
+      // Cancelled/timed out on purpose: phonetics are optional, stay quiet.
+      if (e.type == DioExceptionType.cancel) return null;
       // 404 (từ không có trong từ điển) là kết quả bình thường, không
       // phải lỗi — chỉ log các lỗi khác (mạng/timeout/server) để tránh
       // log rác. Ghi rõ từ đang tra + loại lỗi + status code thay vì
@@ -168,6 +218,8 @@ class DictionaryApiService {
         'DictionaryApiService: lỗi không xác định khi tra chi tiết "$word" — $e',
       );
       return null;
+    } finally {
+      timer.cancel();
     }
   }
 
@@ -178,7 +230,12 @@ class DictionaryApiService {
     String text, {
     required String from,
     required String to,
+    CancelToken? cancelToken,
   }) async {
+    final cacheKey = '$from|$to|${text.trim().toLowerCase()}';
+    final cached = _translationCache[cacheKey];
+    if (cached != null) return cached;
+
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         _baseUrl,
@@ -187,6 +244,7 @@ class DictionaryApiService {
           'langpair': '$from|$to',
           'de': _contactEmail,
         },
+        cancelToken: cancelToken,
       );
 
       final data = response.data;
@@ -199,8 +257,13 @@ class DictionaryApiService {
       final statusCode = status is int ? status : int.tryParse('$status');
       if (statusCode != null && statusCode != 200) return null;
 
+      if (_translationCache.length >= _translationCacheLimit) {
+        _translationCache.remove(_translationCache.keys.first);
+      }
+      _translationCache[cacheKey] = translated;
       return translated;
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) return null;
       debugPrint('DictionaryApiService: MyMemory request thất bại — $e');
       return null;
     } catch (e) {
