@@ -21,6 +21,13 @@ Mỗi file 1 UNIT, đặt tên theo quy ước `section-{section_id}-unit-{sort_
 - section-2-unit-10.pdf — The Search and Rescue System
 - section-2-unit-11.pdf — Initial Response and Search Planning
 
+## Section 3 — Appendix
+- section-3-unit-1.pdf — The Organization of Vietnamese People's Army
+- section-3-unit-2.pdf — Ranks of the Vietnamese People's Army
+- section-3-unit-3.pdf — Vietnamese Military Uniforms
+- section-3-unit-4.pdf — The English Sounds
+- section-3-unit-5.pdf — Irregular Verbs
+
 Nguồn gốc: tách thủ công từ `docs/source-materials/TA_chuyen_nganh.docx`,
 mỗi UNIT lưu thành 1 file PDF riêng, giữ nguyên định dạng gốc (ảnh, heading,
 căn giữa...).
