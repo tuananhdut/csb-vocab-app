@@ -81,7 +81,7 @@ class VocabRepository {
     final matchColumn = switch (direction) {
       SearchDirection.enToVi => 'w.word_lower LIKE ?',
       SearchDirection.viToEn =>
-        '(${List.filled(likes.length, 'lower(w.meaning_vi) LIKE ?').join(' OR ')})',
+        '(${List.filled(likes.length, 'w.meaning_lower LIKE ?').join(' OR ')})',
     };
     final matchParams = likes;
 
@@ -127,7 +127,7 @@ class VocabRepository {
     final inList = List.filled(variants.length, '?').join(', ');
     final matchColumn = switch (direction) {
       SearchDirection.enToVi => 'w.word_lower IN ($inList)',
-      SearchDirection.viToEn => 'lower(w.meaning_vi) IN ($inList)',
+      SearchDirection.viToEn => 'w.meaning_lower IN ($inList)',
     };
 
     final rows = _db.select(
@@ -446,14 +446,15 @@ class VocabRepository {
   }) {
     final now = DateTime.now().millisecondsSinceEpoch;
     _db.execute(
-      '''INSERT INTO words (word, word_lower, phonetic, meaning_vi,
+      '''INSERT INTO words (word, word_lower, phonetic, meaning_vi, meaning_lower,
                              part_of_speech, is_subentry, image_path, source, created_at)
-         VALUES (?, ?, ?, ?, ?, 0, ?, 2, ?)''',
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, 2, ?)''',
       [
         word,
         word.toLowerCase(),
         phonetic,
         meaningVi,
+        meaningVi.toLowerCase(),
         partOfSpeechCode,
         imagePath,
         now,
@@ -530,10 +531,18 @@ class VocabRepository {
           ? null
           : _posCodeByLabel[partOfSpeech];
       _db.execute(
-        '''INSERT INTO words (word, word_lower, phonetic, meaning_vi,
+        '''INSERT INTO words (word, word_lower, phonetic, meaning_vi, meaning_lower,
                                part_of_speech, is_subentry, image_path, source, created_at)
-           VALUES (?, ?, ?, ?, ?, 0, NULL, 1, ?)''',
-        [word, word.toLowerCase(), phonetic, meaningVi, partOfSpeechCode, now],
+           VALUES (?, ?, ?, ?, ?, ?, 0, NULL, 1, ?)''',
+        [
+          word,
+          word.toLowerCase(),
+          phonetic,
+          meaningVi,
+          meaningVi.toLowerCase(),
+          partOfSpeechCode,
+          now,
+        ],
       );
       wordId = _db.lastInsertRowId;
     }
@@ -587,13 +596,14 @@ class VocabRepository {
     _assertNotSeedWord(wordId, action: 'sửa');
     _db.execute(
       '''UPDATE words SET word = ?, word_lower = ?, phonetic = ?, meaning_vi = ?,
-                           part_of_speech = ?, image_path = ?
+                           meaning_lower = ?, part_of_speech = ?, image_path = ?
          WHERE id = ? AND source != 0''',
       [
         word,
         word.toLowerCase(),
         phonetic,
         meaningVi,
+        meaningVi.toLowerCase(),
         partOfSpeechCode,
         imagePath,
         wordId,

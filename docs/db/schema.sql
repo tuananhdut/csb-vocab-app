@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS words (
   word_lower      TEXT    NOT NULL,                 -- cột kỹ thuật, hỗ trợ search không phân biệt hoa/thường
   phonetic        TEXT,                              -- NULL nếu nguồn không cung cấp (vd tự nhập tay)
   meaning_vi      TEXT    NOT NULL,
+  meaning_lower   TEXT    NOT NULL DEFAULT '',      -- meaning_vi hạ chữ thường bằng Unicode (SQLite lower() chỉ xử lý ASCII), phục vụ tìm Việt → Anh
   part_of_speech  INTEGER,                           -- NULL = chưa xác định; xem bảng enum bên dưới
   is_subentry     INTEGER NOT NULL DEFAULT 0,        -- 0/1 (bool) — cụm từ/biến thể liên quan 1 từ gốc
   image_path      TEXT,                              -- NULL nếu chưa có ảnh minh hoạ

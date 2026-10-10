@@ -68,9 +68,10 @@ def main():
             linked += 1
         else:
             word_id = db.execute(
-                "INSERT INTO words (word, word_lower, phonetic, meaning_vi, part_of_speech,"
-                " is_subentry, source, created_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)",
-                (word, lower, phonetic, meaning, POS.get(typ.lower()), now),
+                "INSERT INTO words (word, word_lower, phonetic, meaning_vi, meaning_lower,"
+                " part_of_speech, is_subentry, source, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?)",
+                (word, lower, phonetic, meaning, meaning.lower(), POS.get(typ.lower()), now),
             ).lastrowid
             inserted += 1
         db.execute(
