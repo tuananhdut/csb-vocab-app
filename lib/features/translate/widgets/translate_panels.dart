@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/dismiss_keyboard_on_tap.dart';
 import '../../../data/repositories/translation_providers.dart';
+import '../../../data/repositories/vocab_providers.dart';
 import '../../../domain/entities/translation_direction.dart';
 
 /// Khung nguồn/kết quả khi model [direction] đã sẵn sàng ([ModelReady]) —
@@ -56,7 +57,14 @@ class _TranslatePanelsState extends ConsumerState<TranslatePanels> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final result = _debouncedText.trim().isEmpty
+    final hasText = _debouncedText.trim().isNotEmpty;
+    // Dictionary first: an exact hit skips the machine translator
+    // entirely, so no online request is fired while the lookup is pending.
+    final dictMatch = hasText
+        ? ref.watch(exactTranslateLookupProvider((widget.direction, _debouncedText)))
+        : null;
+    final dictWord = dictMatch?.value;
+    final result = !hasText || dictMatch!.isLoading || dictWord != null
         ? null
         : ref.watch(translateProvider((widget.direction, _debouncedText)));
 
@@ -86,7 +94,13 @@ class _TranslatePanelsState extends ConsumerState<TranslatePanels> {
             ),
             const SizedBox(height: 12),
             _Panel(
-              child: result == null
+              child: dictWord != null
+                  ? _DictionaryResult(
+                      text: widget.direction == TranslationDirection.enToVi
+                          ? dictWord.meaningVi
+                          : dictWord.word,
+                    )
+                  : result == null
                   ? Text(
                       'Bản dịch sẽ hiện ở đây',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.outline),
@@ -125,6 +139,33 @@ class _TranslatePanelsState extends ConsumerState<TranslatePanels> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DictionaryResult extends StatelessWidget {
+  const _DictionaryResult({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.verified_outlined, size: 14, color: AppColors.brand),
+            const SizedBox(width: 4),
+            Text(
+              'Có trong từ điển',
+              style: textTheme.labelSmall?.copyWith(color: AppColors.brand),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SelectableText(text, style: textTheme.bodyMedium),
+      ],
     );
   }
 }
