@@ -20,7 +20,9 @@ class MyDictionariesRepository {
     final rows = _vocabRepository.dictionariesWithWordIds();
     final endOfToday = _endOfTodayMillis();
 
-    return rows.map((r) {
+    // "Chưa phân loại" (id 1) must stay in the DB as the bucket for words
+    // saved without a dictionary, but an empty one is just noise in the list.
+    return rows.where((r) => !(r.id == 1 && r.wordIds.isEmpty)).map((r) {
       if (r.wordIds.isEmpty) {
         return Dictionary(
           id: r.id,
