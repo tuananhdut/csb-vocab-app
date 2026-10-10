@@ -298,9 +298,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 style: Theme.of(context).textTheme.bodyMedium,
                 decoration: InputDecoration(
                   hintText: 'Nhập từ tiếng Anh hoặc tiếng Việt…',
-                  prefixIcon: const Icon(Icons.search, size: 18),
                   suffixIcon: _query.isEmpty
-                      ? null
+                      ? const Icon(Icons.search, size: 18)
                       : IconButton(
                           icon: const Icon(Icons.clear),
                           onPressed: () {
